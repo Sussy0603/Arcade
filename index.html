@@ -164,6 +164,43 @@ header,footer,#content{position:relative;z-index:1;}
 .lucky-btn:disabled:hover{transform:none;box-shadow:3px 3px 0 var(--shadow);}
 @media (prefers-reduced-motion: reduce){ .sort-btn,.cat-btn{transition:none;} }
 
+/* ---------------- Section tabs ----------------
+   Games and Apps. The loudest control on the page after the title, because
+   it is the only one that changes what the page is *about* — the sort pills
+   and the chips rearrange a list, this swaps it. So it is the same pill
+   language a step larger, sitting above everything it governs including
+   Today's pick.
+
+   Hidden in the markup and shown by arcade.js only when both sections have
+   something in them. A tab that leads to an empty room is worse than no tab.
+
+   aria-pressed rather than role="tablist", deliberately. Real ARIA tabs come
+   with a contract — tabpanel ids, arrow-key roving focus, aria-controls —
+   and half of that contract is worse than none of it. These are two buttons
+   where one is currently down, which is what aria-pressed says, and it is
+   what the sort pills below already say. */
+.tab-bar{
+  position:relative;z-index:1;
+  display:flex;justify-content:center;gap:12px;flex-wrap:wrap;
+  margin:0 0 5vmin;
+}
+.tab-btn{
+  font:inherit;font-size:15px;font-weight:900;letter-spacing:.04em;
+  color:var(--ink);background:var(--paper);
+  border:3px solid var(--line);border-radius:999px;
+  padding:11px 25px;cursor:pointer;
+  box-shadow:4px 5px 0 var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.tab-btn:hover{transform:translate(-1px,-2px);box-shadow:6px 7px 0 var(--shadow);}
+.tab-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
+.tab-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+.tab-btn[aria-pressed="true"]{
+  background:var(--ink);color:var(--paper);
+  transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
+}
+@media (prefers-reduced-motion: reduce){ .tab-btn{transition:none;} }
+
 /* ---------------- Category chips ----------------
    A row of the same pills, one per category the listing actually contains,
    sitting directly above the grid they act on. Deliberately a step quieter
@@ -417,8 +454,16 @@ footer{
   <span class="badge">🎈 Free to play</span>
   <h1>Arcade</h1>
   <p>Jump straight in — no account needed.</p>
-  <p class="note">These are developmental-stage games, made by MOS employees.</p>
+  <p class="note" id="headerNote">These are developmental-stage games, made by MOS employees.</p>
 </header>
+
+<!-- Games or Apps. Hidden here and shown by arcade.js only once it knows
+     there is something in both sections — see the CSS above. It sits at the
+     top because it governs everything below it, Today's pick included. -->
+<div class="tab-bar" id="tabBar" role="group" aria-label="Choose a section" hidden>
+  <button class="tab-btn" id="tabGames" type="button" aria-pressed="true">🎮 Games</button>
+  <button class="tab-btn" id="tabApps" type="button" aria-pressed="false">🧰 Apps</button>
+</div>
 
 <!-- Today's pick. Above the search box on purpose: it is the shop window,
      and the search and sort controls belong next to the grid they act on.

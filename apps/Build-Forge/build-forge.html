@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Forge — LoL build lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1420; --panel:#151C2B; --panel2:#1B2436; --line:#273350;
+  --text:#E8EDF7; --dim:#8B96AD;
+  --phys:#F0A052; --magic:#5BA7F7; --gold:#F4C14F; --hp:#57C785; --bad:#E56A6A;
+  --r:2px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html{color-scheme:dark;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Barlow',system-ui,sans-serif; font-size:15px; line-height:1.45;
+  min-height:100vh;
+}
+h1,h2,h3,.num,.tab,.bigbtn{font-family:'Rajdhani',sans-serif;}
+button{font:inherit; color:inherit; background:none; border:none; cursor:pointer;}
+button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible{
+  outline:2px solid var(--gold); outline-offset:2px;
+}
+input,select{
+  background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  border-radius:var(--r); padding:8px 10px; font:inherit;
+}
+img{display:block;}
+
+/* ---------- top bar ---------- */
+header{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:14px 20px; border-bottom:1px solid var(--line);
+  position:sticky; top:0; background:var(--bg); z-index:40;
+}
+.logo{font-family:'Rajdhani'; font-weight:700; font-size:22px; letter-spacing:.5px;}
+.logo b{color:var(--gold); font-weight:700;}
+.patch{color:var(--dim); font-size:13px;}
+nav{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap;}
+@media (max-width:560px){
+  nav{margin-left:0; width:100%;}          /* five tabs will not fit one phone row */
+  .tab{padding:7px 11px; font-size:15px;}
+}
+.tab{
+  padding:8px 16px; font-size:16px; font-weight:600; color:var(--dim);
+  border-radius:var(--r); border:1px solid transparent;
+}
+.tab:hover{color:var(--text);}
+.tab.on{color:var(--text); border-color:var(--line); background:var(--panel);}
+
+main{max-width:1180px; margin:0 auto; padding:20px;}
+.screen{display:none;}
+.screen.on{display:block;}
+
+/* ---------- loading / error ---------- */
+#boot{max-width:520px; margin:80px auto; text-align:center;}
+#boot h1{font-size:26px; margin-bottom:10px;}
+#boot p{color:var(--dim);}
+.spin{
+  width:34px; height:34px; margin:0 auto 18px; border-radius:50%;
+  border:3px solid var(--line); border-top-color:var(--gold);
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){ .spin{animation:none;} }
+.bigbtn{
+  display:inline-block; margin-top:16px; padding:10px 22px; font-size:17px; font-weight:600;
+  background:var(--gold); color:#161104; border-radius:var(--r);
+}
+.bigbtn:hover{filter:brightness(1.07);}
+
+/* ---------- builder layout ---------- */
+.builder{display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;}
+@media (max-width:860px){ .builder{grid-template-columns:1fr;} }
+
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:16px;}
+.card + .card{margin-top:16px;}
+.card h2{font-size:18px; font-weight:600; margin-bottom:12px; letter-spacing:.3px;}
+.card h2 small{color:var(--dim); font-family:'Barlow'; font-size:13px; font-weight:400; margin-left:8px;}
+
+/* champion row */
+.champrow{display:flex; align-items:center; gap:14px;}
+.champface{
+  width:72px; height:72px; border:1px solid var(--line); border-radius:var(--r);
+  background:var(--panel2); display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:26px; overflow:hidden; flex:none;
+}
+.champface img{width:100%; height:100%;}
+.champmeta{min-width:0;}
+.champmeta .nm{font-family:'Rajdhani'; font-size:22px; font-weight:700; line-height:1.1;}
+.champmeta .ti{color:var(--dim); font-size:13px;}
+.linkbtn{color:var(--gold); font-weight:600; padding:4px 0;}
+.linkbtn:hover{text-decoration:underline;}
+
+/* slot grids */
+.slots{display:grid; grid-template-columns:repeat(6,1fr); gap:8px;}
+@media (max-width:520px){ .slots{grid-template-columns:repeat(3,1fr);} }
+.slot{
+  aspect-ratio:1; border:1px dashed var(--line); border-radius:var(--r);
+  background:var(--panel2); display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:20px; position:relative; overflow:hidden; width:100%;
+}
+.slot.filled{border-style:solid;}
+.slot img{width:100%; height:100%;}
+.slot:hover{border-color:var(--gold);}
+.slot .x{
+  position:absolute; top:0; right:0; width:20px; height:20px; line-height:20px;
+  background:rgba(14,20,32,.85); color:var(--bad); font-size:13px; text-align:center;
+  display:none;
+}
+.slot.filled:hover .x, .slot.filled:focus-within .x{display:block;}
+.spellslots{display:grid; grid-template-columns:repeat(2,64px); gap:8px;}
+
+/* runes */
+.runerow{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
+.runerow .lbl{width:100%; color:var(--dim); font-size:13px; margin-bottom:2px;}
+.runeopt{
+  display:flex; align-items:center; gap:6px; padding:5px 10px 5px 6px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--panel2);
+  color:var(--dim); font-size:13px;
+}
+.runeopt img{width:24px; height:24px;}
+.runeopt:hover{border-color:var(--gold); color:var(--text);}
+.runeopt.on{border-color:var(--gold); color:var(--text); background:#241f10;}
+.shardopt{width:auto;}
+
+/* ---------- perfect builds ---------- */
+.pgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px;}
+.pcard{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:13px;}
+.pcard .top{display:flex; gap:10px; align-items:center; margin-bottom:9px;}
+.pcard .top img{width:40px; height:40px; border:1px solid var(--line); border-radius:var(--r); flex:none;}
+.pcard .who{min-width:0; flex:1;}
+.pcard .nm{font-family:'Rajdhani'; font-weight:700; font-size:17px; line-height:1.1;}
+.pcard .sc{color:var(--gold); font-family:'Rajdhani'; font-weight:700; font-size:15px;}
+.pcard .sc span{color:var(--dim); font-family:'Barlow'; font-weight:400; font-size:11px;}
+.pcard .items{display:flex; gap:4px; flex-wrap:wrap; margin-bottom:9px;}
+.pcard .items img{width:30px; height:30px; border:1px solid var(--line); border-radius:var(--r);}
+.badge{font-size:10px; letter-spacing:.4px; text-transform:uppercase; padding:2px 6px;
+  border:1px solid var(--line); border-radius:var(--r); color:var(--dim); flex:none;}
+.badge.ok{border-color:var(--hp); color:var(--hp);}
+.rank{color:var(--dim); font-size:12px; font-family:'Rajdhani'; font-weight:700; flex:none;}
+
+/* ---------- abilities ---------- */
+.tgtrow{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; color:var(--dim); font-size:13px;}
+.tgtrow label{display:flex; align-items:center; gap:6px;}
+.tgtrow input{width:76px;}
+.tgtrow .patch{margin-left:auto; font-size:12px;}
+.abilrow{display:grid; grid-template-columns:30px 1fr auto; gap:10px; align-items:center;
+  padding:9px 0; border-bottom:1px solid rgba(39,51,80,.55);}
+.abilrow:last-of-type{border-bottom:none;}
+.abilkey{width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--panel2);
+  font-family:'Rajdhani'; font-weight:700; font-size:15px; color:var(--dim);}
+.abilkey.on{border-color:var(--gold); color:var(--gold);}
+.abilrow.off .abilname, .abilrow.off .abildmg{opacity:.42;}
+.abilname{min-width:0;}
+.abilname .nm{font-weight:600;}
+.abilname .sub{color:var(--dim); font-size:12px;}
+.rankpick{display:flex; gap:3px; margin-top:4px;}
+.rankpick button{width:22px; height:19px; font-size:11px; line-height:1;
+  border:1px solid var(--line); border-radius:var(--r); color:var(--dim); background:var(--panel2);}
+.rankpick button.on{border-color:var(--gold); color:var(--gold);}
+.rankpick button:disabled{opacity:.28; cursor:default;}
+.abildmg{text-align:right; font-family:'Rajdhani'; font-weight:700; font-size:21px; line-height:1.1;}
+.abildmg.magic{color:var(--magic);}
+.abildmg.phys{color:var(--phys);}
+.abildmg .u{display:block; font-family:'Barlow'; font-weight:400; font-size:11px; color:var(--dim);}
+.abiltot{display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  margin-top:12px; padding-top:12px; border-top:1px solid var(--line);}
+.abiltot span:first-child{color:var(--dim); font-size:13px;}
+.abiltot .num{font-family:'Rajdhani'; font-size:27px; font-weight:700; color:var(--gold);}
+
+/* ---------- optimizer ---------- */
+.optrow{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px;}
+.optrow label{color:var(--dim); font-size:13px; display:flex; align-items:center; gap:6px;}
+.optrow input[type="number"]{width:110px;}
+.optrow .bigbtn{margin-top:0; font-size:15px; padding:8px 18px;}
+.optrow .bigbtn[disabled]{opacity:.5; cursor:progress;}
+.optout{border-top:1px solid var(--line); padding-top:14px; margin-top:4px;}
+.optscore{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin-bottom:12px;}
+.optscore .num{font-family:'Rajdhani'; font-size:32px; font-weight:700; color:var(--gold); line-height:1;}
+.optscore .was{color:var(--dim); font-size:13px;}
+.optscore .up{color:var(--hp); font-weight:600; font-size:13px;}
+.optscore .flat{color:var(--dim); font-weight:600; font-size:13px;}
+.optitems{display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:12px;}
+@media (max-width:520px){ .optitems{grid-template-columns:repeat(3,1fr);} }
+.optitem{text-align:center; font-size:11px; color:var(--dim); line-height:1.25;}
+.optitem img{width:100%; aspect-ratio:1; border:1px solid var(--line); border-radius:var(--r); margin-bottom:4px;}
+.optitem.kept img{border-color:var(--gold);}
+.optitem .g{color:var(--gold);}
+.optwork{color:var(--dim); font-size:12px; line-height:1.6; margin-bottom:12px;}
+.optwork b{color:var(--text); font-weight:600;}
+
+/* ---------- stat panel (the hero) ---------- */
+.statpanel{
+  position:sticky; top:76px;
+  background:linear-gradient(180deg,#182135 0%, #131A29 100%);
+  border:1px solid var(--line); border-top:3px solid var(--gold);
+  border-radius:var(--r); padding:16px;
+}
+@media (max-width:860px){ .statpanel{position:static;} }
+.statpanel h2{font-size:18px; font-weight:600; display:flex; align-items:baseline; gap:8px;}
+.statpanel h2 span{color:var(--dim); font-family:'Barlow'; font-size:13px; font-weight:400;}
+.lvlrow{display:flex; align-items:center; gap:10px; margin:12px 0;}
+.lvlrow label{color:var(--dim); font-size:13px;}
+.lvlrow input[type=range]{flex:1; accent-color:var(--gold); padding:0; border:none; background:none;}
+.lvlrow .num{font-size:22px; font-weight:700; width:34px; text-align:right;}
+.goalrow{display:flex; gap:8px; align-items:center; margin-bottom:14px;}
+.goalrow label{color:var(--dim); font-size:13px;}
+.goalrow select{flex:1;}
+.headline{
+  border:1px solid var(--line); border-radius:var(--r); background:rgba(14,20,32,.5);
+  padding:12px 14px; margin-bottom:14px;
+}
+.headline .k{color:var(--dim); font-size:13px;}
+.headline .num{font-size:38px; font-weight:700; line-height:1.05; color:var(--gold);}
+.headline .sub{color:var(--dim); font-size:12px;}
+.statlist{display:grid; grid-template-columns:1fr 1fr; gap:6px 16px;}
+.stat{display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid rgba(39,51,80,.55); padding:3px 0;}
+.stat .k{color:var(--dim); font-size:13px;}
+.stat .num{font-size:17px; font-weight:600;}
+.stat.phys .num{color:var(--phys);}
+.stat.magic .num{color:var(--magic);}
+.stat.hp .num{color:var(--hp);}
+.gap{height:10px; grid-column:1/-1;}
+.savebar{display:flex; gap:8px; margin-top:14px;}
+.savebar input{flex:1; min-width:0;}
+.savebar .bigbtn{margin:0; font-size:15px; padding:8px 16px;}
+
+/* ---------- modal ---------- */
+.modal{
+  position:fixed; inset:0; background:rgba(5,8,14,.72); z-index:60;
+  display:none; align-items:flex-start; justify-content:center; padding:40px 16px;
+}
+.modal.on{display:flex;}
+.mbox{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
+  width:100%; max-width:720px; max-height:82vh; display:flex; flex-direction:column;
+}
+.mhead{display:flex; gap:10px; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line);}
+.mhead h3{font-size:18px; flex:1;}
+.mhead input{flex:2; min-width:0;}
+.mclose{color:var(--dim); font-size:20px; padding:2px 8px;}
+.mclose:hover{color:var(--text);}
+.mfilters{display:flex; gap:6px; padding:10px 16px 0; flex-wrap:wrap;}
+.chip{
+  padding:4px 12px; border:1px solid var(--line); border-radius:999px;
+  color:var(--dim); font-size:13px;
+}
+.chip.on{border-color:var(--gold); color:var(--gold);}
+
+/* category rail — the shop's aisles down the left of the item picker */
+.mcols{display:grid; grid-template-columns:178px 1fr; flex:1; min-height:0;}
+.mcols.norail{grid-template-columns:1fr;}
+.mcols.norail .mrail{display:none;}
+/* it is a <nav>, so undo what the header nav rule hands it */
+.mrail{border-right:1px solid var(--line); overflow:auto; min-height:0; padding:8px 0 14px; margin-left:0;}
+.mrail .grp{
+  color:var(--dim); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+  padding:12px 14px 4px;
+}
+.mrail .grp:first-child{padding-top:4px;}
+.catbtn{
+  display:flex; width:100%; gap:8px; align-items:baseline; text-align:left;
+  padding:5px 14px; font-size:13px; color:var(--dim);
+  border-left:2px solid transparent;
+}
+.catbtn:hover{color:var(--text); background:var(--panel2);}
+.catbtn.on{color:var(--gold); background:var(--panel2); border-left-color:var(--gold);}
+.catbtn .n{margin-left:auto; font-size:11px; opacity:.7;}
+.catbtn.rec{color:var(--text); font-weight:600;}
+.catbtn.rec.on{color:var(--gold);}
+.cathead{
+  display:flex; align-items:baseline; gap:8px; grid-column:1/-1;
+  font-family:'Rajdhani'; font-weight:700; font-size:16px; letter-spacing:.3px;
+}
+.cathead .n{color:var(--dim); font-family:'Barlow'; font-weight:400; font-size:12px;}
+.cathead + .pickgrid{margin-bottom:2px;}
+.cathead:not(:first-child){margin-top:16px; padding-top:12px; border-top:1px solid var(--line);}
+.catnote{
+  grid-column:1/-1; color:var(--dim); font-size:12px; line-height:1.5;
+  margin-top:16px; padding-top:10px; border-top:1px solid var(--line);
+}
+.catnote b{color:var(--text); font-weight:600;}
+@media (max-width:620px){
+  .mcols{grid-template-columns:1fr;}
+  .mrail{
+    display:flex; flex-wrap:nowrap; gap:6px; overflow-x:auto; overflow-y:hidden; padding:10px 14px;
+    border-right:none; border-bottom:1px solid var(--line);
+  }
+  .mrail .grp{display:none;}
+  .catbtn{
+    width:auto; flex:none; white-space:nowrap; padding:4px 12px;
+    border:1px solid var(--line); border-left-width:1px; border-radius:999px;
+  }
+  .catbtn.on{border-color:var(--gold);}
+  .catbtn .n{display:none;}
+}
+.mbody{overflow:auto; min-height:0; padding:14px 16px;}
+.pickgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px;}
+.pick{
+  border:1px solid var(--line); border-radius:var(--r); background:var(--panel2);
+  padding:8px 6px; text-align:center; color:var(--dim); font-size:12px;
+}
+.pick img{width:48px; height:48px; margin:0 auto 6px;}
+.pick:hover{border-color:var(--gold); color:var(--text);}
+.pick.on{border-color:var(--gold); color:var(--text); background:#241f10;}
+.pick .gold{color:var(--gold); font-size:11px;}
+
+/* ---------- my builds ---------- */
+.buildgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px;}
+.bcard{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:14px;}
+.bcard .top{display:flex; gap:10px; align-items:center; margin-bottom:10px;}
+.bcard .top img{width:44px; height:44px; border:1px solid var(--line); border-radius:var(--r);}
+.bcard .nm{font-family:'Rajdhani'; font-weight:700; font-size:18px; line-height:1.1;}
+.bcard .ch{color:var(--dim); font-size:13px;}
+.bcard .items{display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;}
+.bcard .items img{width:28px; height:28px; border:1px solid var(--line); border-radius:var(--r);}
+.bcard .acts{display:flex; gap:12px; flex-wrap:wrap;}
+.bcard .acts .del{color:var(--bad);}
+.empty{
+  border:1px dashed var(--line); border-radius:var(--r); padding:36px 20px;
+  text-align:center; color:var(--dim);
+}
+.empty b{color:var(--text); font-family:'Rajdhani'; font-size:18px; display:block; margin-bottom:6px;}
+
+/* ---------- browse ---------- */
+.browsebar{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.browsebar input{flex:1; min-width:180px;}
+
+/* ---------- champion sheet (Browse) ---------- */
+.sheet{
+  background:var(--panel); border:1px solid var(--line); border-top:3px solid var(--gold);
+  border-radius:var(--r); padding:16px; margin-bottom:16px;
+}
+.sheet .top{display:flex; gap:14px; align-items:flex-start; margin-bottom:14px;}
+.sheet .top img{width:64px; height:64px; border:1px solid var(--line); border-radius:var(--r); flex:none;}
+.sheet .who{flex:1; min-width:0;}
+.sheet .nm{font-family:'Rajdhani'; font-weight:700; font-size:24px; line-height:1.1;}
+.sheet .ti{color:var(--dim); font-size:13px;}
+.sheet .acts{display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; margin-top:6px;}
+.sheet .sclose{color:var(--dim); font-size:20px; padding:0 4px; align-self:flex-start;}
+.sheet .sclose:hover{color:var(--text);}
+.sheet .rate{color:var(--dim); font-size:12px; margin-top:14px;}
+.sheet .rate b{color:var(--text); font-weight:600;}
+
+/* ---------- compare ---------- */
+.cmpbar{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+.cmpbar select{flex:1; min-width:200px;}
+table.cmp{width:100%; border-collapse:collapse;}
+table.cmp th, table.cmp td{
+  padding:7px 10px; border-bottom:1px solid var(--line); text-align:right;
+}
+table.cmp th:first-child, table.cmp td:first-child{text-align:left; color:var(--dim); font-weight:400;}
+table.cmp thead th{font-family:'Rajdhani'; font-size:17px; color:var(--text);}
+td.win{color:var(--gold); font-weight:600;}
+.note{color:var(--dim); font-size:13px; margin-top:10px;}
+</style>
+</head>
+<body>
+
+<header hidden id="topbar">
+  <div class="logo">BUILD<b>FORGE</b></div>
+  <div class="patch" id="patchLbl">patch —</div>
+  <nav aria-label="Screens">
+    <button class="tab on" data-go="builder">Builder</button>
+    <button class="tab" data-go="builds">My Builds</button>
+    <button class="tab" data-go="browse">Browse</button>
+    <button class="tab" data-go="compare">Compare</button>
+    <button class="tab" data-go="perfect">Perfect</button>
+  </nav>
+</header>
+
+<div id="boot">
+  <div class="spin" id="bootSpin"></div>
+  <h1 id="bootTitle">Loading Riot data…</h1>
+  <p id="bootMsg">Fetching champions, items, spells and runes from Data Dragon.</p>
+</div>
+
+<main hidden id="app">
+
+  <!-- BUILDER -->
+  <section class="screen on" id="scr-builder">
+    <div class="builder">
+      <div>
+        <div class="card">
+          <h2>Champion</h2>
+          <div class="champrow">
+            <button class="champface" id="champBtn" aria-label="Pick a champion">+</button>
+            <div class="champmeta">
+              <div class="nm" id="champName">No champion yet</div>
+              <div class="ti" id="champTitle">Pick one to start building.</div>
+              <button class="linkbtn" id="champBtn2">Pick a champion</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Items <small>6 slots — tap a slot</small></h2>
+          <div class="slots" id="itemSlots"></div>
+        </div>
+
+        <div class="card">
+          <h2>Summoner spells</h2>
+          <div class="spellslots" id="spellSlots"></div>
+        </div>
+
+        <div class="card">
+          <h2>Runes <small>shards count in the math; keystones are saved, not simulated</small></h2>
+          <div id="runeArea"></div>
+        </div>
+
+        <div class="card">
+          <h2>Abilities <small>one cast of each, at the ranks below</small></h2>
+          <div class="tgtrow">
+            <span>Target</span>
+            <label>Armor <input type="number" id="tgtArmor" min="0" max="500" step="5"></label>
+            <label>Magic resist <input type="number" id="tgtMr" min="0" max="500" step="5"></label>
+            <span class="patch" id="abilPatch"></span>
+          </div>
+          <div id="abilArea"></div>
+        </div>
+
+        <div class="card">
+          <h2>Optimizer <small>proposes six items for the goal you picked, at your current level</small></h2>
+          <div class="optrow">
+            <label><input type="checkbox" id="optKeep"> Keep the items I've already picked</label>
+            <label>Gold budget <input type="number" id="optBudget" min="0" step="500" placeholder="no limit"></label>
+            <button class="bigbtn" id="optBtn">Propose a build</button>
+            <button class="linkbtn" id="exactBtn">Prove the optimum</button>
+          </div>
+          <div id="optOut"></div>
+        </div>
+      </div>
+
+      <aside class="statpanel" aria-label="Live stats">
+        <h2>Live stats <span id="statChamp"></span></h2>
+        <div class="lvlrow">
+          <label for="lvl">Level</label>
+          <input type="range" id="lvl" min="1" max="18" value="18">
+          <div class="num" id="lvlNum">18</div>
+        </div>
+        <div class="goalrow">
+          <label for="goal">Goal</label>
+          <select id="goal">
+            <option value="dps">Sustained damage (DPS)</option>
+            <option value="burst">Burst index</option>
+            <option value="tank">Survivability</option>
+            <option value="balanced">Balanced</option>
+          </select>
+        </div>
+        <div class="headline">
+          <div class="k" id="headK">Pick a champion</div>
+          <div class="num" id="headV">—</div>
+          <div class="sub" id="headSub"></div>
+        </div>
+        <div class="statlist" id="statList"></div>
+        <div class="savebar">
+          <input id="buildName" placeholder="Build name" aria-label="Build name">
+          <button class="bigbtn" id="saveBtn">Save</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- PERFECT -->
+  <section class="screen" id="scr-perfect">
+    <div class="browsebar">
+      <input id="perfQ" placeholder="Search champions…" aria-label="Search champions">
+      <select id="perfGoal" aria-label="Goal">
+        <option value="dps">Sustained damage (DPS)</option>
+        <option value="burst">Combo damage</option>
+        <option value="tank">Survivability</option>
+        <option value="balanced">Balanced</option>
+      </select>
+    </div>
+    <p class="note" id="perfNote"></p>
+    <div id="perfList"></div>
+  </section>
+
+  <!-- MY BUILDS -->
+  <section class="screen" id="scr-builds">
+    <div id="buildList"></div>
+  </section>
+
+  <!-- BROWSE -->
+  <section class="screen" id="scr-browse">
+    <div class="browsebar">
+      <input id="browseQ" placeholder="Search champions, items, spells, runes…" aria-label="Search">
+      <select id="browseCat">
+        <option value="champs">Champions</option>
+        <option value="items">Items</option>
+        <option value="spells">Summoner spells</option>
+        <option value="runes">Runes</option>
+      </select>
+      <select id="browseItemCat" aria-label="Item category" hidden></select>
+    </div>
+    <div id="champSheet"></div>
+    <div class="pickgrid" id="browseGrid"></div>
+  </section>
+
+  <!-- COMPARE -->
+  <section class="screen" id="scr-compare">
+    <div class="cmpbar">
+      <select id="cmpA" aria-label="Build A"></select>
+      <select id="cmpB" aria-label="Build B"></select>
+    </div>
+    <div id="cmpOut"></div>
+  </section>
+
+</main>
+
+<!-- picker modal -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="mbox">
+    <div class="mhead">
+      <h3 id="mTitle">Pick</h3>
+      <input id="mSearch" placeholder="Search…" aria-label="Search list">
+      <button class="mclose" id="mClose" aria-label="Close">✕</button>
+    </div>
+    <div class="mfilters" id="mFilters"></div>
+    <div class="mcols" id="mCols">
+      <nav class="mrail" id="mRail" aria-label="Item categories"></nav>
+      <div class="mbody"><div class="pickgrid" id="mGrid"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   BUILD FORGE — everything below is plain JavaScript.
+   Sections: DATA → PARSING → ABILITIES → MATH → OPTIMIZER → EXACT → STATE → RENDER → EVENTS
+   ============================================================ */
+
+/* ---------- DATA: fetch everything from Riot's Data Dragon ---------- */
+const DD = 'https://ddragon.leagueoflegends.com';
+let VER = '', CHAMPS = {}, ITEMS = {}, SPELLS = {}, RUNES = [];
+
+async function boot(){
+  try{
+    const vers = await (await fetch(DD + '/api/versions.json')).json();
+    VER = vers[0];
+    const base = DD + '/cdn/' + VER + '/data/en_US/';
+    const [c,i,s,r] = await Promise.all([
+      fetch(base+'champion.json').then(x=>x.json()),
+      fetch(base+'item.json').then(x=>x.json()),
+      fetch(base+'summoner.json').then(x=>x.json()),
+      fetch(base+'runesReforged.json').then(x=>x.json()),
+    ]);
+    CHAMPS = c.data; ITEMS = i.data; SPELLS = s.data; RUNES = r;
+    document.getElementById('patchLbl').textContent = 'patch ' + VER;
+    document.getElementById('boot').hidden = true;
+    document.getElementById('topbar').hidden = false;
+    document.getElementById('app').hidden = false;
+    loadState(); renderAll();
+  }catch(e){
+    document.getElementById('bootSpin').style.display='none';
+    document.getElementById('bootTitle').textContent = "Couldn't reach Riot's data";
+    document.getElementById('bootMsg').innerHTML =
+      'Build Forge needs internet the first time it loads champion data.<br>Check your connection, then retry.';
+    if(!document.getElementById('retryBtn')){
+      const b = document.createElement('button');
+      b.className='bigbtn'; b.id='retryBtn'; b.textContent='Retry';
+      b.onclick = ()=>{ document.getElementById('bootSpin').style.display=''; b.remove(); boot(); };
+      document.getElementById('boot').appendChild(b);
+    }
+  }
+}
+
+const champImg = c => DD+'/cdn/'+VER+'/img/champion/'+c.image.full;
+const itemImg  = i => DD+'/cdn/'+VER+'/img/item/'+i.image.full;
+const spellImg = s => DD+'/cdn/'+VER+'/img/spell/'+s.image.full;
+const runeImg  = icon => DD+'/cdn/img/'+icon;
+
+/* ---------- PARSING: read item stats out of the item description ----------
+   Data Dragon lists item stats inside the description HTML like:
+   <stats><attention>45</attention> Attack Damage<br>...</stats>
+   We read each number + the words after it, and map the words to our stats. */
+const STAT_WORDS = [
+  ['attack damage','ad'], ['ability power','ap'], ['health','hp'], ['mana','mana'],
+  ['armor penetration','armorPenPct'], ['armor','armor'], ['magic resist','mr'],
+  ['attack speed','asPct'], ['critical strike chance','crit'], ['ability haste','haste'],
+  ['move speed','ms'], ['life steal','lifesteal'], ['omnivamp','omnivamp'],
+  ['lethality','lethality'], ['magic penetration','magicPen'],
+  ['tenacity','tenacity'], ['heal and shield power','healPower'],
+  ['base health regen','hpRegenPct'], ['base mana regen','mpRegenPct'],
+];
+const itemStatCache = {};
+function parseItemStats(id){
+  if(itemStatCache[id]) return itemStatCache[id];
+  const out = {};
+  const it = ITEMS[id];
+  if(it){
+    const doc = new DOMParser().parseFromString(it.description||'', 'text/html');
+    const statsEl = doc.querySelector('stats');
+    if(statsEl){
+      statsEl.querySelectorAll('attention').forEach(att=>{
+        const raw = att.textContent.trim();
+        const isPct = raw.includes('%');
+        const val = parseFloat(raw.replace('%',''));
+        let label = '';
+        let n = att.nextSibling;
+        while(n && n.nodeName !== 'ATTENTION'){
+          if(n.nodeType === 3) label += n.textContent;
+          if(n.nodeName === 'BR' && label.trim()) break;
+          n = n.nextSibling;
+        }
+        label = label.trim().toLowerCase();
+        for(const [word,key] of STAT_WORDS){
+          if(label.startsWith(word)){
+            let k = key, v = val;
+            if(k==='ms' && isPct) k = 'msPct';
+            if(k==='magicPen' && isPct) k = 'magicPenPct';
+            out[k] = (out[k]||0) + v;
+            break;
+          }
+        }
+      });
+    }
+  }
+  itemStatCache[id] = out;
+  return out;
+}
+
+/* ---------- ABILITIES: real damage, from a baked snapshot ----------
+   Data Dragon carries no ability damage at all — `vars` and `datavalues` are
+   empty on all 692 spells and the tooltips just say {{ totaldamage }}. The
+   real numbers live in the game's own data, which Community Dragon republishes
+   as JSON. Rather than depend on a second CDN at runtime, the table below is
+   baked in by Apps/MOS/tools/gen-abilities.mjs — re-run it after a patch.
+
+   Each entry is the damage formula flattened to four rank arrays, so
+   Garen's Q (30/60/90/120/150 + 150% total AD) becomes
+     {n:'Decisive Strike', t:'physical', flat:[30,60,90,120,150], ad:1.5}
+   A single number means the value is the same at every rank. `c` names the
+   calculation used when it wasn't the spell's headline TotalDamage, and it
+   is shown in the UI so a partial number isn't mistaken for the whole story. */
+
+/* ==ABILITY-DATA-START== */
+const ABILITY_PATCH = "16.18.1";
+const ABILITIES = {"Aatrox":{"q":{"n":"The Darkin Blade","t":"physical","c":"QDamage","mr":5,"flat":[10,25,40,55,70],"ad":[0.6,0.675,0.75,0.825,0.9]},"w":{"n":"Infernal Chains","t":"physical","c":"WDamage","mr":5,"flat":[30,40,50,60,70],"ad":0.4}},"Ambessa":{"q":{"n":"Cunning Sweep / Sundering Slam","t":"physical","c":"Calc_Damage_1_Max","mr":5,"flat":[40,60,80,100,120],"adBonus":0.6},"w":{"n":"Repudiation","t":"physical","c":"Calc_Damage_Low","mr":5,"flat":[50,75,100,125,150],"adBonus":0.5},"e":{"n":"Lacerate","t":"physical","c":"Calc_Damage_Flat","mr":5,"flat":[40,60,80,100,120],"adBonus":0.5},"r":{"n":"Public Execution","t":"physical","c":"Calc_Damage","mr":3,"flat":[150,250,350,450,550],"adBonus":0.8}},"Akshan":{"q":{"n":"Avengerang","t":"physical","c":"FinalDamage","mr":5,"flat":[45,75,105,135,165],"adBonus":0.7},"w":{"n":"Going Rogue","t":"magic","c":"SecondAutoDamage","mr":5,"ad":[0.46,0.52,0.58,0.64,0.7]},"e":{"n":"Heroic Swing","t":"physical","c":"DamageToDeal","mr":5,"flat":[8,16,24,32,40],"ad":0.25}},"Alistar":{"q":{"n":"Pulverize","t":"magic","mr":5,"flat":[60,100,140,180,220],"ap":0.8},"w":{"n":"Headbutt","t":"magic","mr":5,"flat":[55,110,165,220,275],"ap":1},"e":{"n":"Trample","t":"magic","mr":5,"flat":[80,110,140,170,200],"ap":0.7}},"Ahri":{"q":{"n":"Orb of Deception","t":"magic","mr":5,"flat":[35,60,85,110,135],"ap":0.5},"w":{"n":"Fox-Fire","t":"magic","c":"SingleFireDamage","mr":5,"flat":[40,60,80,100,120],"ap":0.4},"e":{"n":"Charm","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":0.85},"r":{"n":"Spirit Rush","t":"magic","c":"RCalculatedDamage","mr":3,"flat":[75,125,175,225,275],"ap":0.35}},"Akali":{"q":{"n":"Five Point Strike","t":"magic","c":"Damage","mr":5,"flat":[45,70,95,120,145],"ap":0.6,"ad":0.65},"e":{"n":"Shuriken Flip","t":"magic","c":"E1Damage","mr":5,"flat":[70,140,210,280,350],"ap":1.1,"ad":1},"r":{"n":"Perfect Execution","t":"magic","c":"Cast1Damage","mr":3,"flat":[110,220,330,440,550],"ap":0.3,"adBonus":0.5}},"Amumu":{"q":{"n":"Bandage Toss","t":"magic","mr":5,"flat":[70,95,120,145,170],"ap":0.85},"w":{"n":"Despair","t":"magic","c":"TotalHealthDamage","mr":5,"flat":[1,1.25,1.5,1.75,2],"ap":0.005},"r":{"n":"Curse of the Sad Mummy","t":"magic","c":"RCalculatedDamage","mr":3,"flat":[200,300,400,500,600],"ap":0.8}},"Anivia":{"q":{"n":"Flash Frost","t":"magic","c":"TotalPassthroughDamage","mr":5,"flat":[50,70,90,110,130],"ap":0.25},"e":{"n":"Frostbite","t":"magic","mr":5,"flat":[55,80,105,130,155],"ap":0.55},"r":{"n":"Glacial Storm","t":"magic","c":"TotalDamagePerSecond","mr":3,"flat":[30,45,60,75,90],"ap":0.125}},"Annie":{"q":{"n":"Disintegrate","t":"magic","mr":5,"flat":[80,125,170,215,260],"ap":0.8},"w":{"n":"Incinerate","t":"magic","mr":5,"flat":[70,110,150,190,230],"ap":0.8},"e":{"n":"Molten Shield","t":"magic","c":"DamageReturn","mr":5,"flat":[25,35,45,55,65],"ap":0.4},"r":{"n":"Summon: Tibbers","t":"magic","c":"InitialBurstDamage","mr":3,"flat":[150,275,400,525,650],"ap":0.75}},"Aphelios":{"r":{"n":"Moonlight Vigil","t":"physical","c":"MaxDamage","mr":3,"flat":[125,175,225,275,325],"ap":1,"adBonus":0.2}},"AurelionSol":{"q":{"n":"Breath of Light","t":"magic","c":"DamagePerSecond","mr":5,"flat":[45,60,75,90,105],"ap":0.55},"e":{"n":"Singularity","t":"magic","c":"DamagePerSecond","mr":5,"flat":[10,15,20,25,30],"ap":0.12},"r":{"n":"Falling Star / The Skies Descend","t":"magic","c":"MaxDamageTooltip","mr":3,"flat":[150,250,350,450,550],"ap":0.75}},"Ashe":{"q":{"n":"Ranger's Focus","t":"physical","c":"EmpoweredDamage","mr":5,"ad":[1.1,1.15,1.2,1.25,1.3]},"w":{"n":"Volley","t":"physical","mr":5,"flat":[60,95,130,165,200],"adBonus":1},"r":{"n":"Enchanted Crystal Arrow","t":"magic","c":"RMainDamage","mr":3,"flat":[200,400,600,800,1000],"ap":1.2}},"Aurora":{"q":{"n":"Twofold Hex","t":"magic","c":"Damage","mr":5,"flat":[45,70,95,120,145],"ap":0.4},"e":{"n":"The Weirding","t":"magic","c":"DamageCalc","mr":5,"flat":[70,110,150,190,230],"ap":0.7},"r":{"n":"Between Worlds","t":"magic","c":"DamageCalc","mr":3,"flat":[175,275,375,475,575],"ap":0.7}},"Azir":{"q":{"n":"Conquering Sands","t":"magic","mr":5,"flat":[75,95,115,135,155],"ap":[0.35,0.4,0.45,0.5,0.55]},"e":{"n":"Shifting Sands","t":"magic","mr":5,"flat":[70,110,150,190,230],"ap":0.6},"r":{"n":"Emperor's Divide","t":"magic","mr":3,"flat":[200,400,600,800,1000],"ap":0.75}},"Belveth":{"q":{"n":"Void Surge","t":"physical","c":"BaseDamage","mr":5,"flat":[12,14,16,18,20],"ad":1.05},"w":{"n":"Above and Below","t":"magic","c":"Damage","mr":5,"flat":[80,140,200,260,320],"ap":1.5},"e":{"n":"Royal Maelstrom","t":"physical","c":"DamagePerStrike","mr":5,"flat":[10,12,14,16,18],"ad":0.12},"r":{"n":"Endless Banquet","t":"true","c":"TotalExplosionDamage","mr":3,"flat":[150,200,250,300,350],"ap":1.5}},"Blitzcrank":{"q":{"n":"Rocket Grab","t":"magic","mr":5,"flat":[110,160,210,260,310],"ap":1.2},"e":{"n":"Power Fist","t":"physical","mr":5,"ap":0.25,"ad":2},"r":{"n":"Static Field","t":"magic","c":"ActiveDamage","mr":3,"flat":[275,400,525,650,775],"ap":1}},"Brand":{"q":{"n":"Sear","t":"magic","mr":5,"flat":[70,100,130,160,190],"ap":0.65},"w":{"n":"Pillar of Flame","t":"magic","mr":5,"flat":[75,120,165,210,255],"ap":0.7},"e":{"n":"Conflagration","t":"magic","c":"EDamageCalc","mr":5,"flat":[55,80,105,130,155],"ap":0.6},"r":{"n":"Pyroclasm","t":"magic","mr":3,"flat":[100,175,250,325,400],"ap":0.3}},"Bard":{"q":{"n":"Cosmic Binding","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":0.8}},"Braum":{"r":{"n":"Glacial Fissure","t":"magic","mr":3,"flat":[150,250,350,450,550],"ap":0.6}},"Briar":{"q":{"n":"Head Rush","t":"physical","mr":5,"flat":[60,85,110,135,160],"ap":0.6,"adBonus":0.8},"w":{"n":"Blood Frenzy / Snack Attack","t":"physical","c":"TotalAttackBonusDamage","mr":5,"flat":[5,20,35,50,65],"ad":1.05},"e":{"n":"Chilling Scream","t":"magic","c":"Damage","mr":5,"flat":[80,115,150,185,220],"ap":1,"adBonus":1},"r":{"n":"Certain Death","t":"magic","c":"Damage","mr":3,"flat":[150,250,350,450,550],"ap":1.3}},"Caitlyn":{"w":{"n":"Yordle Snap Trap","t":"physical","c":"HeadShotBonusDamage","mr":5,"flat":[35,80,125,170,215],"adBonus":0.3},"e":{"n":"90 Caliber Net","t":"magic","c":"NetDamage","mr":5,"flat":[80,130,180,230,280],"ap":0.8},"r":{"n":"Ace in the Hole","t":"physical","c":"RTotalDamage","mr":3,"flat":[300,475,650,825,1000],"adBonus":1}},"Corki":{"q":{"n":"Phosphorus Bomb","t":"magic","mr":5,"flat":[60,105,150,195,240],"ap":1,"adBonus":1.25},"w":{"n":"Valkyrie","t":"magic","c":"MaximumDamage","mr":5,"flat":[150,225,300,375,450],"ap":1.5,"adBonus":2},"e":{"n":"Gatling Gun","t":"physical","mr":5,"flat":[80,130,180,230,280],"adBonus":2.4},"r":{"n":"Missile Barrage","t":"physical","c":"RSmallMissileDamage","mr":3,"flat":[90,170,250,330,410],"adBonus":0.85}},"Diana":{"q":{"n":"Crescent Strike","t":"magic","mr":5,"flat":[70,105,140,175,210],"ap":0.7},"w":{"n":"Pale Cascade","t":"magic","mr":5,"flat":[20,32,44,56,68],"ap":0.18},"e":{"n":"Lunar Rush","t":"magic","mr":5,"flat":[50,70,90,110,130],"ap":0.6},"r":{"n":"Moonfall","t":"magic","c":"RExplosionDamage","mr":3,"flat":[200,300,400,500,600],"ap":0.6}},"Camille":{"w":{"n":"Tactical Sweep","t":"physical","c":"BaseDamageTotal","mr":5,"flat":[60,85,110,135,160],"adBonus":0.6},"e":{"n":"Hookshot","t":"physical","mr":5,"flat":[60,90,120,150,180],"adBonus":0.75}},"Cassiopeia":{"q":{"n":"Noxious Blast","t":"magic","c":"TooltipTotalDamage","mr":5,"flat":[65,100,135,170,205],"ap":0.75},"w":{"n":"Miasma","t":"magic","c":"DamagePerSecond","mr":5,"flat":[20,25,30,35,40],"ap":0.1},"r":{"n":"Petrifying Gaze","t":"magic","c":"RDamage","mr":3,"flat":[125,225,325,425,525],"ap":0.75}},"Chogath":{"q":{"n":"Rupture","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[80,135,190,245,300],"ap":1},"e":{"n":"Vorpal Spikes","t":"magic","c":"FlatDamageCalc","mr":5,"flat":[30,50,70,90,110],"ap":0.3}},"Darius":{"r":{"n":"Noxian Guillotine","t":"true","c":"Damage","mr":3,"flat":[125,250,375,500,625],"adBonus":0.75}},"Draven":{"q":{"n":"Spinning Axe","t":"physical","mr":5,"flat":[40,45,50,55,60],"adBonus":[0.75,0.85,0.95,1.05,1.15]},"e":{"n":"Stand Aside","t":"physical","mr":5,"flat":[75,110,145,180,215],"adBonus":0.5},"r":{"n":"Whirling Death","t":"physical","c":"RCalculatedDamage","mr":3,"flat":[200,300,400,500,600],"adBonus":[1.1,1.3,1.5,1.7,1.9]}},"Ezreal":{"q":{"n":"Mystic Shot","t":"physical","c":"Damage","mr":5,"flat":[20,45,70,95,120],"ap":0.4,"ad":1.3},"w":{"n":"Essence Flux","t":"magic","c":"Damage","mr":5,"flat":[80,135,190,245,300],"ap":0.9,"adBonus":1},"e":{"n":"Arcane Shift","t":"magic","c":"Damage","mr":5,"flat":[80,130,180,230,280],"ap":0.75,"adBonus":0.6},"r":{"n":"Trueshot Barrage","t":"magic","c":"Damage","mr":3,"flat":[350,550,750,950,1150],"ap":1.1,"adBonus":1}},"Elise":{"q":{"n":"Neurotoxin / Venomous Bite","t":"magic","c":"MonsterDamageCapCalc","mr":5,"flat":[65,85,105,125,145],"ap":0.9},"w":{"n":"Volatile Spiderling / Skittering Frenzy","t":"magic","mr":5,"flat":[60,100,140,180,220],"ap":0.75},"r":{"n":"Spider Form","t":"magic","c":"PassiveTotalDamage","mr":4,"flat":[12,22,32,42,52],"ap":0.15}},"Ekko":{"q":{"n":"Timewinder","t":"magic","c":"InitialDamage","mr":5,"flat":[80,95,110,125,140],"ap":0.3},"e":{"n":"Phase Dive","t":"magic","mr":5,"flat":[50,75,100,125,150],"ap":0.4},"r":{"n":"Chronobreak","t":"magic","mr":3,"flat":[200,350,500,650,800],"ap":1.75}},"Evelynn":{"q":{"n":"Hate Spike","t":"magic","c":"TotalBonusDamage","mr":5,"flat":[15,25,35,45,55],"ap":0.25},"w":{"n":"Allure","t":"magic","c":"MonsterDamageTotalTOOLTIP","mr":5,"flat":[250,300,350,400,450],"ap":0.6},"r":{"n":"Last Caress","t":"magic","c":"Damage","mr":3,"flat":[125,250,375,500,650],"ap":0.75}},"Galio":{"q":{"n":"Winds of War","t":"magic","c":"QMissileDamage","mr":5,"flat":[70,105,140,175,210],"ap":0.7},"e":{"n":"Justice Punch","t":"magic","mr":5,"flat":[100,135,170,205,240],"ap":1}},"Garen":{"q":{"n":"Decisive Strike","t":"physical","mr":5,"flat":[30,60,90,120,150],"ad":1.5},"e":{"n":"Judgment","t":"physical","mr":5,"flat":[4,7,10,13,16],"ad":[0.4,0.43,0.46,0.49,0.52]}},"Gragas":{"w":{"n":"Drunken Rage","t":"magic","mr":5,"flat":[20,50,80,110,140],"ap":0.7},"e":{"n":"Body Slam","t":"magic","mr":5,"flat":[80,125,170,215,260],"ap":0.6},"r":{"n":"Explosive Cask","t":"magic","c":"DamageDone","mr":3,"flat":[200,300,400,500,600],"ap":0.8}},"Fiora":{"w":{"n":"Riposte","t":"magic","c":"StabDamage","mr":5,"flat":[110,150,190,230,270],"ap":1}},"Fiddlesticks":{"q":{"n":"Terrify","t":"magic","c":"TotalPercentHealthDamage","mr":5,"flat":[0.04,0.045,0.05,0.055,0.06],"ap":0.0003},"w":{"n":"Bountiful Harvest","t":"magic","c":"DrainDamageCalc","mr":5,"flat":[60,90,120,150,180],"ap":0.45},"e":{"n":"Reap","t":"magic","c":"Damage","mr":5,"flat":[70,105,140,175,210],"ap":0.5}},"Fizz":{"q":{"n":"Urchin Strike","t":"physical","mr":5,"ad":1},"w":{"n":"Seastone Trident","t":"magic","c":"DoTDamage","mr":5,"flat":[30,45,60,75,90],"ap":0.25},"e":{"n":"Playful / Trickster","t":"magic","c":"EDamage","mr":5,"flat":[80,130,180,230,280],"ap":0.95},"r":{"n":"Chum the Waters","t":"magic","c":"SmallSharkDamage","mr":3,"flat":[180,300,420,540,660],"ap":0.6}},"Gnar":{"q":{"n":"Boomerang Throw / Boulder Toss","t":"physical","c":"MegaTotalDamage","mr":5,"flat":[45,90,135,180,225],"ad":1.4},"w":{"n":"Hyper / Wallop","t":"magic","c":"MegaTotalDamage","mr":5,"flat":[45,75,105,135,165],"ad":1},"r":{"n":"GNAR!","t":"physical","c":"Damage","mr":3,"flat":[200,300,400,500,600],"ap":1,"adBonus":0.5}},"Heimerdinger":{"q":{"n":"H-28 G Evolution Turret","t":"magic","c":"Damage","mr":5,"flat":[7,11,15,19,23],"ap":0.35},"w":{"n":"Hextech Micro-Rockets","t":"magic","mr":5,"flat":[90,135,180,225,270],"ap":1.03},"e":{"n":"CH-2 Electron Storm Grenade","t":"magic","c":"Damage","mr":5,"flat":[60,100,140,180,220],"ap":0.6},"r":{"n":"UPGRADE!!!","t":"magic","c":"QUltDamage","mr":3,"flat":[80,100,120,140,160],"ap":0.35}},"Gangplank":{"q":{"n":"Parrrley","t":"magic","c":"ShotDamage","mr":5,"flat":[10,40,70,100,130],"ad":1},"r":{"n":"Cannon Barrage","t":"magic","c":"OneWaveDamage","mr":3,"flat":[40,70,100,130,160],"ap":0.1}},"Graves":{"q":{"n":"End of the Line","t":"physical","mr":5,"flat":[50,75,100,125,150],"adBonus":0.55},"w":{"n":"Smoke Screen","t":"magic","c":"ImpactDamage","mr":5,"flat":[60,110,160,210,260],"ap":0.6},"r":{"n":"Collateral Damage","t":"physical","c":"Damage","mr":3,"flat":[275,425,575,725,875],"adBonus":1.5}},"Hwei":{"q":{"n":"Subject: Disaster","t":"magic","c":"Tooltip_QQDamage","mr":5,"flat":[50,80,110,140,170],"ap":0.8},"w":{"n":"Subject: Serenity","t":"magic","c":"Tooltip_WEOnHitDamage","mr":5,"flat":[20,30,40,50,60],"ap":0.15},"e":{"n":"Subject: Torment","t":"magic","c":"Tooltip_EQDamage","mr":5,"flat":[70,110,150,190,230],"ap":0.65}},"Gwen":{"q":{"n":"Snip Snip!","t":"magic","c":"FinalSwipeDamage","mr":5,"flat":[60,85,110,135,160],"ap":0.35},"e":{"n":"Skip 'n Slash","t":"magic","c":"OnHitDamage","mr":5,"flat":15,"ap":0.2},"r":{"n":"Needlework","t":"magic","mr":3,"flat":[30,50,70,90,110],"ap":0.1}},"Hecarim":{"q":{"n":"Rampage","t":"physical","c":"Damage","mr":5,"flat":[60,90,120,150,180],"adBonus":0.9},"w":{"n":"Spirit of Dread","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":0.8},"r":{"n":"Onslaught of Shadows","t":"magic","c":"DamageDone","mr":3,"flat":[150,250,350,450,550],"ap":1}},"Ivern":{"q":{"n":"Rootcaller","t":"magic","mr":5,"flat":[80,125,170,215,260],"ap":0.7},"w":{"n":"Brushmaker","t":"magic","mr":5,"flat":[20,27.5,35,42.5,50],"ap":0.2},"e":{"n":"Triggerseed","t":"magic","mr":5,"flat":[70,90,110,130,150],"ap":0.8},"r":{"n":"Daisy!","t":"magic","c":"TotalShockwaveDamage","mr":3,"flat":[90,140,190,240,290],"ap":0.5}},"Illaoi":{"r":{"n":"Leap of Faith","t":"physical","c":"DamageCalc","mr":3,"flat":[150,250,350,450,550],"adBonus":0.5}},"Jayce":{"q":{"n":"To the Skies! / Shock Blast","t":"physical","c":"Damage","mr":6,"flat":[60,110,160,210,260],"adBonus":1.35},"w":{"n":"Lightning Field / Hyper Charge","t":"magic","c":"Damage","mr":6,"flat":[140,200,260,320,380],"ap":1},"e":{"n":"Thundering Blow / Acceleration Gate","t":"magic","c":"FlatDamage","mr":6,"adBonus":1}},"Irelia":{"q":{"n":"Bladesurge","t":"physical","c":"ChampionDamage","mr":5,"flat":[5,25,45,65,85],"ad":0.8},"w":{"n":"Defiant Dance","t":"physical","c":"MaxDamageCalc","mr":5,"flat":[30,60,90,120,150],"ap":1.5,"ad":1.2},"e":{"n":"Flawless Duet","t":"magic","mr":5,"flat":[70,110,150,190,230],"ap":1},"r":{"n":"Vanguard's Edge","t":"magic","c":"MissileDamage","mr":3,"flat":[125,200,275,350,425],"ap":1}},"Jinx":{"q":{"n":"Switcheroo!","t":"physical","c":"RocketDamage","mr":5,"ad":1.1},"w":{"n":"Zap!","t":"physical","mr":5,"flat":[10,60,110,160,210],"ad":1.4},"e":{"n":"Flame Chompers!","t":"magic","mr":5,"flat":[90,140,190,240,290],"ap":1},"r":{"n":"Super Mega Death Rocket!","t":"physical","c":"DamageMax","mr":3,"flat":[200,350,500,650,800],"adBonus":1.2}},"Kalista":{"q":{"n":"Pierce","t":"physical","mr":5,"flat":[10,75,140,205,270],"ad":1.05},"e":{"n":"Rend","t":"physical","c":"NormalDamage","mr":5,"flat":[5,15,25,35,45],"ap":0.65,"ad":0.7}},"Janna":{"q":{"n":"Howling Gale","t":"magic","c":"ExtraDamagePerSecondCharged","mr":5,"flat":[10,15,20,25,30],"ap":0.1},"w":{"n":"Zephyr","t":"magic","mr":5,"flat":[55,85,115,145,175],"ap":0.5}},"JarvanIV":{"q":{"n":"Dragon Strike","t":"physical","mr":5,"flat":[90,130,170,210,250],"adBonus":1.45},"r":{"n":"Cataclysm","t":"physical","c":"DamageCalc","mr":3,"flat":[200,325,450,575,700],"adBonus":1.8}},"Jax":{"q":{"n":"Leap Strike","t":"physical","mr":5,"flat":[65,105,145,185,225],"adBonus":1},"w":{"n":"Empower","t":"magic","mr":5,"flat":[50,85,120,155,190],"ap":0.6},"e":{"n":"Counter Strike","t":"magic","mr":5,"flat":[40,70,100,130,160],"ap":0.7},"r":{"n":"Grandmaster-at-Arms","t":"magic","c":"OnHitDamage","mr":3,"flat":[75,130,185,240,295],"ap":0.6}},"Jhin":{"q":{"n":"Dancing Grenade","t":"physical","mr":5,"flat":[44,69,94,119,144],"ap":0.6,"ad":[0.44,0.515,0.59,0.665,0.74]},"w":{"n":"Deadly Flourish","t":"physical","mr":5,"flat":[70,105,140,175,210],"ad":0.5},"e":{"n":"Captive Audience","t":"magic","mr":5,"flat":[20,80,140,200,260],"ap":1,"ad":1.2},"r":{"n":"Curtain Call","t":"physical","c":"DamageCalc","mr":3,"flat":[64,128,192,256,320],"ad":0.25}},"Katarina":{"q":{"n":"Bouncing Blade","t":"magic","mr":5,"flat":[80,115,150,185,220],"ap":0.4},"e":{"n":"Shunpo","t":"magic","mr":5,"flat":[20,30,40,50,60],"ap":0.25,"ad":0.4},"r":{"n":"Death Lotus","t":"magic","c":"DamageCalc","mr":3,"flat":[25,37.5,50,62.5,75],"ap":0.19}},"Kaisa":{"q":{"n":"Icathian Rain","t":"physical","c":"TotalIndividualMissileDamage","mr":5,"flat":[40,55,70,85,100],"ap":0.2,"adBonus":0.55}},"Karma":{"q":{"n":"Inner Flame","t":"magic","mr":5,"flat":[60,110,160,210,260],"ap":0.7},"w":{"n":"Focused Resolve","t":"magic","c":"InitialDamage","mr":5,"flat":[40,65,90,115,140],"ap":0.45},"r":{"n":"Mantra","t":"magic","c":"RQImpactDamage","mr":4,"flat":[40,100,160,220,280],"ap":0.3}},"Karthus":{"q":{"n":"Lay Waste","t":"magic","c":"QDamage","mr":5,"flat":[40,59,78,97,116],"ap":0.35},"r":{"n":"Requiem","t":"magic","mr":3,"flat":[200,350,500,650,800],"ap":0.7}},"Kassadin":{"q":{"n":"Null Sphere","t":"magic","mr":5,"flat":[65,95,125,155,185],"ap":0.8},"w":{"n":"Nether Blade","t":"magic","c":"ActiveDamage","mr":5,"flat":[50,75,100,125,150],"ap":0.8},"e":{"n":"Force Pulse","t":"magic","mr":5,"flat":[70,100,130,160,190],"ap":0.7}},"Kayle":{"q":{"n":"Radiant Blast","t":"magic","mr":5,"flat":[60,90,120,150,180],"ap":0.5,"adBonus":0.6},"e":{"n":"Starfire Spellblade","t":"magic","c":"EPassiveTotalDamage","mr":5,"flat":[15,20,25,30,35],"ap":0.2,"adBonus":0.1},"r":{"n":"Divine Judgment","t":"magic","mr":3,"flat":[200,300,400,500,600],"ap":0.7,"adBonus":1}},"Kayn":{"q":{"n":"Reaping Slash","t":"physical","mr":5,"flat":[75,105,135,165,195],"adBonus":0.85},"w":{"n":"Blade's Reach","t":"physical","mr":5,"flat":[85,130,175,220,265],"adBonus":1.1},"r":{"n":"Umbral Trespass","t":"physical","c":"Damage","mr":3,"flat":[150,250,350,450,550],"adBonus":1.5}},"Kennen":{"q":{"n":"Thundering Shuriken","t":"magic","mr":5,"flat":[75,125,175,225,275],"ap":0.75},"e":{"n":"Lightning Rush","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":0.8},"r":{"n":"Slicing Maelstrom","t":"magic","c":"PerTickDamageCalculated","mr":3,"flat":[40,80,120,160,200],"ap":0.25}},"Leblanc":{"q":{"n":"Sigil of Malice","t":"magic","c":"Damage","mr":5,"flat":[65,90,115,140,165],"ap":0.4},"w":{"n":"Distortion","t":"magic","mr":5,"flat":[75,115,155,195,235],"ap":0.9},"e":{"n":"Ethereal Chains","t":"magic","c":"InitialDamage","mr":5,"flat":[50,70,90,110,130],"ap":0.4},"r":{"n":"Mimic","t":"magic","c":"RQ1Damage","mr":3,"flat":[70,150,230,310,390],"ap":0.4}},"Kled":{"q":{"n":"Bear Trap on a Rope","t":"physical","mr":5,"flat":[30,55,80,105,130],"adBonus":0.6},"e":{"n":"Jousting","t":"physical","mr":5,"flat":[35,60,85,110,135],"adBonus":0.55},"r":{"n":"Chaaaaaaaarge!!!","t":"magic","c":"MaximumChargeDamage","mr":3,"flat":[4,6,8,10,12],"adBonus":0.03}},"KogMaw":{"q":{"n":"Caustic Spittle","t":"magic","mr":5,"flat":[80,125,170,215,260],"ap":0.9},"w":{"n":"Bio-Arcane Barrage","t":"magic","c":"TotalHealthDamage","mr":5,"flat":[3,3.75,4.5,5.25,6],"ap":0.015},"e":{"n":"Void Ooze","t":"magic","mr":5,"flat":[70,110,150,190,230],"ap":0.65},"r":{"n":"Living Artillery","t":"magic","c":"BaseDamageCalc","mr":3,"flat":[100,140,180,220,260],"ap":[0.35,0.4,0.45,0.45,0.45],"adBonus":0.75}},"Lillia":{"q":{"n":"Blooming Blows","t":"magic","mr":5,"flat":[35,45,55,65,75],"ap":0.35},"w":{"n":"Watch Out! Eep!","t":"magic","c":"FlatDamage","mr":5,"flat":[80,100,120,140,160],"ap":0.35},"e":{"n":"Swirlseed","t":"magic","c":"ImpactDamageTotal","mr":5,"flat":[60,85,110,135,160],"ap":0.5},"r":{"n":"Lilting Lullaby","t":"magic","mr":3,"flat":[100,150,200,250,300],"ap":0.4}},"LeeSin":{"q":{"n":"Sonic Wave / Resonating Strike","t":"physical","c":"InitialDamage","mr":5,"flat":[60,90,120,150,180],"adBonus":0.9},"e":{"n":"Tempest / Cripple","t":"magic","c":"InitialDamage","mr":5,"flat":[35,60,85,110,135],"ad":0.9},"r":{"n":"Dragon's Rage","t":"physical","c":"Damage","mr":3,"flat":[175,400,625,850,1075],"adBonus":2}},"Leona":{"q":{"n":"Shield of Daybreak","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[10,35,60,85,110],"ap":0.3},"w":{"n":"Eclipse","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[55,85,115,145,175],"ap":0.4},"e":{"n":"Zenith Blade","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[50,90,130,170,210],"ap":0.4},"r":{"n":"Solar Flare","t":"magic","c":"ExplosionCalculatedDamage","mr":3,"flat":[150,225,300,375,450],"ap":0.8}},"Lulu":{"q":{"n":"Glitterlance","t":"magic","mr":5,"flat":[60,95,130,165,200],"ap":0.5},"e":{"n":"Help, Pix!","t":"magic","mr":5,"flat":[70,110,150,190,230],"ap":0.5}},"Kindred":{"q":{"n":"Dance of Arrows","t":"physical","mr":5,"flat":[40,65,90,115,140],"adBonus":0.75},"w":{"n":"Wolf's Frenzy","t":"magic","c":"BaseWolfDamage","mr":5,"flat":[25,30,35,40,45],"ap":0.2,"adBonus":0.2},"e":{"n":"Mounting Dread","t":"physical","c":"BaseBiteDamage","mr":5,"flat":[80,110,140,170,200],"adBonus":1}},"Locke":{"q":{"n":"Ritual Nails","t":"magic","c":"MissileDamage","mr":5,"flat":[40,48,56,64,72],"ap":0.2},"w":{"n":"Soul Ignition","t":"true","c":"DamageRestoreAmount","mr":5,"flat":[40,60,80,100,120],"ap":1},"e":{"n":"Ashen Pursuit","t":"magic","c":"OnHitDamage","mr":5,"flat":[40,50,60,70,80],"ap":0.4},"r":{"n":"Purgatory","t":"magic","c":"Damage","mr":3,"flat":[150,225,300,375,450],"ap":0.6}},"Maokai":{"q":{"n":"Bramble Smash","t":"magic","mr":5,"flat":[75,120,165,210,255],"ap":0.5},"w":{"n":"Twisted Advance","t":"magic","mr":5,"flat":[60,85,110,135,160],"ap":0.4},"r":{"n":"Nature's Grasp","t":"magic","mr":3,"flat":[150,225,300,375,450],"ap":0.75}},"Lucian":{"q":{"n":"Piercing Light","t":"physical","mr":5,"flat":[80,115,150,185,220],"adBonus":1},"w":{"n":"Ardent Blaze","t":"magic","mr":5,"flat":[75,110,145,180,215],"ap":0.9}},"Lissandra":{"q":{"n":"Ice Shard","t":"magic","mr":5,"flat":[80,115,150,185,220],"ap":0.75},"w":{"n":"Ring of Frost","t":"magic","mr":5,"flat":[70,105,140,175,210],"ap":0.7},"e":{"n":"Glacial Path","t":"magic","mr":5,"flat":[70,105,140,175,210],"ap":0.6},"r":{"n":"Frozen Tomb","t":"magic","c":"CalculatedDamage","mr":3,"flat":[150,250,350,450,550],"ap":0.75}},"Lux":{"q":{"n":"Light Binding","t":"magic","c":"TotalDamageTT","mr":5,"flat":[80,120,160,200,240],"ap":0.75},"e":{"n":"Lucent Singularity","t":"magic","c":"TotalDamageTT","mr":5,"flat":[65,115,165,215,265],"ap":0.8},"r":{"n":"Final Spark","t":"magic","mr":3,"flat":[300,400,500,600,700],"ap":1.2}},"Malphite":{"q":{"n":"Seismic Shard","t":"magic","c":"QDamageCalc","mr":5,"flat":[70,120,170,220,270],"ap":0.6},"r":{"n":"Unstoppable Force","t":"magic","mr":3,"flat":[200,300,400,500,600],"ap":0.9}},"MissFortune":{"q":{"n":"Double Up","t":"physical","c":"TotalDamageTooltip","mr":5,"flat":[20,45,70,95,120],"ap":0.35,"ad":1}},"Malzahar":{"q":{"n":"Call of the Void","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[70,105,140,175,210],"ap":0.55},"e":{"n":"Malefic Visions","t":"magic","mr":5,"flat":[80,115,150,185,220],"ap":0.8},"r":{"n":"Nether Grasp","t":"magic","c":"ZoneDamageTooltip","mr":3,"flat":[2,3,4,5,6],"ap":0.005}},"Milio":{"q":{"n":"Ultra Mega Fire Kick","t":"magic","c":"Damage","mr":5,"flat":[80,140,200,260,320],"ap":1.2}},"MasterYi":{"q":{"n":"Alpha Strike","t":"physical","mr":5,"flat":[20,40,60,80,100],"ad":0.7},"e":{"n":"Wuju Style","t":"true","mr":5,"flat":[20,25,30,35,40],"adBonus":0.35}},"Mel":{"q":{"n":"Radiant Volley","t":"magic","c":"TotalExplosionDamage","mr":5,"flat":[5,7,9,11,13],"ap":0.05},"w":{"n":"Rebuttal","t":"magic","c":"DamagePercent","mr":5,"flat":[0.4,0.45,0.5,0.55,0.6],"ap":0.0005},"e":{"n":"Solar Snare","t":"magic","c":"Damage","mr":5,"flat":[60,105,150,195,240],"ap":0.7},"r":{"n":"Golden Eclipse","t":"magic","c":"PassiveStackDamage","mr":3,"flat":[3,4,5,6,7],"ap":0.0075}},"Naafiri":{"q":{"n":"Darkin Daggers","t":"physical","c":"TotalBleedDamage","mr":5,"flat":[35,60,85,110,135],"adBonus":0.8},"e":{"n":"Eviscerate","t":"physical","c":"TotalDamageFirstSlash","mr":5,"flat":[15,25,35,45,55],"adBonus":0.4},"r":{"n":"Hounds' Pursuit","t":"physical","mr":3,"flat":[125,200,275,350,425],"adBonus":1}},"MonkeyKing":{"q":{"n":"Crushing Blow","t":"physical","mr":5,"flat":[20,45,70,95,120],"adBonus":0.5},"e":{"n":"Nimbus Strike","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":1},"r":{"n":"Cyclone","t":"physical","c":"DamagePerSecondTotal","mr":3,"ad":1.375}},"Neeko":{"q":{"n":"Blooming Burst","t":"magic","c":"ExplosionDamage","mr":5,"flat":[60,110,160,210,260],"ap":0.6},"w":{"n":"Shapesplitter","t":"magic","c":"PassiveBonusDamageCalc","mr":5,"flat":[30,65,100,135,170],"ap":0.6},"e":{"n":"Tangle-Barbs","t":"magic","c":"BaseDamage","mr":5,"flat":[70,105,140,175,210],"ap":0.65},"r":{"n":"Pop Blossom","t":"magic","mr":3,"flat":[150,350,550,750,950],"ap":1.2}},"Mordekaiser":{"e":{"n":"Death's Grasp","t":"magic","mr":5,"flat":[60,80,100,120,140],"ap":0.45}},"Morgana":{"q":{"n":"Dark Binding","t":"magic","mr":5,"flat":[80,135,190,245,300],"ap":0.9},"w":{"n":"Tormented Shadow","t":"magic","c":"TotalMinDamage","mr":5,"flat":[18,31,44,57,70],"ap":0.2},"r":{"n":"Soul Shackles","t":"magic","mr":3,"flat":[200,275,350,425,500],"ap":0.8}},"Nami":{"q":{"n":"Aqua Prison","t":"magic","c":"TotalDamageTT","mr":5,"flat":[90,145,200,255,310],"ap":0.5},"w":{"n":"Ebb and Flow","t":"magic","mr":5,"flat":[60,95,130,165,200],"ap":0.5},"e":{"n":"Tidecaller's Blessing","t":"magic","mr":5,"flat":[20,35,50,65,80],"ap":0.2},"r":{"n":"Tidal Wave","t":"magic","mr":3,"flat":[150,250,350,450,550],"ap":0.6}},"Nasus":{"e":{"n":"Spirit Fire","t":"magic","c":"TotalDotDamage","mr":5,"flat":[10,16,22,28,34],"ap":0.12},"r":{"n":"Fury of the Sands","t":"magic","c":"DamageCalc","mr":3,"flat":[0.03,0.04,0.05,0.06,0.07],"ap":0.0001}},"Nautilus":{"q":{"n":"Dredge Line","t":"magic","c":"QDamageCalc","mr":5,"flat":[85,125,165,205,245],"ap":0.9},"w":{"n":"Titan's Wrath","t":"magic","c":"DotDamageCalc","mr":5,"flat":[30,40,50,60,70],"ap":0.4},"e":{"n":"Riptide","t":"magic","c":"DamageCalc","mr":5,"flat":[55,90,125,160,195],"ap":0.5},"r":{"n":"Depth Charge","t":"magic","c":"PrimaryTargetDamage","mr":3,"flat":[150,275,400,525,650],"ap":0.8}},"Nunu":{"w":{"n":"Biggest Snowball Ever!","t":"magic","c":"MaximumSnowballDamage","mr":5,"flat":[180,225,270,315,360],"ap":1.5},"e":{"n":"Snowball Barrage","t":"magic","c":"TotalSnowballDamage","mr":5,"flat":[15,22.5,30,37.5,45],"ap":0.12},"r":{"n":"Absolute Zero","t":"magic","c":"MaximumDamage","mr":3,"flat":[625,925,1275,1275,1275],"ap":3}},"Olaf":{"q":{"n":"Undertow","t":"physical","mr":5,"flat":[70,120,170,220,270],"adBonus":1},"e":{"n":"Reckless Swing","t":"true","mr":5,"flat":[70,115,160,205,250],"ad":0.5}},"Nilah":{"q":{"n":"Formless Blade","t":"physical","c":"DamageCalc","mr":5,"flat":[0,10,20,30,40],"ad":1},"e":{"n":"Slipstream","t":"physical","c":"DashDamage","mr":5,"flat":[60,70,80,90,100],"adBonus":0.2},"r":{"n":"Apotheosis","t":"physical","c":"DamageCalc","mr":3,"flat":[125,225,325,425,525],"adBonus":1}},"Nidalee":{"w":{"n":"Bushwhack / Pounce","t":"magic","c":"DamagePerSecond","mr":5,"flat":[10,20,30,40,50],"ap":0.05},"r":{"n":"Aspect Of The Cougar","t":"magic","c":"TotalPounceDamage","mr":4,"flat":[55,100,145,190,235],"ap":0.3,"adBonus":0.5}},"Nocturne":{"q":{"n":"Duskbringer","t":"physical","mr":5,"flat":[65,105,145,185,225],"adBonus":0.85},"e":{"n":"Unspeakable Horror","t":"magic","mr":5,"flat":[80,125,170,215,260],"ap":1},"r":{"n":"Paranoia","t":"physical","c":"Damage","mr":3,"flat":[150,275,400,525,650],"adBonus":1.2}},"Pantheon":{"q":{"n":"Comet Spear","t":"physical","c":"HoldDamageCalc","mr":5,"flat":[70,100,130,160,190],"ap":0.5,"adBonus":1.15},"w":{"n":"Shield Vault","t":"physical","c":"DamageCalc","mr":5,"ap":1},"e":{"n":"Aegis Assault","t":"physical","c":"DamageCalc","mr":5,"ad":1},"r":{"n":"Grand Starfall","t":"physical","c":"DamageCalc","mr":3,"flat":[300,500,700,900,1100],"ap":1}},"Orianna":{"q":{"n":"Command: Attack","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[60,90,120,150,180],"ap":0.55},"w":{"n":"Command: Dissonance","t":"magic","mr":5,"flat":[70,110,150,190,230],"ap":0.8},"e":{"n":"Command: Protect","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[60,90,120,150,180],"ap":0.3},"r":{"n":"Command: Shockwave","t":"magic","mr":3,"flat":[225,350,475,600,725],"ap":1.1}},"Quinn":{"q":{"n":"Blinding Assault","t":"physical","mr":5,"flat":[65,100,135,170,205],"ap":0.5,"adBonus":[0.8,0.85,0.9,0.95,1]},"e":{"n":"Vault","t":"physical","mr":5,"flat":[40,65,90,115,140],"adBonus":0.2},"r":{"n":"Behind Enemy Lines","t":"physical","c":"Damage","mr":3,"flat":[60,90,120,150,180],"adBonus":0.35}},"Ornn":{"q":{"n":"Volcanic Rupture","t":"physical","mr":5,"flat":[20,45,70,95,120],"ad":1.1},"r":{"n":"Call of the Forge God","t":"magic","c":"RDamageCalc","mr":3,"flat":[125,175,225,275,325],"ap":0.2}},"Pyke":{"q":{"n":"Bone Skewer","t":"physical","mr":5,"flat":[100,150,200,250,300],"adBonus":0.75},"e":{"n":"Phantom Undertow","t":"physical","mr":5,"flat":[100,150,200,250,300],"adBonus":1}},"Rell":{"q":{"n":"Shattering Strike","t":"magic","c":"Damage","mr":5,"flat":[60,100,140,180,220],"ap":0.6},"w":{"n":"Ferromancy: Crash Down","t":"magic","c":"DismountDamage","mr":5,"flat":[60,90,120,150,180],"ap":0.6},"e":{"n":"Full Tilt","t":"magic","c":"MaxHealthDamageCalc","mr":5,"flat":[0.05,0.055,0.06,0.065,0.07],"ap":0.0003}},"Poppy":{"q":{"n":"Hammer Shock","t":"physical","c":"BaseDamage","mr":5,"flat":[30,55,80,105,130],"adBonus":0.75},"w":{"n":"Steadfast Presence","t":"magic","c":"InterruptDamage","mr":5,"flat":[70,110,150,190,230],"ap":0.7},"e":{"n":"Heroic Charge","t":"physical","c":"TackleDamage","mr":5,"flat":[40,60,80,100,120],"adBonus":0.6},"r":{"n":"Keeper's Verdict","t":"physical","c":"Damage","mr":3,"flat":[200,300,400,500,600],"adBonus":0.9}},"Qiyana":{"q":{"n":"Elemental Wrath / Edge of Ixtal","t":"physical","c":"EnchantedDamage","mr":5,"flat":[80,110,140,170,200],"adBonus":0.9},"w":{"n":"Terrashape","t":"magic","c":"CleaveDamage","mr":5,"flat":[8,16,24,32,40],"adBonus":1},"e":{"n":"Audacity","t":"physical","c":"Damage","mr":5,"flat":[50,90,130,170,210],"adBonus":0.5},"r":{"n":"Supreme Display of Talent","t":"physical","c":"Damage","mr":3,"flat":[100,200,300,400,500],"adBonus":1.25}},"Rakan":{"q":{"n":"Gleaming Quill","t":"magic","mr":5,"flat":[70,115,160,205,250],"ap":0.7},"w":{"n":"Grand Entrance","t":"magic","mr":5,"flat":[70,120,170,220,270],"ap":0.8},"r":{"n":"The Quickness","t":"magic","c":"TotalDamageTooltip","mr":3,"flat":[100,200,300,0,0],"ap":0.5}},"Rammus":{"q":{"n":"Powerball","t":"magic","c":"PowerBallDamage","mr":5,"flat":[80,120,160,200,240],"ap":1},"e":{"n":"Frenzying Taunt","t":"magic","c":"MonsterDamageCalc","mr":5,"flat":[80,100,120,140,160],"ap":0.7},"r":{"n":"Soaring Slam","t":"magic","c":"InitialDamageCalc","mr":3,"flat":[150,250,350,450,550],"ap":0.6}},"RekSai":{"q":{"n":"Queen's Wrath / Prey Seeker","t":"physical","c":"TotalDamageTooltip","mr":5,"ad":[0.3,0.35,0.4,0.45,0.5]},"w":{"n":"Burrow / Un-burrow","t":"magic","c":"UnburrowDamage","mr":5,"flat":[30,55,80,105,130],"ap":0.8},"e":{"n":"Furious Bite / Tunnel","t":"physical","c":"BaseDamageCalculation","mr":5,"flat":[70,95,120,145,170],"adBonus":0.6},"r":{"n":"Void Rush","t":"physical","c":"RBaseDamageCalc","mr":3,"flat":[150,250,350,450,550],"adBonus":1}},"Riven":{"q":{"n":"Broken Wings","t":"physical","c":"FirstSlashDamage","mr":5,"flat":[45,75,105,135,165],"adBonus":[0.6,0.65,0.7,0.75,0.8]},"w":{"n":"Ki Burst","t":"physical","mr":5,"flat":[65,95,125,155,185],"adBonus":1},"r":{"n":"Blade of the Exile","t":"physical","c":"MaxDamage","mr":3,"flat":[300,450,600,750,900],"adBonus":1.65}},"Renata":{"q":{"n":"Handshake","t":"magic","mr":5,"flat":[80,125,170,215,260],"ap":0.8},"e":{"n":"Loyalty Program","t":"magic","mr":5,"flat":[65,95,125,155,185],"ap":0.55}},"Renekton":{"q":{"n":"Cull the Meek","t":"physical","c":"BasicDamage","mr":5,"flat":[60,90,120,150,180],"adBonus":1},"e":{"n":"Slice and Dice","t":"physical","c":"BasicDamage","mr":5,"flat":[40,70,100,130,160],"adBonus":0.9},"r":{"n":"Dominus","t":"magic","c":"TotalDamagePerSecond","mr":3,"flat":[60,150,240,330,420],"ap":0.1,"adBonus":0.1}},"Rengar":{"q":{"n":"Savagery","t":"physical","c":"QTotalDamage","mr":5,"flat":[20,55,90,125,160],"ad":1.05},"w":{"n":"Battle Roar","t":"magic","mr":5,"flat":[50,80,110,140,170],"ap":0.8},"e":{"n":"Bola Strike","t":"physical","mr":5,"flat":[55,100,145,190,235],"adBonus":0.8},"r":{"n":"Thrill of the Hunt","t":"physical","c":"BonusDamage","mr":3,"ad":1}},"Sejuani":{"q":{"n":"Arctic Assault","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[90,140,190,240,290],"ap":0.75},"e":{"n":"Permafrost","t":"magic","mr":5,"flat":[55,105,155,205,255],"ap":0.7},"r":{"n":"Glacial Prison","t":"magic","c":"TotalDamageTooltip","mr":3,"flat":[200,300,400,0,0],"ap":0.8}},"Samira":{"q":{"n":"Flair","t":"physical","c":"DamageCalc","mr":5,"flat":[0,5,10,15,20],"ad":1.1},"w":{"n":"Blade Whirl","t":"physical","c":"DamageCalc","mr":5,"flat":[20,35,50,65,80],"adBonus":0.5},"e":{"n":"Wild Rush","t":"magic","c":"DashDamage","mr":5,"flat":[50,60,70,80,90],"adBonus":0.2},"r":{"n":"Inferno Trigger","t":"physical","c":"DamageCalc","mr":3,"flat":[20,40,60,80,100],"ad":0.3}},"Rumble":{"q":{"n":"Flamespitter","t":"magic","c":"FlatDamage","mr":5,"flat":[50,75,100,125,150],"ap":1.05},"e":{"n":"Electro Harpoon","t":"magic","mr":5,"flat":[55,80,105,130,155],"ap":0.5}},"Shaco":{"q":{"n":"Deceive","t":"physical","mr":5,"flat":[25,35,45,55,65],"adBonus":0.6},"w":{"n":"Jack In The Box","t":"magic","c":"AoEDamage","mr":5,"flat":[10,15,20,25,30],"ap":0.12},"e":{"n":"Two-Shiv Poison","t":"magic","mr":5,"flat":[70,95,120,145,170],"ap":0.6,"adBonus":0.8},"r":{"n":"Hallucinate","t":"magic","c":"STDamage","mr":3,"flat":[25,50,75,100,125],"ap":0.15}},"Senna":{"q":{"n":"Piercing Darkness","t":"physical","mr":5,"flat":[30,55,80,105,130],"adBonus":0.6},"w":{"n":"Last Embrace","t":"physical","c":"Damage","mr":5,"flat":[70,110,150,190,230],"adBonus":0.9},"r":{"n":"Dawning Shadow","t":"physical","mr":3,"flat":[250,400,550,700,850],"ap":0.7,"adBonus":1.15}},"Seraphine":{"e":{"n":"Beat Drop","t":"magic","c":"FinalDamage","mr":5,"flat":[70,100,130,160,190],"ap":0.5},"r":{"n":"Encore","t":"magic","c":"R1TotalDamage","mr":3,"flat":[150,200,250,300,350],"ap":0.4}},"Sion":{"q":{"n":"Decimating Smash","t":"physical","c":"MaxDamageTotal","mr":5,"flat":[90,155,220,285,350],"ad":[1.2,1.5,1.8,2.1,2.4]},"w":{"n":"Soul Furnace","t":"magic","mr":5,"flat":[40,65,90,115,140],"ap":0.4},"e":{"n":"Roar of the Slayer","t":"magic","mr":5,"flat":[65,100,135,170,205],"ap":0.55},"r":{"n":"Unstoppable Onslaught","t":"physical","c":"MaxDamageTotal","mr":3,"flat":[400,800,1200,1600,2000],"adBonus":1.2}},"Sett":{"q":{"n":"Knuckle Down","t":"physical","c":"MaxHealthDamageCalc","mr":5,"flat":0.01,"ad":[0.0001,0.0002,0.0002,0.0003,0.0003]},"w":{"n":"Haymaker","t":"true","c":"DamageCalc","mr":5,"flat":[80,100,120,140,160]},"e":{"n":"Facebreaker","t":"physical","c":"DamageCalc","mr":5,"flat":[50,70,90,110,130],"ad":0.6},"r":{"n":"The Show Stopper","t":"physical","c":"DamageCalc","mr":3,"flat":[200,300,400,500,600],"adBonus":1.2}},"Shyvana":{"q":{"n":"Emberstrike","t":"magic","c":"Calc_Max_Health_Damage","mr":5,"flat":0.01,"adBonus":0.0001},"w":{"n":"Inferno Aegis","t":"magic","c":"Damage","mr":5,"flat":[80,100,120,140,160],"ap":0.65},"e":{"n":"Molten Burst","t":"magic","c":"Damage","mr":5,"flat":[50,65,80,95,110],"ap":[0.6,0.65,0.7,0.75,0.8]},"r":{"n":"Dragon's Descent","t":"magic","c":"Damage","mr":3,"flat":[150,250,350,450,550],"ap":1}},"Sona":{"q":{"n":"Hymn of Valor","t":"magic","mr":5,"flat":[50,85,120,155,190],"ap":0.4},"r":{"n":"Crescendo","t":"magic","mr":3,"flat":[150,250,350,450,550],"ap":0.5}},"Singed":{"q":{"n":"Poison Trail","t":"magic","c":"DamagePerSecond","mr":5,"flat":[20,30,40,50,60],"ap":0.425},"e":{"n":"Fling","t":"magic","c":"BaseDamage","mr":5,"flat":[50,60,70,80,90],"ap":0.55}},"Sivir":{"q":{"n":"Boomerang Blade","t":"physical","mr":5,"flat":[60,85,110,135,160],"ap":0.6,"adBonus":0.7}},"Smolder":{"q":{"n":"Super Scorcher Breath","t":"physical","mr":5,"flat":[60,70,80,90,100],"adBonus":1.3},"w":{"n":"Achooo!","t":"physical","c":"InitialDamage","mr":5,"flat":[60,70,80,90,100],"adBonus":0.6},"e":{"n":"Flap, Flap, Flap","t":"physical","c":"DamagePerHit","mr":5,"flat":[10,15,20,25,30],"ad":0.3},"r":{"n":"MMOOOMMMM!","t":"physical","mr":3,"flat":[150,250,350,450,550],"ap":1,"adBonus":1}},"Skarner":{"w":{"n":"Seismic Bastion","t":"magic","c":"Damage","mr":5,"flat":[50,70,90,110,130],"ap":0.8},"r":{"n":"Impale","t":"magic","c":"Damage","mr":3,"flat":[150,250,350,450,550],"ap":1}},"Swain":{"q":{"n":"Death's Hand","t":"magic","c":"InitialDamage","mr":5,"flat":[60,90,120,150,180],"ap":0.45},"w":{"n":"Vision of Empire","t":"magic","mr":5,"flat":[70,105,140,175,210],"ap":0.6},"e":{"n":"Nevermove","t":"magic","c":"SecondaryDamage","mr":5,"flat":[90,130,170,210,250],"ap":0.7},"r":{"n":"Demonic Ascension","t":"magic","c":"DamageCalc","mr":3,"flat":[15,25,35,45,55],"ap":0.04}},"Syndra":{"q":{"n":"Dark Sphere","t":"magic","mr":5,"flat":[90,125,160,195,230],"ap":0.7},"w":{"n":"Force of Will","t":"magic","c":"ThrowDamage","mr":5,"flat":[70,100,130,160,190],"ap":0.65},"e":{"n":"Scatter the Weak","t":"magic","mr":5,"flat":[60,95,130,165,200],"ap":0.6},"r":{"n":"Unleashed Power","t":"magic","c":"DamageCalc","mr":3,"flat":[80,120,160,200,240],"ap":0.2}},"Soraka":{"q":{"n":"Starcall","t":"magic","mr":5,"flat":[85,120,155,190,225],"ap":0.35},"e":{"n":"Equinox","t":"magic","mr":5,"flat":[70,95,120,145,170],"ap":0.4}},"Sylas":{"q":{"n":"Chain Lash","t":"magic","c":"Damage","mr":5,"flat":[40,60,80,100,120],"ap":0.4},"w":{"n":"Kingslayer","t":"magic","c":"MinDamage","mr":5,"flat":[75,110,145,180,215],"ap":0.6},"e":{"n":"Abscond / Abduct","t":"magic","c":"Damage","mr":5,"flat":[80,130,180,230,280],"ap":0.8}},"TahmKench":{"q":{"n":"Tongue Lash","t":"magic","mr":5,"flat":[75,120,165,210,255],"ap":1},"w":{"n":"Abyssal Dive","t":"magic","mr":5,"flat":[100,135,170,205,240],"ap":1.5},"r":{"n":"Devour","t":"magic","c":"PercentHPDamage","mr":3,"flat":0.15,"ap":0.0007}},"Talon":{"q":{"n":"Noxian Diplomacy","t":"physical","c":"LeapDamage","mr":5,"flat":[65,85,105,125,145],"adBonus":1},"w":{"n":"Rake","t":"physical","c":"TotalInitialDamage","mr":5,"flat":[50,60,70,80,90],"adBonus":0.4},"r":{"n":"Shadow Assault","t":"physical","c":"Damage","mr":3,"flat":[90,135,180,225,270],"adBonus":1}},"Trundle":{"q":{"n":"Chomp","t":"physical","mr":5,"flat":[10,30,50,70,90],"ad":[1.15,1.25,1.35,1.45,1.55]},"r":{"n":"Subjugate","t":"magic","c":"TotalPercentHPDamage","mr":3,"flat":[0.2,0.25,0.3,0.35,0.4],"ap":0.0002}},"Taliyah":{"q":{"n":"Threaded Volley","t":"magic","c":"TotalBonusFlatMonsterDamage","mr":5,"flat":[20,25,30,35,40]},"e":{"n":"Unraveled Earth","t":"magic","c":"ScatterDamage","mr":5,"flat":[60,105,150,195,240],"ap":0.6}},"Teemo":{"q":{"n":"Blinding Dart","t":"magic","c":"CalculatedDamage","mr":5,"flat":[80,125,170,215,260],"ap":0.7},"r":{"n":"Noxious Trap","t":"magic","mr":3,"flat":[200,325,450,575,700],"ap":0.5}},"Thresh":{"q":{"n":"Death Sentence","t":"magic","mr":5,"flat":[100,150,200,250,300],"ap":0.9},"e":{"n":"Flay","t":"magic","mr":5,"flat":[65,110,155,200,245],"ap":0.6},"r":{"n":"The Box","t":"magic","mr":3,"flat":[250,400,550,175,175],"ap":1}},"Tristana":{"w":{"n":"Rocket Jump","t":"magic","c":"LandingDamage","mr":5,"flat":[70,105,140,175,210],"ap":0.5,"adBonus":1},"e":{"n":"Explosive Charge","t":"magic","c":"PassiveDamage","mr":5,"flat":[45,60,75,90,105],"ap":0.25},"r":{"n":"Buster Shot","t":"magic","c":"DamageCalc","mr":3,"flat":[225,275,325,375,425],"ap":1,"adBonus":0.7}},"TwistedFate":{"q":{"n":"Wild Cards","t":"magic","mr":5,"flat":[60,105,150,195,240],"ap":0.85,"adBonus":0.5},"e":{"n":"Stacked Deck","t":"magic","c":"BonusDamage","mr":5,"flat":[65,90,115,140,165],"ap":0.4,"adBonus":0.2}},"Tryndamere":{"e":{"n":"Spinning Slash","t":"physical","mr":5,"flat":[80,120,160,200,240],"ap":0.8,"adBonus":1}},"Udyr":{"r":{"n":"Wingborne Storm","t":"magic","c":"StormDamage","mr":6,"flat":[20,36,52,68,84],"ap":0.35}},"Veigar":{"q":{"n":"Baleful Strike","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":[0.5,0.55,0.6,0.65,0.7]},"w":{"n":"Dark Matter","t":"magic","mr":5,"flat":[85,140,195,250,305],"ap":[0.7,0.8,0.9,1,1.1]}},"Twitch":{"e":{"n":"Contaminate","t":"physical","c":"PhysicalDamagePerStack","mr":5,"flat":[15,20,25,30,35],"adBonus":0.35}},"Urgot":{"q":{"n":"Corrosive Charge","t":"physical","mr":5,"flat":[25,70,115,160,205],"ad":0.7},"w":{"n":"Purge","t":"physical","c":"DamagePerShot","mr":5,"flat":12,"ad":[0.2,0.235,0.27,0.305,0.34]},"e":{"n":"Disdain","t":"physical","c":"EDamage","mr":5,"flat":[90,120,150,180,210],"adBonus":1},"r":{"n":"Fear Beyond Death","t":"physical","c":"RCalculatedDamage","mr":3,"flat":[100,225,350,475,600],"adBonus":0.5}},"Viego":{"q":{"n":"Blade of the Ruined King","t":"physical","mr":5,"flat":[25,40,55,70,85],"ad":0.7},"w":{"n":"Spectral Maw","t":"magic","mr":5,"flat":[80,135,190,245,300],"ap":1},"r":{"n":"Heartbreaker","t":"physical","mr":3,"ad":1.2}},"Varus":{"q":{"n":"Piercing Arrow","t":"physical","c":"TotalDamageMax","mr":5,"flat":[80,150,220,290,360],"adBonus":1.2},"w":{"n":"Blighted Quiver","t":"magic","c":"OnHitDamage","mr":5,"flat":[4,13,22,31,40],"ap":0.25,"adBonus":0.15},"e":{"n":"Hail of Arrows","t":"physical","mr":5,"flat":[60,90,120,150,180],"adBonus":0.9},"r":{"n":"Chain of Corruption","t":"magic","mr":3,"flat":[150,250,350,450,550],"ap":1}},"Vayne":{"w":{"n":"Silver Bolts","t":"true","mr":5,"flat":[0.04,0.055,0.07,0.085,0.1]},"e":{"n":"Condemn","t":"physical","mr":5,"flat":[50,85,120,155,190],"adBonus":0.5}},"Velkoz":{"q":{"n":"Plasma Fission","t":"magic","mr":5,"flat":[80,120,160,200,240],"ap":0.9},"w":{"n":"Void Rift","t":"magic","c":"InitialDamage","mr":5,"flat":[30,50,70,90,110],"ap":0.2},"e":{"n":"Tectonic Disruption","t":"magic","mr":5,"flat":[70,100,130,160,190],"ap":0.3}},"Vex":{"q":{"n":"Mistral Bolt","t":"magic","c":"QDamageCalc","mr":5,"flat":[70,115,160,205,250],"ap":0.7},"w":{"n":"Personal Space","t":"magic","c":"WDamageCalc","mr":5,"flat":[80,120,160,200,240],"ap":0.3},"e":{"n":"Looming Darkness","t":"magic","c":"EDamageCalc","mr":5,"flat":[50,70,90,110,130],"ap":[0.4,0.45,0.5,0.55,0.6]},"r":{"n":"Shadow Surge","t":"magic","c":"RDamageCalc","mr":3,"flat":[75,125,175,225,275],"ap":0.2}},"Vi":{"q":{"n":"Vault Breaker","t":"physical","mr":5,"flat":[40,60,80,100,120],"adBonus":0.6},"w":{"n":"Denting Blows","t":"physical","c":"TotalDamageTooltip","mr":5,"flat":[4,5,6,7,8],"adBonus":0.035},"e":{"n":"Relentless Force","t":"physical","c":"TotalDamageTooltip","mr":5,"flat":[10,30,50,70,90],"ap":1,"ad":1.1},"r":{"n":"Cease and Desist","t":"physical","c":"Damage","mr":3,"flat":[150,250,350,450,550],"adBonus":0.9}},"Warwick":{"q":{"n":"Jaws of the Beast","t":"magic","c":"BaseBiteDamage","mr":5,"ap":1,"ad":1.2},"r":{"n":"Infinite Duress","t":"magic","c":"DamageCumulative","mr":3,"flat":[175,350,525,700,875],"adBonus":1.67}},"Viktor":{"q":{"n":"Siphon Power","t":"magic","c":"TotalMissileDamage","mr":5,"flat":[60,75,90,105,120],"ap":0.4},"e":{"n":"Hextech Ray","t":"magic","c":"LaserDamage","mr":5,"flat":[70,110,150,190,230],"ap":0.5},"r":{"n":"Arcane Storm","t":"magic","c":"InitialBurstDamage","mr":3,"flat":[100,175,250,325,400],"ap":0.5}},"Vladimir":{"q":{"n":"Transfusion","t":"magic","c":"BaseDamageTooltip","mr":5,"flat":[80,100,120,140,160],"ap":0.6},"r":{"n":"Hemoplague","t":"magic","c":"Damage","mr":3,"flat":[150,250,350,0,0],"ap":0.7}},"Volibear":{"q":{"n":"Thundering Smash","t":"physical","c":"CalculatedDamage","mr":5,"flat":[10,20,30,40,50],"ad":1,"adBonus":1.6},"e":{"n":"Sky Splitter","t":"magic","c":"CalculatedDamage","mr":5,"flat":[80,110,140,170,200],"ap":0.7},"r":{"n":"Stormbringer","t":"physical","c":"TowerDamageTooltip","mr":3,"flat":[300,500,700,900,1100],"ap":1.25,"adBonus":2.5}},"Xayah":{"q":{"n":"Double Daggers","t":"physical","mr":5,"flat":[45,60,75,90,105],"adBonus":0.5},"e":{"n":"Bladecaller","t":"physical","c":"FeatherDamage","mr":5,"flat":[50,65,80,95,110],"adBonus":0.4},"r":{"n":"Featherstorm","t":"physical","c":"Damage","mr":3,"flat":[200,300,400,500,600],"adBonus":1}},"Xerath":{"q":{"n":"Arcanopulse","t":"magic","c":"TooltipTotalDamage","mr":5,"flat":[70,110,150,190,230],"ap":0.9},"w":{"n":"Eye of Destruction","t":"magic","mr":5,"flat":[50,85,120,155,190],"ap":0.65},"e":{"n":"Shocking Orb","t":"magic","c":"TooltipTotalDamage","mr":5,"flat":[70,100,130,160,190],"ap":0.45},"r":{"n":"Rite of the Arcane","t":"magic","c":"TooltipTotalDamage","mr":3,"flat":[170,220,270,320,370],"ap":0.45}},"Yasuo":{"q":{"n":"Steel Tempest","t":"physical","mr":5,"flat":[20,45,70,95,120],"ad":1.05},"e":{"n":"Sweeping Blade","t":"magic","mr":5,"flat":[70,85,100,115,130],"ap":0.6,"adBonus":0.2},"r":{"n":"Last Breath","t":"physical","c":"Damage","mr":3,"flat":[200,350,500,650,800],"adBonus":1.5}},"XinZhao":{"q":{"n":"Three Talon Strike","t":"physical","c":"BonusDamage","mr":5,"flat":[15,30,45,60,75],"adBonus":0.4},"w":{"n":"Wind Becomes Lightning","t":"physical","c":"SlashDamage","mr":5,"flat":[30,40,50,60,70],"ad":0.3},"e":{"n":"Audacious Charge","t":"magic","c":"ChargeDamage","mr":5,"flat":[50,75,100,125,150],"ap":1.2},"r":{"n":"Crescent Guard","t":"physical","mr":3,"flat":[75,175,275,375,475],"ap":1.1,"adBonus":1}},"Yone":{"q":{"n":"Mortal Steel","t":"physical","c":"QDamage","mr":5,"flat":[25,50,75,100,125],"ad":1.1},"w":{"n":"Spirit Cleave","t":"physical","c":"WDamage","mr":5,"flat":[10,20,30,40,50],"ad":1},"r":{"n":"Fate Sealed","t":"physical","c":"Damage","mr":3,"flat":[200,400,600,800,1000],"adBonus":0.8}},"Yorick":{"q":{"n":"Last Rites","t":"physical","c":"BonusDamage","mr":5,"flat":[30,50,70,90,110],"ad":0.5},"e":{"n":"Mourning Mist","t":"magic","c":"Calc_HealthDamage","mr":5,"flat":[6,6.5,7,7.5,8],"ap":0.03},"r":{"n":"Eulogy of the Isles","t":"magic","c":"YorickBigGhoulDamage","mr":3,"flat":[50,75,100,125,150],"adBonus":0.3}},"Zaahen":{"q":{"n":"The Darkin Glaive","t":"physical","c":"InitialDamage","mr":5,"flat":[15,30,45,60,75],"adBonus":[0.2,0.25,0.3,0.35,0.4]},"w":{"n":"Dreaded Return","t":"physical","c":"InitialDamage","mr":5,"flat":[40,60,80,100,120],"adBonus":0.5},"e":{"n":"Aureate Rush","t":"physical","c":"BaseDamageCalc","mr":5,"flat":[40,60,80,100,120],"adBonus":0.5},"r":{"n":"Grim Deliverance","t":"physical","c":"DamageEndCalc","mr":3,"flat":[250,400,550,700,850],"adBonus":2}},"Yuumi":{"q":{"n":"Prowling Projectile","t":"magic","c":"TotalMissileDamage","mr":6,"flat":[60,95,130,165,200],"ap":0.2},"r":{"n":"Final Chapter","t":"magic","c":"TotalMissileDamage","mr":3,"flat":[75,125,175,225,275],"ap":0.25}},"Zac":{"w":{"n":"Unstable Matter","t":"magic","c":"DisplayPercentDamage","mr":5,"flat":[4,5,6,7,8],"ap":0.03},"e":{"n":"Elastic Slingshot","t":"magic","c":"Damage","mr":5,"flat":[60,105,150,195,240],"ap":0.8},"r":{"n":"Let's Bounce!","t":"magic","c":"DamagePerBounce","mr":3,"flat":[120,190,260,330,400],"ap":0.4}},"Zed":{"q":{"n":"Razor Shuriken","t":"physical","mr":5,"flat":[80,120,160,200,240],"adBonus":1},"e":{"n":"Shadow Slash","t":"physical","mr":5,"flat":[70,92.5,115,137.5,160],"adBonus":0.7},"r":{"n":"Death Mark","t":"physical","c":"RCalculatedDamage","mr":3,"ad":1}},"Yunara":{"q":{"n":"Cultivation of Spirit","t":"magic","c":"Calc_Passive_Damage","mr":5,"flat":[5,10,15,20,25],"ap":0.2},"w":{"n":"Arc of Judgment | Arc of Ruin","t":"magic","c":"Calc_Damage_Initial","mr":5,"flat":[55,95,135,175,215],"ap":0.5,"adBonus":0.85},"r":{"n":"Transcend One's Self","t":"magic","c":"Calc_RW_Damage","mr":3,"flat":[160,320,480,640,800],"ap":0.75,"adBonus":1.2}},"Zeri":{"q":{"n":"Burst Fire","t":"physical","c":"ActiveDamageThatCanCrit","mr":5,"flat":[22,26,30,34,38],"ad":[1.02,1.04,1.06,1.08,1.1]},"w":{"n":"Ultrashock Laser","t":"physical","mr":5,"flat":[30,70,110,150,190],"ap":0.5,"ad":1},"e":{"n":"Spark Surge","t":"magic","c":"BonusDamageTotal","mr":5,"flat":[22,24,26,28,30],"ap":0.2},"r":{"n":"Lightning Crash","t":"magic","c":"TotalBonusDamage","mr":3,"flat":[5,10,15,20,25],"ap":0.15}},"Ziggs":{"q":{"n":"Bouncing Bomb","t":"magic","mr":5,"flat":[80,130,180,230,280],"ap":[0.6,0.65,0.7,0.75,0.8]},"w":{"n":"Satchel Charge","t":"magic","mr":5,"flat":[70,105,140,175,210],"ap":0.5},"e":{"n":"Hexplosive Minefield","t":"magic","mr":5,"flat":[30,70,110,150,190],"ap":[0.25,0.3,0.35,0.4,0.45]}},"Zyra":{"q":{"n":"Deadly Spines","t":"magic","c":"InitialDamage","mr":5,"flat":[60,100,140,180,220],"ap":0.65},"e":{"n":"Grasping Roots","t":"magic","mr":5,"flat":[60,95,130,165,200],"ap":0.6},"r":{"n":"Stranglethorns","t":"magic","mr":3,"flat":[200,300,400,400,400],"ap":0.7}},"Zoe":{"w":{"n":"Spell Thief","t":"magic","c":"MissileDamageTooltip","mr":5,"flat":[15,25,35,45,55],"ap":0.1},"e":{"n":"Sleepy Trouble Bubble","t":"magic","c":"TotalDamageTooltip","mr":5,"flat":[70,110,150,190,230],"ap":0.45}},"Zilean":{"q":{"n":"Time Bomb","t":"magic","mr":5,"flat":[75,115,165,230,300],"ap":0.9}}};
+/* ==ABILITY-DATA-END== */
+
+// You get one point per level, and the ultimate only unlocks at 6 / 11 / 16.
+const maxRank = (slot, lvl) => slot === 'r'
+  ? (lvl >= 16 ? 3 : lvl >= 11 ? 2 : lvl >= 6 ? 1 : 0)
+  : Math.min(5, lvl);
+
+// A baked value is either one number (same at every rank) or five.
+const rankVal = (v, r) => v == null ? 0 : (Array.isArray(v) ? (v[r - 1] || 0) : v);
+
+// Armor and MR both follow the same curve, and penetration is percentage-first,
+// then flat — the order the game applies it in.
+function afterResist(type, s, tgt){
+  if(type === 'true') return 1;
+  const phys = type === 'physical';
+  const raw = phys ? tgt.armor : tgt.mr;
+  const pct = phys ? s.armorPenPct : s.magicPenPct;
+  const flat = phys ? s.lethality : s.magicPen;
+  const eff = Math.max(0, raw * (1 - (pct || 0) / 100) - (flat || 0));
+  return 100 / (100 + eff);
+}
+
+// One full rotation: every ability the champion has, once, at its current rank.
+function comboDamage(build, level, s){
+  const ab = ABILITIES[build.champ];
+  if(!ab) return null;
+  const ranks = build.ranks || {};
+  const on = build.combo || {};
+  const parts = [];
+  let total = 0;
+  for(const slot of ['q','w','e','r']){
+    const sp = ab[slot];
+    if(!sp) continue;
+    const counted = on[slot] !== false;
+    const r = Math.min(ranks[slot] || 0, maxRank(slot, level), sp.mr || 5);
+    if(r < 1){ parts.push({slot, name:sp.n, rank:0, raw:0, dmg:0, type:sp.t, calc:sp.c, counted}); continue; }
+    const raw = rankVal(sp.flat, r)
+      + rankVal(sp.ap, r) * s.ap
+      + rankVal(sp.ad, r) * s.ad
+      + rankVal(sp.adBonus, r) * s.bonusAd;
+    const dmg = raw * afterResist(sp.t, s, target);
+    if(counted) total += dmg;
+    parts.push({slot, name:sp.n, rank:r, raw, dmg, type:sp.t, calc:sp.c, counted});
+  }
+  return parts.length ? {total, parts} : null;
+}
+
+/* ---------- MATH: the stats engine ---------- */
+// Riot's level growth curve: stat = base + perLevel * g(level)
+const g = n => (n-1) * (0.7025 + 0.0175*(n-1));
+
+// Rune stat shards (values live here so they're easy to update after a patch)
+const SHARDS = [
+  [ {n:'Adaptive +9',t:'adaptive',v:9}, {n:'Attack Speed +10%',t:'asPct',v:10}, {n:'Haste +8',t:'haste',v:8} ],
+  [ {n:'Adaptive +9',t:'adaptive',v:9}, {n:'Move Speed +2%',t:'msPct',v:2}, {n:'HP 10–180 (scales)',t:'hpScale',v:0} ],
+  [ {n:'HP +65',t:'hp',v:65}, {n:'Tenacity +10%',t:'tenacity',v:10}, {n:'HP 10–180 (scales)',t:'hpScale',v:0} ],
+];
+
+/* ---------- ATTACK RANGE: the one stat Data Dragon under-reports ----------
+   `stats.attackrange` is a single number, but two champions grow theirs as
+   they level, so those two get a rule. The numbers are Riot's, read out of the
+   champion game data rather than remembered:
+
+     · Tristana — Draw a Bead. TristanaPassive's BonusPassiveRange is a
+       ByCharLevelInterpolation part with mEndValue 150, i.e. nothing at level
+       1 rising to +150 at level 18. 550 → 700.
+     · Kayle — Divine Ascent. KaylePassive carries LevelForPassiveRank1 6 and
+       LevelForPassiveRank3 16, with UpgradedAttackRange 525 and
+       FinalAttackRange 625. She is melee until 6 and hits 625 at 16.
+
+   Nobody else on the roster changes range with level — checked by sweeping
+   every champion's passive and spell text in championFull.json. The rest of
+   the ones that do change range (Gnar, Jayce, Nidalee, Elise, Bel'Veth,
+   Shyvana, Volibear, Nasus, Rell, Senna, Kindred, Kog'Maw, Twitch, Nilah,
+   Gwen, Wukong, Kha'Zix) do it by form, stacks or an ability instead, and this
+   builder has no state for which form you're in, so they keep their base. */
+const RANGE_BY_LEVEL = {
+  Tristana: (base, lvl) => base + 150 * (lvl - 1) / 17,
+  Kayle: (base, lvl) => lvl >= 16 ? 625 : lvl >= 6 ? 525 : base,
+};
+function champAttackRange(champId, lvl){
+  const ch = CHAMPS[champId];
+  if(!ch) return null;
+  const rule = RANGE_BY_LEVEL[champId];
+  return rule ? rule(ch.stats.attackrange, lvl) : ch.stats.attackrange;
+}
+const rangeGrows = champId => !!RANGE_BY_LEVEL[champId];
+
+function computeStats(build, level, extra){
+  const ch = CHAMPS[build.champ];
+  if(!ch) return null;
+  const b = ch.stats;
+
+  // 1) champion base stats at this level
+  const base = {
+    hp: b.hp + b.hpperlevel*g(level),
+    mana: b.mp + b.mpperlevel*g(level),
+    ad: b.attackdamage + b.attackdamageperlevel*g(level),
+    armor: b.armor + b.armorperlevel*g(level),
+    mr: b.spellblock + b.spellblockperlevel*g(level),
+    baseAS: b.attackspeed,
+    asGrowthPct: b.attackspeedperlevel*g(level), // % bonus AS from levels
+    ms: b.movespeed, range: champAttackRange(build.champ, level),
+  };
+
+  // 2) add every item
+  const add = {ad:0,ap:0,hp:0,mana:0,armor:0,mr:0,asPct:0,crit:0,haste:0,ms:0,msPct:0,
+    lifesteal:0,omnivamp:0,lethality:0,magicPen:0,magicPenPct:0,armorPenPct:0,
+    tenacity:0,healPower:0,hpRegenPct:0,mpRegenPct:0};
+  for(const id of build.items){
+    if(!id) continue;
+    const st = parseItemStats(id);
+    for(const k in st) add[k] += st[k];
+  }
+  // Optional extra stats — used by the exact search's upper bound. Applied
+  // before the shards so the adaptive branch accounts for them.
+  if(extra) for(const k in extra) add[k] = (add[k] || 0) + extra[k];
+
+  // 3) add rune shards (adaptive = 5.4 AD or 9 AP, whichever bonus is bigger)
+  let adaptiveCount = 0;
+  (build.shards||[]).forEach((pick,row)=>{
+    const sh = SHARDS[row] && SHARDS[row][pick];
+    if(!sh) return;
+    if(sh.t==='adaptive') adaptiveCount++;
+    else if(sh.t==='hpScale') add.hp += 10 + 10*(level-1);
+    else add[sh.t] += sh.v;
+  });
+  if(adaptiveCount){
+    if(add.ap > add.ad) add.ap += 9*adaptiveCount;
+    else add.ad += 5.4*adaptiveCount;
+  }
+
+  // 4) totals
+  const hp = base.hp + add.hp;
+  const ad = base.ad + add.ad;
+  const ap = add.ap;
+  const armor = base.armor + add.armor;
+  const mr = base.mr + add.mr;
+  const as = Math.min(2.5, base.baseAS * (1 + base.asGrowthPct/100 + add.asPct/100));
+  const crit = Math.min(100, add.crit);
+  const haste = add.haste;
+  const cdr = haste/(haste+100)*100;
+  const ms = (base.ms + add.ms) * (1 + add.msPct/100);
+  const armorPen = add.lethality; // lethality = flat armor pen (vs your level target)
+  const mana = base.mana + add.mana;
+
+  // 5) derived numbers
+  const dps = ad * as * (1 + (crit/100)*0.75);           // autos only, 175% crits
+  const burst = ad + ap + 2*add.lethality + 2*add.magicPen; // simple index
+  const ehpPhys = hp * (1 + armor/100);
+  const ehpMag  = hp * (1 + mr/100);
+  const tank = (ehpPhys + ehpMag)/2;
+  const balanced = Math.sqrt(dps * tank);
+
+  const out = { hp, mana, ad, ap, bonusAd: add.ad, armor, mr, as, crit, haste, cdr, ms,
+    lifesteal:add.lifesteal, omnivamp:add.omnivamp, lethality:add.lethality,
+    magicPen:add.magicPen, magicPenPct:add.magicPenPct, armorPenPct:add.armorPenPct,
+    tenacity:add.tenacity, range:base.range,
+    dps, burst, ehpPhys, ehpMag, tank, balanced };
+  // Real ability damage, for the champions the snapshot covers.
+  out.combo = comboDamage(build, level, out);
+  return out;
+}
+
+/* ---------- GOALS: the four things a build can be good at ---------- */
+const GOALS = {
+  dps:      {k:'Damage per second', pick:s=>s.dps,      sub:'auto attacks only — AD × attack speed × crit'},
+  burst:    {k:'Combo damage',      pick:s=>s.combo ? s.combo.total : s.burst,
+             sub:'one cast of every ability, after the target\'s resistances',
+             // Champions the snapshot doesn't cover fall back to the old index,
+             // and say so rather than quietly reporting a different unit.
+             alt:{k:'Burst index', sub:'no ability data for this champion — AD + AP + 2×(lethality + magic pen)'}},
+  tank:     {k:'Effective HP',      pick:s=>s.tank,     sub:'average of HP vs physical and HP vs magic'},
+  balanced: {k:'Balanced score',    pick:s=>s.balanced, sub:'√(DPS × effective HP) — damage and toughness together'},
+};
+
+/* ---------- OPTIMIZER: search for six items that maximise the goal ----------
+   The obvious idea — try every combination — does not survive contact with
+   the numbers. About 120 items survive the filters below, and choosing 6 of
+   them is C(120,6) ≈ 4 billion builds. computeStats costs roughly 1.5µs, so
+   enumerating them all is something like two hours of solid work for one
+   button press. So this searches instead of enumerating:
+
+     1. POOL    — the legal, completed items whose stats the engine can read
+     2. GREEDY  — fill the empty slots one at a time, each time taking the
+                  single item that adds the most score right now
+     3. CLIMB   — try swapping each chosen item for each unchosen one, keep
+                  the best swap that helps, repeat until none helps
+     4. RESTART — run 2+3 from a few different starting points, keep the best
+
+   Step 3 is what fixes greedy's blind spot. Greedy is short-sighted: crit
+   chance is nearly worthless until you also have attack damage and attack
+   speed, so the pick that looks best first can stop being worth a slot once
+   the build fills out — and greedy can never take a pick back. Swapping can.
+   Measured against a brute force over a cut-down pool, greedy alone landed
+   about 99.5% of the true optimum and the swap pass closed the rest.
+
+   So: not guaranteed optimal, and it can't be. It is a good answer found in
+   about ten milliseconds, which is the trade most of the field is built on. */
+
+let optEvals = 0;      // how many builds we scored — shown in the result
+let optResult = null;  // the proposal currently on screen, for the Use button
+
+// Riot's data has no "you may only hold one of these" flag, and the tags lie
+// (Gunmetal Greaves isn't tagged Boots; Stormsurge is tagged GoldPer). So read
+// intent off the build tree instead: boots are whatever builds out of Boots of
+// Speed, support items are whatever builds out of Runic Compass.
+const BOOTS_ROOT = '1001', SUPPORT_ROOT = '3867';
+function optBuildsFrom(id, root, seen){
+  if(id === root) return true;
+  seen = seen || new Set();
+  if(seen.has(id)) return false;
+  seen.add(id);
+  return ((ITEMS[id] && ITEMS[id].from) || []).some(x => optBuildsFrom(x, root, seen));
+}
+const bootsCache = {};
+const isBoots = id => !id ? false
+  : (bootsCache[id] !== undefined ? bootsCache[id] : (bootsCache[id] = optBuildsFrom(id, BOOTS_ROOT)));
+const optName = id => (id && ITEMS[id] && ITEMS[id].name) || '';
+const optCost = items => items.reduce((n,id)=> n + (id && ITEMS[id] ? ITEMS[id].gold.total : 0), 0);
+
+// What the optimizer is allowed to choose from.
+function optPool(){
+  const byName = {};
+  srItems().forEach(([id,it])=>{
+    // "Completed" = nothing real builds out of it. Ornn-style upgrades are
+    // flagged requiredAlly and don't count as a real upgrade path.
+    const into = it.into || [];
+    if(into.some(x => ITEMS[x] && !ITEMS[x].requiredAlly)) return;
+    if(it.requiredChampion && it.requiredChampion !== cur.champ) return;
+    if(it.consumed || it.consumeOnFull || it.hideFromAll) return;
+    if(optBuildsFrom(id, SUPPORT_ROOT)) return;   // role-locked, one per game
+    // Rift items all have four-digit ids. The long ones are per-mode copies —
+    // Arena, Swarm, Brawl — and Riot flags some of the Brawl set as map 11
+    // even though you can't buy them in a normal game.
+    if(+id >= 10000) return;
+    // The engine only knows the stats it can read out of the description, so
+    // an item whose whole value is a passive would score like an empty slot.
+    if(!Object.keys(parseItemStats(id)).length) return;
+    // Riot ships a separate copy of many items per game mode under its own id
+    // — same name, same stats. Without this the optimizer happily proposes two
+    // Hextech Gunblades. Keep the lowest id, which is the Rift original.
+    const prev = byName[it.name];
+    if(!prev || +id < +prev.id) byName[it.name] = { id, gold: it.gold.total };
+  });
+  return Object.values(byName);
+}
+
+// Score one set of items for the current champion, level and goal.
+function optScore(scratch, items){
+  optEvals++;
+  scratch.items = items;
+  const s = computeStats(scratch, level);
+  return s ? GOALS[goal].pick(s) : 0;
+}
+
+// The rules a proposal has to obey: no duplicates, one pair of boots, and
+// the gold budget if there is one.
+function optAllowed(items, slot, cand, budget){
+  const candName = optName(cand.id), candBoots = isBoots(cand.id);
+  for(let i=0;i<6;i++){
+    if(i===slot || !items[i]) continue;
+    if(optName(items[i]) === candName) return false;
+    if(candBoots && isBoots(items[i])) return false;
+  }
+  if(budget != null){
+    let rest = 0;
+    for(let i=0;i<6;i++) if(i!==slot && items[i] && ITEMS[items[i]]) rest += ITEMS[items[i]].gold.total;
+    if(rest + cand.gold > budget) return false;
+  }
+  return true;
+}
+
+// A starting point is only usable if it already obeys those rules.
+function optSeedOk(items, budget){
+  const names = items.filter(Boolean).map(optName);
+  if(new Set(names).size !== names.length) return false;
+  if(items.filter(id => isBoots(id)).length > 1) return false;
+  if(budget != null && optCost(items) > budget) return false;
+  return true;
+}
+
+// GREEDY. Fill every open slot, one at a time, always taking the biggest gain.
+// perGold ranks by gain per gold instead — the right instinct when a budget
+// is what's really deciding, because then a cheap item that nearly keeps up
+// beats an expensive one that eats two slots' worth of gold.
+function optGreedy(start, locked, pool, budget, perGold, scratch){
+  const items = start.slice();
+  for(let placed=0; placed<6; placed++){
+    const base = optScore(scratch, items);
+    let best = null;
+    for(let slot=0; slot<6; slot++){
+      if(locked[slot] || items[slot]) continue;
+      for(const cand of pool){
+        if(!optAllowed(items, slot, cand, budget)) continue;
+        const was = items[slot];
+        items[slot] = cand.id;
+        const gain = optScore(scratch, items) - base;
+        items[slot] = was;
+        const rank = perGold ? gain / Math.max(1, cand.gold) : gain;
+        if(gain > 0 && (!best || rank > best.rank)) best = {slot, id:cand.id, rank};
+      }
+    }
+    if(!best) break;   // nothing legal and affordable left to add
+    items[best.slot] = best.id;
+  }
+  return items;
+}
+
+// CLIMB. Try every single swap, take the best one that helps, repeat.
+// Stops at a local optimum: the point where no single swap improves anything.
+function optClimb(start, locked, pool, budget, scratch, work){
+  const items = start.slice();
+  let score = optScore(scratch, items);
+  for(let sweep=0; sweep<40; sweep++){
+    let best = null;
+    for(let slot=0; slot<6; slot++){
+      if(locked[slot]) continue;
+      for(const cand of pool){
+        if(items[slot]===cand.id) continue;
+        if(!optAllowed(items, slot, cand, budget)) continue;
+        const was = items[slot];
+        items[slot] = cand.id;
+        const sc = optScore(scratch, items);
+        items[slot] = was;
+        if(sc > score + 1e-9 && (!best || sc > best.sc)) best = {slot, id:cand.id, sc};
+      }
+    }
+    if(!best) break;
+    items[best.slot] = best.id;
+    score = best.sc;
+    work.swaps++;
+  }
+  return {items, score};
+}
+
+// n choose k, for showing how big the space we skipped actually is.
+function optChoose(n,k){
+  if(k>n) return 0;
+  let r = 1;
+  for(let i=0;i<k;i++) r = r*(n-i)/(i+1);
+  return Math.round(r);
+}
+
+function optRun(){
+  const pool = optPool();
+  const scratch = JSON.parse(JSON.stringify(cur));
+  const keep = $('optKeep').checked;
+  const raw = $('optBudget').value.trim();
+  const budget = raw==='' ? null : Math.max(0, Math.floor(+raw) || 0);
+
+  const locked = cur.items.map(id => keep && !!id);
+  const start  = cur.items.map((id,i) => locked[i] ? id : null);
+
+  optEvals = 0;
+  const work = {swaps:0, seeds:0};
+  const t0 = performance.now();
+
+  const seeds = [
+    optGreedy(start, locked, pool, budget, false, scratch),
+    optGreedy(start, locked, pool, budget, true,  scratch),
+  ];
+  // The build already on screen is a third place to start from, and often a
+  // good one — it's the only seed that knows what the user was going for.
+  if(cur.items.some(Boolean) && optSeedOk(cur.items, budget)) seeds.push(cur.items.slice());
+
+  let best = null;
+  for(const seed of seeds){
+    work.seeds++;
+    const r = optClimb(seed, locked, pool, budget, scratch, work);
+    if(!best || r.score > best.score) best = r;
+  }
+
+  const before = cur.items.some(Boolean) ? optScore(scratch, cur.items.slice()) : 0;
+  return {
+    items: best.items, score: best.score, before,
+    locked, budget, pool: pool.length, evals: optEvals,
+    swaps: work.swaps, seeds: work.seeds,
+    ms: Math.max(1, Math.round(performance.now() - t0)),
+    lockedCost: optCost(start),
+    goalKey: GOALS[goal].k, level,
+  };
+}
+
+function exactRun(){
+  const scratch = JSON.parse(JSON.stringify(cur));
+  let before = 0;
+  if(cur.items.some(Boolean)){
+    scratch.items = cur.items.slice();
+    before = GOALS[goal].pick(computeStats(scratch, level));
+  }
+  const ex = exactSolve(goal, level);
+  return {
+    items: ex.items, score: ex.score, before,
+    locked: [false,false,false,false,false,false],
+    budget: null, lockedCost: 0, pool: ex.pool, evals: ex.nodes,
+    ms: ex.ms, goalKey: GOALS[goal].k, level,
+    exact: true, proven: ex.proven, dims: ex.dims.length, fullPool: optPool().length,
+    ignored: ($('optKeep').checked ? 'the items you kept' : '')
+      + ($('optKeep').checked && $('optBudget').value.trim() ? ' and ' : '')
+      + ($('optBudget').value.trim() ? 'the gold budget' : ''),
+  };
+}
+
+function optRender(r){
+  optResult = r;
+  const cost = optCost(r.items);
+  const delta = r.before ? r.score - r.before : 0;
+  const pct = r.before ? (delta / r.before) * 100 : 0;
+
+  const cells = r.items.map((id,i)=>{
+    const it = id && ITEMS[id];
+    if(!it) return '<div class="optitem"><div class="slot" style="aspect-ratio:1">—</div>empty</div>';
+    return '<div class="optitem'+(r.locked[i]?' kept':'')+'">'
+      + '<img src="'+itemImg(it)+'" alt="" title="'+esc(it.name)+'">'
+      + esc(it.name) + '<div class="g">'+fmt(it.gold.total)+'g'+(r.locked[i]?' · kept':'')+'</div></div>';
+  }).join('');
+
+  const combos = optChoose(r.pool, 6);
+  const overBudget = r.budget != null && r.lockedCost > r.budget;
+
+  $('optOut').innerHTML = '<div class="optout">'
+    + '<div class="optscore"><span class="num">'+fmt(r.score)+'</span>'
+      + '<span class="was">'+esc(r.goalKey)+' at level '+r.level+'</span>'
+      + (r.before
+          ? (delta > 0.5
+              ? '<span class="up">+'+fmt(delta)+' ('+fmt(pct,1)+'%) vs your build</span>'
+              : '<span class="flat">your build is already at least this good</span>')
+          : '')
+    + '</div>'
+    + '<div class="optitems">'+cells+'</div>'
+    + '<div class="optwork">'
+      + (r.exact
+        ? '<b>'+fmt(cost)+'g</b> total. '
+          + (r.proven
+            ? '<b>Proven optimal</b> — no other six items score higher at level '+r.level+' against this target.'
+            : '<b>Best found, not proven.</b> The search ran out of budget before it could rule everything out.')
+          + '<br>Narrowed <b>'+r.fullPool+'</b> items to <b>'+r.pool+'</b> that could possibly matter on the '
+          + r.dims+' stat'+(r.dims===1?'':'s')+' this goal reads, then walked <b>'+fmt(r.evals)+'</b> branches in <b>'+r.ms+' ms</b>.'
+          + (r.ignored ? '<br>This ignores '+r.ignored+' — it proves the best unrestricted six.' : '')
+        : '<b>'+fmt(cost)+'g</b> total'+(r.budget!=null ? ' of a '+fmt(r.budget)+'g budget' : '')+'. '
+          + 'Pool: <b>'+r.pool+'</b> items the engine can score — every combination of six would be '
+          + '<b>'+fmt(combos)+'</b> builds.<br>'
+          + 'This scored <b>'+fmt(r.evals)+'</b> of them in <b>'+r.ms+' ms</b>: greedy drafts from '
+          + r.seeds+' starting point'+(r.seeds===1?'':'s')+', then <b>'+r.swaps+'</b> improving swap'+(r.swaps===1?'':'s')+'.'
+          + (overBudget ? '<br>Heads up: the items you locked already cost more than the budget, so the budget only limited what got added.' : ''))
+    + '</div>'
+    + '<button class="linkbtn" data-optapply="1">Use this build</button> '
+    + '<button class="linkbtn" data-optdismiss="1" style="margin-left:14px">Dismiss</button>'
+    + '<p class="note">Scored on stats only — item passives, keystones and abilities aren\'t in the math, so treat this as a strong starting point rather than the last word.</p>'
+    + '</div>';
+}
+
+/* The optimal build for every champion, precomputed at one documented standard
+   by Apps/MOS/tools/gen-perfect.mjs. Empty until you run it. */
+/* ==PERFECT-DATA-START== */
+const PERFECT_AT = {"level":18,"armor":80,"mr":50};
+const PERFECT = {"Aatrox":{"dps":{"i":["3031","3095","3032","3046","2523","6672"],"s":1250.8,"p":1},"burst":{"i":["2520","6694","3142","3072","3031","3179"],"s":713.04,"p":1},"tank":{"i":["6665","3083","2504","3143","3084","4401"],"s":20775.409,"p":1},"balanced":{"i":["3031","3095","6631","3046","3073","6333"],"s":2710.954,"p":0}},"Ahri":{"dps":{"i":["3031","3095","3032","3046","2523","6672"],"s":1237.283,"p":1},"burst":{"i":["3135","4645","4646","3089","3102","3157"],"s":2041.3,"p":1},"tank":{"i":["6665","3083","2504","3143","3084","4401"],"s":18764.618,"p":1},"balanced":{"i":["3031","3095","6631","3046","3073","6333"],"s":2475.377,"p":0}},"Akali":{"dps":{"i":["3031","3095","3032","3046","2523","6672"],"s":1253.058,"p":1},"burst":{"i":["3135","4645","4646","3089","3146","3102"],"s":2269.3,"p":1},"tank":{"i":["6665","3083","2504","3143","3084","4401"],"s":20539.39,"p":1},"balanced":{"i":["3031","3095","6631","3046","3073","6333"],"s":2697.162,"p":0}},"Akshan":{"dps":{"i":["3031","3095","3032","3046","2523","6672"],"s":1293.637,"p":1},"burst":{"i":["3072","2520","6694","3142","3031","3179"],"s":781.733,"p":1},"tank":{"i":["6665","3083","2504","3143","3084","4401"],"s":19379.472,"p":1},"balanced":{"i":["3031","3095","6631","3073","3046","6333"],"s":2617.003,"p":0}},"Alistar":{"dps":{"i":["3031","3095","3032","3046","2523","6672"],"s":1183.539,"p":1},"burst":{"i":["3135","4645","4646","3089","3102","3157"],"s":2327.5,"p":1},"tank":{"i":["6665","3083","2504","3143","3084","4401"],"s":21254.912,"p":1},"balanced":{"i":["3031","3095","6631","3046","3073","3032"],"s":2687.183,"p":0}},"Ambessa":{"dps":{"i":["3031","3095","3032","3046","2523","6672"],"s":1211.263,"p":1},"burst":{"i":["6694","2520","3142","3072","3031","3179"],"s":1653.92,"p":1},"tank":{"i":["6665","3083","2504","3143","3084","4401"],"s":20434.599,"p":1},"balanced":{"i":["3031","3095","6631","3046","3073","6333"],"s":2630.93,"p":0}}};
+/* ==PERFECT-DATA-END== */
+
+/* ---------- EXACT: prove the best build, don't just find a good one ----------
+   The optimizer above returns a good answer fast and says so honestly. This
+   returns THE answer, with a proof, whenever the proof is affordable.
+
+   Enumerating C(123,6) ≈ 4.2 billion builds is not affordable, so two ideas
+   cut the work down:
+
+   1. DOMINANCE. If item A gives at least as much of every stat this goal cares
+      about as item B, you never need B... except that a build holds exactly six
+      items, so if A is already in it, B might still be the best pick left. The
+      sound version is pigeonhole: drop B only if SIX items dominate it, because
+      then at most five can be in the build and one is always free to swap in.
+      (Getting this wrong is easy — the naive "drop every dominated item" rule
+      leaves 5 candidates for DPS, and you cannot fill six slots from five.)
+
+   2. BRANCH AND BOUND. Walk the combinations depth-first, and at each partial
+      build ask: if the remaining slots were filled with the best of every stat
+      still available, could this branch even beat the best build found so far?
+      If not, skip the whole subtree. Because every goal is monotone — more AD
+      never lowers DPS — that bound can never discard a real winner.
+
+   Two things break monotonicity and are handled rather than ignored:
+     · boots, where swapping in a second pair is illegal, so a boots item only
+       counts as a dominator of another boots item;
+     · adaptive shards, which grant AP *or* AD depending on which your items
+       favour — so more AD can cost you AP. Every bound adds the full adaptive
+       swing to both stats, which keeps it an over-estimate either way.
+
+   When the search finishes inside its node budget the answer is optimal and
+   the UI says "proven". When it doesn't, you get the best build found and the
+   UI says that instead. It never claims a proof it didn't complete. */
+
+let EXACT_NODE_BUDGET = 5e6;   // ~6s; the batch generator raises it
+
+// Which item stats can actually move this goal for THIS champion. Narrower is
+// better: a pure-AP mage's combo doesn't care about lethality, and dropping
+// those dimensions is what makes dominance bite.
+function exactDims(goal, champ){
+  if(goal === 'dps')  return ['ad','asPct','crit'];
+  if(goal === 'tank') return ['hp','armor','mr'];
+  if(goal === 'balanced') return ['ad','asPct','crit','hp','armor','mr'];
+  // burst/combo: read the champion's own abilities to see what they scale with
+  const ab = ABILITIES[champ];
+  if(!ab) return ['ad','ap','lethality','magicPen','magicPenPct','armorPenPct'];
+  const dims = new Set();
+  for(const slot of ['q','w','e','r']){
+    const sp = ab[slot];
+    if(!sp) continue;
+    if(sp.ap) dims.add('ap');
+    if(sp.ad || sp.adBonus) dims.add('ad');
+    if(sp.t === 'magic'){ dims.add('magicPen'); dims.add('magicPenPct'); }
+    if(sp.t === 'physical'){ dims.add('lethality'); dims.add('armorPenPct'); }
+  }
+  return dims.size ? [...dims] : ['ap','ad'];
+}
+
+// How much AP or AD the adaptive shards could shuffle between branches.
+function adaptiveSlack(build){
+  const n = (build.shards||[]).filter((pick,row)=>{
+    const sh = (SHARDS[row]||[])[pick];
+    return sh && sh.t === 'adaptive';
+  }).length;
+  return {ap: 9*n, ad: 5.4*n};
+}
+
+// Rule 1: keep an item unless six others dominate it.
+function exactPrune(pool, dims, slack){
+  const st = {};
+  pool.forEach(c => st[c.id] = parseItemStats(c.id));
+  const pad = d => d === 'ap' ? slack.ap : d === 'ad' ? slack.ad : 0;
+  const beats = (a, b) => {
+    if(isBoots(a.id) && !isBoots(b.id)) return false;   // that swap is illegal
+    let strict = false;
+    for(const d of dims){
+      const va = st[a.id][d] || 0, vb = st[b.id][d] || 0;
+      if(va < vb + pad(d)) return false;
+      if(va > vb) strict = true;
+    }
+    return strict || a.id < b.id;                       // break exact ties by id
+  };
+  return pool.filter(b => {
+    let n = 0;
+    for(const a of pool){
+      if(a.id !== b.id && beats(a, b) && ++n >= 6) return false;
+    }
+    return true;
+  });
+}
+
+// For the bound: the largest total each stat could still contribute if the
+// remaining r slots were filled from candidates at index i or later.
+function exactSuffixTops(pool, dims){
+  const n = pool.length;
+  const tops = new Array(n + 1);
+  tops[n] = dims.map(() => [0,0,0,0,0,0]);
+  const best = dims.map(() => []);
+  for(let i = n - 1; i >= 0; i--){
+    const st = parseItemStats(pool[i].id);
+    dims.forEach((d, di) => {
+      const list = best[di];
+      const v = st[d] || 0;
+      list.push(v);
+      list.sort((a, b) => b - a);
+      if(list.length > 6) list.length = 6;
+    });
+    tops[i] = dims.map((d, di) => {
+      const run = [];
+      let sum = 0;
+      for(let r = 0; r < 6; r++){ sum += best[di][r] || 0; run.push(sum); }
+      return run;                                       // run[r-1] = top-r sum
+    });
+  }
+  return tops;
+}
+
+function exactSolve(goalKey, lvl, onProgress){
+  const t0 = performance.now();
+  const dims = exactDims(goalKey, cur.champ);
+  const slack = adaptiveSlack(cur);
+  const pool = exactPrune(optPool(), dims, slack);
+  const scratch = JSON.parse(JSON.stringify(cur));
+  const pick = GOALS[goalKey].pick;
+
+  const score = items => { scratch.items = items; return pick(computeStats(scratch, lvl)); };
+  // Optimistic score: fill the free slots with the best of every stat left.
+  const bound = (items, from, free) => {
+    if(free <= 0) return score(items);
+    const extra = {};
+    dims.forEach((d, di) => extra[d] = exactTops[from][di][free - 1]);
+    extra.ap = (extra.ap || 0) + slack.ap;              // adaptive could add either
+    extra.ad = (extra.ad || 0) + slack.ad;
+    scratch.items = items;
+    return pick(computeStats(scratch, lvl, extra));
+  };
+
+  // Rank by solo contribution so good builds are found early and prune hard.
+  const solo = {};
+  for(const c of pool) solo[c.id] = score([c.id, null, null, null, null, null]);
+  pool.sort((a, b) => solo[b.id] - solo[a.id]);
+  const exactTops = exactSuffixTops(pool, dims);
+
+  // Start from the heuristic's answer so there is something to prune against.
+  // optGreedy/optClimb read the module-level `goal`, so point it at the goal
+  // being solved for the duration, then restore it.
+  const prevGoal = goal;
+  goal = goalKey;
+  let seed;
+  try{
+    seed = optClimb(
+      optGreedy([null,null,null,null,null,null], [0,0,0,0,0,0], pool, null, false, scratch),
+      [0,0,0,0,0,0], pool, null, scratch, {swaps:0});
+  } finally { goal = prevGoal; }
+  // Rescore with our own scorer rather than trusting the helper's number: an
+  // incumbent that is too high would prune the true optimum out of the search.
+  let best = seed.items.slice(), bestScore = score(best);
+
+  const items = [null, null, null, null, null, null];
+  let nodes = 0, pruned = 0, complete = true;
+
+  (function dfs(start, depth, bootsUsed){
+    if(depth === 6){
+      const sc = score(items);
+      if(sc > bestScore){ bestScore = sc; best = items.slice(); }
+      return;
+    }
+    for(let i = start; i < pool.length; i++){
+      if(!complete) return;
+      if(pool.length - i < 6 - depth) return;           // can't fill the rest
+      const c = pool[i];
+      const b = isBoots(c.id);
+      if(b && bootsUsed) continue;
+      if(++nodes > EXACT_NODE_BUDGET){ complete = false; return; }
+      items[depth] = c.id;
+      // Bound the whole subtree that starts by taking this item.
+      if(bound(items, i + 1, 5 - depth) <= bestScore){ pruned++; items[depth] = null; continue; }
+      dfs(i + 1, depth + 1, bootsUsed || b);
+      items[depth] = null;
+    }
+  })(0, 0, false);
+
+  return {
+    items: best, score: bestScore, proven: complete,
+    pool: pool.length, nodes, pruned, dims,
+    ms: Math.max(1, Math.round(performance.now() - t0)),
+  };
+}
+
+/* ---------- STATE ---------- */
+const blankBuild = () => ({
+  name:'', champ:null, items:[null,null,null,null,null,null], spells:[null,null],
+  primaryTree:null, keystone:null, primary:[null,null,null],
+  secondaryTree:null, secondary:[null,null],
+  shards:[0,0,0],
+  ranks:{q:5,w:5,e:5,r:3},
+  combo:{q:true,w:true,e:true,r:true},
+});
+let cur = blankBuild();
+let level = 18;
+let goal = 'dps';
+let saved = [];
+let target = {armor:80, mr:50};   // the dummy abilities are measured against
+
+function persist(){
+  try{
+    localStorage.setItem('forge.saved', JSON.stringify(saved));
+    localStorage.setItem('forge.cur', JSON.stringify({cur, level, goal, target}));
+  }catch(e){ /* storage blocked — app still works, just won't remember */ }
+}
+function loadState(){
+  try{
+    saved = JSON.parse(localStorage.getItem('forge.saved')||'[]');
+    const s = JSON.parse(localStorage.getItem('forge.cur')||'null');
+    if(s){
+      cur = Object.assign(blankBuild(), s.cur);
+      cur.ranks = Object.assign({q:5,w:5,e:5,r:3}, cur.ranks);
+      cur.combo = Object.assign({q:true,w:true,e:true,r:true}, cur.combo);
+      level = s.level||18; goal = s.goal||'dps';
+      if(s.target) target = Object.assign(target, s.target);
+    }
+  }catch(e){ saved = []; }
+  document.getElementById('lvl').value = level;
+  document.getElementById('goal').value = goal;
+}
+
+/* ---------- RENDER ---------- */
+const $ = id => document.getElementById(id);
+const fmt = (n,d=0) => n==null ? '—' : Number(n).toLocaleString('en-CA',{maximumFractionDigits:d,minimumFractionDigits:0});
+
+function renderAll(){ renderChamp(); renderItems(); renderSpells(); renderRunes(); renderAbilities(); renderStats(); renderBuilds(); renderBrowse(); renderCompare(); }
+
+function renderChamp(){
+  const ch = CHAMPS[cur.champ];
+  $('champBtn').innerHTML = ch ? '<img src="'+champImg(ch)+'" alt="">' : '+';
+  $('champName').textContent = ch ? ch.name : 'No champion yet';
+  const r = ch && champAttackRange(cur.champ, level);
+  $('champTitle').textContent = ch
+    ? ch.title + ' · ' + rangeKind(r) + ', ' + fmt(r) + ' range'
+      + (rangeGrows(cur.champ) ? ' at level ' + level : '')
+    : 'Pick one to start building.';
+  $('champBtn2').textContent = ch ? 'Change champion' : 'Pick a champion';
+  $('statChamp').textContent = ch ? ch.name + ' · lvl ' + level : '';
+}
+
+function renderItems(){
+  $('itemSlots').innerHTML = cur.items.map((id,i)=>{
+    const it = id && ITEMS[id];
+    return '<button class="slot'+(it?' filled':'')+'" data-slot="'+i+'" aria-label="Item slot '+(i+1)+(it?': '+it.name:' (empty)')+'">'
+      + (it ? '<img src="'+itemImg(it)+'" alt="">' : '+')
+      + (it ? '<span class="x" data-clear="'+i+'" role="button" aria-label="Remove '+it.name+'">✕</span>' : '')
+      + '</button>';
+  }).join('');
+}
+
+function renderSpells(){
+  $('spellSlots').innerHTML = cur.spells.map((id,i)=>{
+    const sp = id && SPELLS[id];
+    return '<button class="slot'+(sp?' filled':'')+'" data-spell="'+i+'" aria-label="Spell slot '+(i+1)+(sp?': '+sp.name:' (empty)')+'">'
+      + (sp ? '<img src="'+spellImg(sp)+'" alt="">' : '+') + '</button>';
+  }).join('');
+}
+
+function renderRunes(){
+  const area = $('runeArea');
+  let h = '';
+  // primary tree
+  h += '<div class="runerow"><div class="lbl">Primary path</div>';
+  h += RUNES.map(t=>'<button class="runeopt'+(cur.primaryTree===t.id?' on':'')+'" data-ptree="'+t.id+'"><img src="'+runeImg(t.icon)+'" alt="">'+t.name+'</button>').join('');
+  h += '</div>';
+  const pt = RUNES.find(t=>t.id===cur.primaryTree);
+  if(pt){
+    pt.slots.forEach((slot,si)=>{
+      h += '<div class="runerow"><div class="lbl">'+(si===0?'Keystone':'Row '+si)+'</div>';
+      h += slot.runes.map(r=>{
+        const on = si===0 ? cur.keystone===r.id : cur.primary[si-1]===r.id;
+        return '<button class="runeopt'+(on?' on':'')+'" data-prune="'+si+':'+r.id+'"><img src="'+runeImg(r.icon)+'" alt="">'+r.name+'</button>';
+      }).join('');
+      h += '</div>';
+    });
+  }
+  // secondary tree
+  h += '<div class="runerow"><div class="lbl">Secondary path</div>';
+  h += RUNES.filter(t=>t.id!==cur.primaryTree).map(t=>'<button class="runeopt'+(cur.secondaryTree===t.id?' on':'')+'" data-stree="'+t.id+'"><img src="'+runeImg(t.icon)+'" alt="">'+t.name+'</button>').join('');
+  h += '</div>';
+  const st = RUNES.find(t=>t.id===cur.secondaryTree);
+  if(st){
+    h += '<div class="runerow"><div class="lbl">Pick any 2 (not a keystone)</div>';
+    st.slots.slice(1).forEach(slot=>{
+      h += slot.runes.map(r=>{
+        const on = cur.secondary.includes(r.id);
+        return '<button class="runeopt'+(on?' on':'')+'" data-srune="'+r.id+'"><img src="'+runeImg(r.icon)+'" alt="">'+r.name+'</button>';
+      }).join('');
+    });
+    h += '</div>';
+  }
+  // shards
+  SHARDS.forEach((row,ri)=>{
+    h += '<div class="runerow"><div class="lbl">Shard row '+(ri+1)+'</div>';
+    h += row.map((sh,si)=>'<button class="runeopt shardopt'+(cur.shards[ri]===si?' on':'')+'" data-shard="'+ri+':'+si+'">'+sh.n+'</button>').join('');
+    h += '</div>';
+  });
+  area.innerHTML = h;
+}
+
+function renderStats(){
+  $('lvlNum').textContent = level;
+  const s = cur.champ ? computeStats(cur, level) : null;
+  let gg = GOALS[goal];
+  // Combo damage falls back to the old index when a champion has no ability
+  // data, so relabel rather than show one unit under the other's name.
+  if(gg.alt && s && !s.combo) gg = Object.assign({}, gg, gg.alt);
+  $('headK').textContent = s ? gg.k : 'Pick a champion';
+  $('headV').textContent = s ? fmt(gg.pick(s)) : '—';
+  $('headSub').textContent = s ? gg.sub : 'Stats appear here as soon as you do.';
+  const rows = s ? [
+    ['hp','Health',fmt(s.hp)], ['','Mana',fmt(s.mana)],
+    ['phys','Attack damage',fmt(s.ad)], ['magic','Ability power',fmt(s.ap)],
+    ['','Armor',fmt(s.armor)], ['','Magic resist',fmt(s.mr)],
+    ['phys','Attack speed',fmt(s.as,2)], ['phys','Crit chance',fmt(s.crit)+'%'],
+    ['','Ability haste',fmt(s.haste)+' ('+fmt(s.cdr,1)+'% CDR)'], ['','Move speed',fmt(s.ms)],
+    // Base only: nothing in the shop sells attack range, so this is the champion's
+    // own. Melee or ranged rides on the champion card, where it has room to sit.
+    ['','Attack range',fmt(s.range)],
+    ['phys','Lethality',fmt(s.lethality)], ['magic','Magic pen',fmt(s.magicPen)+(s.magicPenPct?' +'+fmt(s.magicPenPct)+'%':'')],
+    ['','Life steal',fmt(s.lifesteal)+'%'], ['','Omnivamp',fmt(s.omnivamp)+'%'],
+    ['gap'],
+    ['phys','DPS (autos)',fmt(s.dps)],
+    ['magic','Ability combo',s.combo ? fmt(s.combo.total) : '—'],
+    ['hp','EHP vs physical',fmt(s.ehpPhys)], ['hp','EHP vs magic',fmt(s.ehpMag)],
+  ] : [];
+  $('statList').innerHTML = rows.map(r =>
+    r[0]==='gap' ? '<div class="gap"></div>'
+    : '<div class="stat '+r[0]+'"><span class="k">'+r[1]+'</span><span class="num">'+r[2]+'</span></div>'
+  ).join('');
+  $('statChamp').textContent = cur.champ && CHAMPS[cur.champ] ? CHAMPS[cur.champ].name+' · lvl '+level : '';
+}
+
+function renderAbilities(){
+  $('tgtArmor').value = target.armor;
+  $('tgtMr').value = target.mr;
+  $('abilPatch').textContent = ABILITY_PATCH ? 'ability data: patch ' + ABILITY_PATCH : '';
+  const area = $('abilArea');
+  if(!cur.champ){
+    area.innerHTML = '<div class="empty"><b>No champion yet</b>Ability damage shows up once you pick one.</div>';
+    return;
+  }
+  const ab = ABILITIES[cur.champ];
+  if(!ab){
+    area.innerHTML = '<div class="empty"><b>No ability data for this champion</b>'
+      + 'The snapshot could not resolve its formulas, so Combo damage falls back to the old burst index.</div>';
+    return;
+  }
+  const s = computeStats(cur, level);
+  const combo = s && s.combo;
+  let h = '';
+  ['q','w','e','r'].forEach(slot=>{
+    const sp = ab[slot];
+    const counted = (cur.combo || {})[slot] !== false;
+    const key = '<button class="abilkey' + (counted ? ' on' : '') + '" data-abil="' + slot + '"'
+      + ' aria-pressed="' + counted + '" title="' + (counted ? 'Counted in the rotation' : 'Not counted')
+      + '">' + slot.toUpperCase() + '</button>';
+    if(!sp){
+      h += '<div class="abilrow">' + key
+        + '<div class="abilname"><div class="nm">—</div><div class="sub">no damage in the snapshot</div></div>'
+        + '<div class="abildmg">—</div></div>';
+      return;
+    }
+    const cap = Math.min(maxRank(slot, level), sp.mr || 5);
+    const part = combo && combo.parts.find(x=>x.slot===slot);
+    const r = part ? part.rank : 0;
+    let picks = '';
+    for(let i=1;i<=(sp.mr||5);i++)
+      picks += '<button class="' + (r===i?'on':'') + '" data-rank="' + slot + ':' + i + '"'
+        + (i>cap?' disabled':'') + ' aria-label="Rank ' + i + '">' + i + '</button>';
+    const cls = sp.t==='magic' ? ' magic' : sp.t==='physical' ? ' phys' : '';
+    const note = !r ? (cap < 1 ? 'unlocks at level 6' : 'not levelled')
+      : Math.abs(part.raw - part.dmg) < 0.5 ? 'resists fully penetrated'
+      : fmt(part.raw) + ' before resists';
+    h += '<div class="abilrow' + (counted ? '' : ' off') + '">' + key
+      + '<div class="abilname"><div class="nm">' + esc(sp.n) + '</div>'
+      +   '<div class="sub">' + sp.t + ' damage' + (sp.c ? ' · ' + esc(sp.c) : '') + '</div>'
+      +   '<div class="rankpick">' + picks + '</div></div>'
+      + '<div class="abildmg' + cls + '">' + (r ? fmt(part.dmg) : '—')
+      +   '<span class="u">' + note + '</span></div>'
+      + '</div>';
+  });
+  const inCombo = combo ? combo.parts.filter(x=>x.counted && x.rank).length : 0;
+  h += '<div class="abiltot"><span>' + inCombo + (inCombo===1?' ability':' abilities')
+    + ' vs ' + fmt(target.armor) + ' armor / ' + fmt(target.mr) + ' MR'
+    + '<br><span style="font-size:12px">tap a letter to drop one out of the rotation</span></span>'
+    + '<span class="num">' + (combo ? fmt(combo.total) : '—') + '</span></div>';
+  area.innerHTML = h;
+}
+
+function renderPerfect(){
+  const list = $('perfList'), note = $('perfNote');
+  const names = Object.keys(PERFECT);
+  if(!names.length){
+    note.textContent = '';
+    list.innerHTML = '<div class="empty"><b>No table generated yet</b>'
+      + 'Run <code>node Apps/MOS/tools/gen-perfect.mjs</code> to solve every champion, then reload.</div>';
+    return;
+  }
+  const g = $('perfGoal').value;
+  const q = ($('perfQ').value || '').toLowerCase();
+  note.innerHTML = 'Solved at level ' + PERFECT_AT.level + ' against ' + PERFECT_AT.armor + ' armor / '
+    + PERFECT_AT.mr + ' MR with default rune shards — an optimum is only optimal for a situation. '
+    + 'Change level, target or shards in the Builder and press <b>Prove the optimum</b> to re-solve for those. '
+    + 'Scored on stats only, so item passives and keystones are not in it.';
+
+  const rows = names
+    .filter(c => CHAMPS[c] && PERFECT[c][g] && CHAMPS[c].name.toLowerCase().includes(q))
+    .map(c => ({c, r: PERFECT[c][g]}))
+    .sort((a, b) => b.r.s - a.r.s);
+
+  if(!rows.length){ list.innerHTML = '<div class="empty"><b>Nothing matches</b>Try a shorter search.</div>'; return; }
+  // Short labels: the full goal names wrap badly in a card this size.
+  const unit = {dps:'DPS', burst:'combo damage', tank:'effective HP', balanced:'balanced score'}[g];
+  list.innerHTML = '<div class="pgrid">' + rows.map(({c, r}, i) => {
+    const ch = CHAMPS[c];
+    return '<div class="pcard"><div class="top">'
+      + '<span class="rank">#' + (i + 1) + '</span>'
+      + '<img src="' + champImg(ch) + '" alt="">'
+      + '<div class="who"><div class="nm">' + esc(ch.name) + '</div>'
+      +   '<div class="sc">' + fmt(r.s) + ' <span>' + esc(unit) + '</span></div></div>'
+      + '<span class="badge' + (r.p ? ' ok' : '') + '">' + (r.p ? 'proven' : 'best found') + '</span>'
+      + '</div><div class="items">'
+      + r.i.map(id => ITEMS[id] ? '<img src="' + itemImg(ITEMS[id]) + '" alt="' + esc(ITEMS[id].name)
+          + '" title="' + esc(ITEMS[id].name) + '">' : '').join('')
+      + '</div><button class="linkbtn" data-perf="' + c + '">Open in Builder</button></div>';
+  }).join('') + '</div>';
+}
+
+function renderBuilds(){
+  const el = $('buildList');
+  if(!saved.length){
+    el.innerHTML = '<div class="empty"><b>No saved builds yet</b>Make a build on the Builder screen, name it, hit Save — it lands here.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="buildgrid">' + saved.map((b,i)=>{
+    const ch = CHAMPS[b.champ];
+    return '<div class="bcard"><div class="top">'
+      + (ch?'<img src="'+champImg(ch)+'" alt="">':'')
+      + '<div><div class="nm">'+esc(b.name||'Unnamed')+'</div><div class="ch">'+(ch?ch.name:'?')+'</div></div></div>'
+      + '<div class="items">'+ b.items.filter(Boolean).map(id=>ITEMS[id]?'<img src="'+itemImg(ITEMS[id])+'" alt="'+esc(ITEMS[id].name)+'" title="'+esc(ITEMS[id].name)+'">':'').join('') +'</div>'
+      + '<div class="acts"><button class="linkbtn" data-load="'+i+'">Open in Builder</button>'
+      + '<button class="linkbtn" data-dup="'+i+'">Duplicate</button>'
+      + '<button class="linkbtn del" data-del="'+i+'">Delete</button></div></div>';
+  }).join('') + '</div>';
+}
+
+function copyName(base){
+  let name = base, n = 2;
+  while(saved.some(b => b.name === name)) name = base + ' ' + n++;
+  return name;
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* The Browse screen gets the same categories as the picker, as a dropdown —
+   there's no room for a rail next to a full-width grid. */
+function fillBrowseCats(){
+  const sel = $('browseItemCat'), keep = sel.value;
+  const opt = (v,label,n) => '<option value="'+v+'">'+label+' ('+n+')</option>';
+  const list = pickItems();
+  const count = cat => itemsInCat(list.slice(), cat).length;
+  let h = '';
+  if(cur.champ) h += '<optgroup label="Recommended">'
+    + opt('rec', 'For '+esc(CHAMPS[cur.champ].name)+' — '+champLabel(), count('rec')) + '</optgroup>';
+  h += opt('all', 'All items, by category', list.length);
+  CAT_GROUPS.forEach(g => {
+    const rows = ITEM_CATS.filter(c => c.group===g).map(c => [c, count(c.key)]).filter(r => r[1] > 0);
+    if(!rows.length) return;
+    h += '<optgroup label="'+g+'">' + rows.map(r => opt(r[0].key, r[0].label, r[1])).join('') + '</optgroup>';
+  });
+  h += '<optgroup label="By class">'
+    + CLASS_ORDER.map(k => opt('class:'+k, k+' — '+CLASS_SETS[k].hint, count('class:'+k))).join('')
+    + '</optgroup>';
+  sel.innerHTML = h;
+  sel.value = keep && sel.querySelector('[value="'+keep.replace(/"/g,'')+'"]') ? keep : 'all';
+}
+
+function renderBrowse(){
+  const q = ($('browseQ').value||'').toLowerCase();
+  const cat = $('browseCat').value;
+  const catSel = $('browseItemCat');
+  if(cat==='items' && !catSel.options.length) fillBrowseCats();
+  catSel.hidden = cat!=='items';
+  if(cat!=='champs') browseChamp = null;   // the sheet belongs to the champion list
+  renderChampSheet();
+  let cells = [];
+  if(cat==='champs'){
+    cells = Object.values(CHAMPS).filter(c=>c.name.toLowerCase().includes(q))
+      .map(c=>'<button class="pick'+(browseChamp===c.id?' on':'')+'" data-champinfo="'+c.id+'">'
+        + '<img src="'+champImg(c)+'" alt="">'+c.name+'</button>');
+  }else if(cat==='items'){
+    const icat = catSel.value || 'all';
+    const base = pickItems().filter(p => p[1].name.toLowerCase().includes(q));
+    if(icat==='all'){
+      const h = groupedItemCells(base, false);
+      $('browseGrid').innerHTML = h || '<div class="empty" style="grid-column:1/-1"><b>Nothing matches</b>Try a shorter search.</div>';
+      return;
+    }
+    cells = itemsInCat(base, icat).map(p => itemCell(p, false));
+  }else if(cat==='spells'){
+    cells = Object.values(SPELLS).filter(s=>s.modes.includes('CLASSIC') && s.name.toLowerCase().includes(q))
+      .map(s=>'<div class="pick"><img src="'+spellImg(s)+'" alt="">'+s.name+'</div>');
+  }else{
+    RUNES.forEach(t=>t.slots.forEach(sl=>sl.runes.forEach(r=>{
+      if(r.name.toLowerCase().includes(q))
+        cells.push('<div class="pick"><img src="'+runeImg(r.icon)+'" alt="">'+r.name+'</div>');
+    })));
+  }
+  $('browseGrid').innerHTML = cells.join('') || '<div class="empty" style="grid-column:1/-1"><b>Nothing matches</b>Try a shorter search.</div>';
+}
+
+/* ---------- CHAMPION SHEET: base stats, straight from the champion ----------
+   No items, no runes — the champion on their own, which is the thing the
+   builder's Live stats panel can't show you once a build is in it. Columns are
+   level 1, your builder's current level, and 18, deduplicated so picking 18 on
+   the slider doesn't print the same column twice. */
+let browseChamp = null;
+
+const sheetLevels = () => [...new Set([1, level, 18])].sort((a,b) => a-b);
+
+function champStatsAt(id, lvl){
+  const b = CHAMPS[id].stats;
+  const grow = g(lvl);
+  return [
+    ['Health',        b.hp + b.hpperlevel*grow, 0],
+    ['Health regen',  b.hpregen + b.hpregenperlevel*grow, 1, 'per 5s'],
+    [b.mp ? 'Mana' : 'Resource', b.mp ? b.mp + b.mpperlevel*grow : null, 0],
+    ['Mana regen',    b.mp ? b.mpregen + b.mpregenperlevel*grow : null, 1, 'per 5s'],
+    // Riot's export has shipped attackdamageperlevel: 0 for the whole roster
+    // since at least 16.18, so this comes out flat. The dagger owns up to it,
+    // and disappears by itself the patch the export is fixed.
+    ['Attack damage' + (b.attackdamageperlevel ? '' : ' †'),
+     b.attackdamage + b.attackdamageperlevel*grow, 0],
+    ['Armor',         b.armor + b.armorperlevel*grow, 0],
+    ['Magic resist',  b.spellblock + b.spellblockperlevel*grow, 0],
+    ['Attack speed',  b.attackspeed * (1 + b.attackspeedperlevel*grow/100), 3],
+    ['Move speed',    b.movespeed, 0],
+    ['Attack range',  champAttackRange(id, lvl), 0],
+  ];
+}
+
+function renderChampSheet(){
+  const box = $('champSheet');
+  const ch = browseChamp && CHAMPS[browseChamp];
+  if(!ch){ box.innerHTML = ''; return; }
+  const lvls = sheetLevels();
+  const cols = lvls.map(l => champStatsAt(ch.id, l));
+  const rows = cols[0].map((r,i) => {
+    const cells = cols.map(c => c[i][1] == null ? '—' : fmt(c[i][1], c[i][2]));
+    // A stat that never moves says so once instead of repeating itself.
+    const flat = cells.every(v => v === cells[0]);
+    return '<tr><td>' + r[0] + (r[3] ? ' <span class="note" style="margin:0">'+r[3]+'</span>' : '') + '</td>'
+      + cells.map((v,ci) => '<td class="' + (!flat && ci === cells.length-1 ? 'win' : '') + '">' + v + '</td>').join('')
+      + '</tr>';
+  }).join('');
+  const info = ch.info || {};
+  box.innerHTML = '<div class="sheet">'
+    + '<div class="top">'
+    +   '<img src="'+champImg(ch)+'" alt="">'
+    +   '<div class="who"><div class="nm">'+esc(ch.name)+'</div>'
+    +     '<div class="ti">'+esc(ch.title)+' · '+ch.tags.join(' / ')+'</div>'
+    +     '<div class="ti">'+rangeKind(champAttackRange(ch.id, level))+' · '
+    +       fmt(champAttackRange(ch.id, level))+' range at level '+level
+    +       (rangeGrows(ch.id) ? ' (grows with level)' : '') + '</div>'
+    +     '<div class="acts"><button class="linkbtn" data-champload="'+ch.id+'">Open in Builder</button></div>'
+    +   '</div>'
+    +   '<button class="sclose" data-champclose="1" aria-label="Close champion sheet">✕</button>'
+    + '</div>'
+    + '<table class="cmp"><thead><tr><th></th>'
+    +   lvls.map(l => '<th>Level '+l+(l === level ? ' ★' : '')+'</th>').join('')
+    + '</tr></thead><tbody>'+rows+'</tbody></table>'
+    + '<p class="rate">Base stats only — no items, runes or masteries. '
+    +   'Riot rates them <b>'+(info.attack||0)+'</b> attack, <b>'+(info.defense||0)+'</b> defence, '
+    +   '<b>'+(info.magic||0)+'</b> magic, <b>'+(info.difficulty||0)+'</b> difficulty, out of 10. '
+    +   '★ is the level your builder is set to.'
+    +   (ch.stats.attackdamageperlevel ? '' :
+        ' <br>† Riot\'s data lists no attack damage growth for any champion this patch'
+        + ' (attackdamageperlevel is 0 across the roster), so attack damage here — and'
+        + ' everywhere else in Build Forge — is the level 1 value.')
+    +   '</p>'
+    + '</div>';
+}
+
+function renderCompare(){
+  const A=$('cmpA'), B=$('cmpB');
+  const opts = '<option value="">— pick a saved build —</option>' + saved.map((b,i)=>'<option value="'+i+'">'+esc(b.name||'Unnamed')+' ('+(CHAMPS[b.champ]?CHAMPS[b.champ].name:'?')+')</option>').join('');
+  const a0=A.value, b0=B.value;
+  A.innerHTML=opts; B.innerHTML=opts; A.value=a0; B.value=b0;
+  const out=$('cmpOut');
+  if(saved.length<2){ out.innerHTML='<div class="empty"><b>Need two saved builds</b>Save at least two builds, then compare them here.</div>'; return; }
+  if(A.value==='' || B.value===''){ out.innerHTML='<div class="empty"><b>Pick two builds above</b>Stats go head to head, best number in gold.</div>'; return; }
+  const ba=saved[A.value], bb=saved[B.value];
+  const sa=computeStats(ba, level), sb=computeStats(bb, level);
+  if(!sa||!sb){ out.innerHTML='<div class="empty"><b>One build has no champion</b></div>'; return; }
+  const rows=[['Health','hp'],['Attack damage','ad'],['Ability power','ap'],['Armor','armor'],['Magic resist','mr'],
+    ['Attack speed','as',2],['Crit chance','crit'],['Ability haste','haste'],['Move speed','ms'],
+    ['DPS (autos)','dps'],['Ability combo','combo'],['EHP physical','ehpPhys'],['EHP magic','ehpMag']];
+  out.innerHTML = '<table class="cmp"><thead><tr><th></th><th>'+esc(ba.name||'A')+'</th><th>'+esc(bb.name||'B')+'</th></tr></thead><tbody>'
+    + rows.map(([lbl,k,d])=>{
+      const va=k==='combo'?(sa.combo&&sa.combo.total):sa[k],
+            vb=k==='combo'?(sb.combo&&sb.combo.total):sb[k];
+      if(va==null&&vb==null) return '<tr><td>'+lbl+'</td><td>—</td><td>—</td></tr>';
+      return '<tr><td>'+lbl+'</td><td class="'+(va>vb?'win':'')+'">'+fmt(va,d||0)+'</td><td class="'+(vb>va?'win':'')+'">'+fmt(vb,d||0)+'</td></tr>';
+    }).join('')
+    + '</tbody></table><p class="note">Both builds computed at level '+level+' (set on the Builder screen).</p>';
+}
+
+/* Summoner's Rift purchasable items */
+function srItems(){
+  return Object.entries(ITEMS).filter(([id,it])=>
+    it.gold && it.gold.purchasable && it.maps && it.maps['11'] && it.gold.total>0 && !it.requiredAlly);
+}
+
+/* ---------- ITEM CATEGORIES: the shop's aisles ----------
+   Riot tags every item — Damage, CriticalStrike, SpellBlock, GoldPer — and the
+   in-game shop's left rail is really just those tags grouped by what they're
+   for. Same idea here. Two of the tags can't be trusted, so those categories
+   read the build tree instead, the same trick the optimizer uses:
+     · Boots — Gunmetal Greaves isn't tagged Boots, but it does build out of
+       Boots of Speed, and that can't be wrong.
+     · Support — Stormsurge is tagged GoldPer without being a support item, so
+       membership wants the Bounty of Worlds line, or GoldPer and Lane together.
+
+   One item sits in several categories (Infinity Edge is Damage + CriticalStrike),
+   which is what you want from a filter: click Critical strike and it's there.
+   The grouped view needs each item to have exactly one home instead, or the
+   list triples in length — `prio` decides that home, lowest first, so Infinity
+   Edge files under Critical strike and not the enormous Attack damage pile. */
+const hasTag = (it, ...t) => t.some(x => (it.tags || []).includes(x));
+const ITEM_CATS = [
+  {key:'ad',       group:'Attack',   prio:60, label:'Attack damage',    test:(id,it)=>hasTag(it,'Damage')},
+  {key:'crit',     group:'Attack',   prio:10, label:'Critical strike',  test:(id,it)=>hasTag(it,'CriticalStrike')},
+  {key:'as',       group:'Attack',   prio:40, label:'Attack speed',     test:(id,it)=>hasTag(it,'AttackSpeed')},
+  {key:'onhit',    group:'Attack',   prio:20, label:'On-hit effects',   test:(id,it)=>hasTag(it,'OnHit')},
+  {key:'armorpen', group:'Attack',   prio:25, label:'Armor penetration',test:(id,it)=>hasTag(it,'ArmorPenetration')},
+  {key:'vamp',     group:'Attack',   prio:35, label:'Life steal & vamp',test:(id,it)=>hasTag(it,'LifeSteal','SpellVamp')},
+  {key:'ap',       group:'Magic',    prio:55, label:'Ability power',    test:(id,it)=>hasTag(it,'SpellDamage')},
+  {key:'magicpen', group:'Magic',    prio:22, label:'Magic penetration',test:(id,it)=>hasTag(it,'MagicPenetration')},
+  {key:'mana',     group:'Magic',    prio:65, label:'Mana & regen',     test:(id,it)=>hasTag(it,'Mana','ManaRegen')},
+  {key:'haste',    group:'Magic',    prio:75, label:'Ability haste',    test:(id,it)=>hasTag(it,'AbilityHaste','CooldownReduction')},
+  {key:'hp',       group:'Defense',  prio:70, label:'Health & regen',   test:(id,it)=>hasTag(it,'Health','HealthRegen')},
+  {key:'armor',    group:'Defense',  prio:48, label:'Armor',            test:(id,it)=>hasTag(it,'Armor')},
+  {key:'mr',       group:'Defense',  prio:50, label:'Magic resist',     test:(id,it)=>hasTag(it,'SpellBlock','MagicResist')},
+  {key:'tenacity', group:'Defense',  prio:15, label:'Tenacity',         test:(id,it)=>hasTag(it,'Tenacity')},
+  {key:'boots',    group:'Movement', prio:1,  label:'Boots',            test:(id)=>isBoots(id)},
+  {key:'ms',       group:'Movement', prio:58, label:'Move speed',       test:(id,it)=>hasTag(it,'NonbootsMovement')},
+  {key:'support',  group:'Utility',  prio:2,  label:'Support & gold',   test:(id,it)=>optBuildsFrom(id,SUPPORT_ROOT) || (hasTag(it,'GoldPer') && hasTag(it,'Lane'))},
+  {key:'jungle',   group:'Utility',  prio:6,  label:'Jungle',           test:(id,it)=>hasTag(it,'Jungle')},
+  {key:'vision',   group:'Utility',  prio:4,  label:'Vision & consumables', test:(id,it)=>hasTag(it,'Vision','Consumable')},
+  {key:'active',   group:'Utility',  prio:80, label:'Actives',          test:(id,it)=>hasTag(it,'Active')},
+  {key:'other',    group:'Other',    prio:999,label:'Uncategorised',    test:()=>false},
+];
+const CAT_GROUPS = ['Attack','Magic','Defense','Movement','Utility','Other'];
+const CAT_BY_KEY = {};
+ITEM_CATS.forEach(c => CAT_BY_KEY[c.key] = c);
+
+const catKeyCache = {};
+function itemCatKeys(id){
+  if(catKeyCache[id]) return catKeyCache[id];
+  const it = ITEMS[id];
+  if(!it) return [];
+  const keys = ITEM_CATS.filter(c => c.test(id, it)).map(c => c.key);
+  return (catKeyCache[id] = keys.length ? keys : ['other']);
+}
+const primaryCat = id => itemCatKeys(id)
+  .reduce((best,k) => CAT_BY_KEY[k].prio < CAT_BY_KEY[best].prio ? k : best);
+
+/* ---------- CLASS SETS: what a champion like this one buys ----------
+   The shop's other axis. Riot's own per-champion recommendations shipped in
+   Data Dragon are empty these days (champion/Ashe.json → recommended: []), so
+   these are ours: a weight per item tag, and an item joins the set once it
+   scores `min`. `veto` throws out the near misses that happen to share a tag —
+   crit items are not mage items however much ability haste they carry.
+
+   Then range. Data Dragon does not flag melee-only items, so nothing here
+   pretends to know which ones they are; a champion's attack range only nudges
+   the ORDER of their recommended list, pushing crit and attack speed up for a
+   champion who shoots and health and resistances up for one who has to walk in. */
+const CLASS_SETS = {
+  Marksman:{hint:'crit, attack speed, on-hit', min:4, veto:['SpellDamage','GoldPer'],
+    w:{CriticalStrike:3, AttackSpeed:2, OnHit:2, LifeSteal:2, Damage:2, ArmorPenetration:1, NonbootsMovement:1}},
+  Mage:{hint:'power, penetration, haste', min:4, veto:['Damage','CriticalStrike','AttackSpeed','OnHit'],
+    w:{SpellDamage:3, MagicPenetration:2, AbilityHaste:2, Mana:1, ManaRegen:1, Health:1}},
+  Assassin:{hint:'penetration and burst', min:4, veto:['CriticalStrike','AttackSpeed','GoldPer'],
+    w:{ArmorPenetration:3, MagicPenetration:2, Damage:2, SpellDamage:2, NonbootsMovement:1, AbilityHaste:1}},
+  Fighter:{hint:'damage that survives the fight', min:5, veto:['GoldPer','SpellDamage'],
+    w:{Damage:2, Health:2, LifeSteal:2, OnHit:2, AttackSpeed:1, AbilityHaste:1, Armor:1, SpellBlock:1}},
+  Tank:{hint:'health and resistances', min:3, veto:['CriticalStrike','ArmorPenetration'],
+    w:{Health:2, Armor:2, SpellBlock:2, MagicResist:2, HealthRegen:1, Tenacity:1, Aura:1, Mana:1, Slow:1}},
+  Support:{hint:'gold income, auras, actives', min:4, veto:['CriticalStrike','ArmorPenetration','AttackSpeed'],
+    w:{GoldPer:4, Vision:2, Active:2, Aura:2, AbilityHaste:1, Health:1, SpellBlock:1, Armor:1, ManaRegen:1, HealthRegen:1}},
+};
+const CLASS_ORDER = ['Marksman','Mage','Assassin','Fighter','Tank','Support'];
+const RANGE_BIAS = {
+  ranged:{CriticalStrike:2, AttackSpeed:1, NonbootsMovement:1, LifeSteal:1},
+  melee: {Health:1, Armor:1, SpellBlock:1, Tenacity:1, LifeSteal:1},
+};
+
+function classFit(it, key){
+  const c = CLASS_SETS[key];
+  if(!c || !it) return 0;
+  const tags = it.tags || [];
+  if(c.veto.some(v => tags.includes(v))) return 0;
+  let s = 0;
+  for(const t in c.w) if(tags.includes(t)) s += c.w[t];
+  return s >= c.min ? s : 0;
+}
+const champClasses = () => (CHAMPS[cur.champ] ? CHAMPS[cur.champ].tags : []);
+// Nothing in the roster attacks from between 325 and 425 units, so 400 splits
+// melee from ranged without having to name anybody.
+const rangeKind = r => r >= 400 ? 'ranged' : 'melee';
+// Level matters here: Kayle is a melee champion until 6 and a ranged one after.
+const champRange = () => !CHAMPS[cur.champ] ? null : rangeKind(champAttackRange(cur.champ, level));
+function recFit(id){
+  const it = ITEMS[id];
+  if(!it) return 0;
+  let best = 0;
+  for(const k of champClasses()) best = Math.max(best, classFit(it, k));
+  if(!best) return 0;
+  const bias = RANGE_BIAS[champRange()] || {};
+  for(const t in bias) if((it.tags || []).includes(t)) best += bias[t];
+  return best;
+}
+const champLabel = () => !CHAMPS[cur.champ] ? ''
+  : champRange() + ' ' + champClasses().join('/').toLowerCase();
+
+/* One copy of each Rift item. srItems() hands back 26 duplicate names because
+   Riot ships an Arena / Swarm / Brawl copy of many items under its own long id;
+   keep the lowest, which is the Rift original. */
+function pickItems(){
+  const byName = {};
+  srItems().forEach(pair => {
+    if(+pair[0] >= 10000) return;
+    const prev = byName[pair[1].name];
+    if(!prev || +pair[0] < +prev[0]) byName[pair[1].name] = pair;
+  });
+  return Object.values(byName);
+}
+
+const byGold = (a,b) => b[1].gold.total - a[1].gold.total;
+/* `cat` is 'all', a category key, 'class:<Name>', or 'rec' for this champion. */
+function itemsInCat(list, cat){
+  if(cat === 'rec')
+    return list.filter(p => recFit(p[0]) > 0).sort((a,b)=> recFit(b[0]) - recFit(a[0]) || byGold(a,b));
+  if(cat.slice(0,6) === 'class:'){
+    const k = cat.slice(6);
+    return list.filter(p => classFit(p[1], k) > 0).sort((a,b)=> classFit(b[1],k) - classFit(a[1],k) || byGold(a,b));
+  }
+  if(cat !== 'all') return list.filter(p => itemCatKeys(p[0]).includes(cat)).sort(byGold);
+  return list.sort(byGold);
+}
+
+const itemCell = (pair, pick) =>
+  (pick ? '<button class="pick" data-pick="'+pair[0]+'">' : '<div class="pick">')
+  + '<img src="'+itemImg(pair[1])+'" alt="">' + esc(pair[1].name)
+  + '<div class="gold">'+pair[1].gold.total+'g</div>'
+  + (pick ? '</button>' : '</div>');
+
+/* The categorised variation: every item under its one home category. */
+function groupedItemCells(list, pick){
+  const bins = {};
+  list.sort(byGold).forEach(p => {
+    const k = primaryCat(p[0]);
+    (bins[k] = bins[k] || []).push(p);
+  });
+  let h = '';
+  CAT_GROUPS.forEach(g => ITEM_CATS.filter(c => c.group === g).forEach(c => {
+    const items = bins[c.key];
+    if(!items || !items.length) return;
+    h += '<div class="cathead">'+c.label+' <span class="n">'+items.length+'</span></div>'
+       + items.map(p => itemCell(p, pick)).join('');
+  }));
+  return h;
+}
+
+/* ---------- MODAL picker ---------- */
+let modalMode=null, modalSlot=0, modalFilter='completed', modalCat='all';
+function openModal(mode, slot){
+  modalMode=mode; modalSlot=slot; modalFilter = mode==='item' ? 'completed' : 'all';
+  if(mode==='item' && modalCat==='rec' && !cur.champ) modalCat='all';   // champion was cleared
+  $('mTitle').textContent = mode==='champ'?'Pick a champion': mode==='item'?'Pick an item':'Pick a summoner spell';
+  $('mSearch').value='';
+  $('mFilters').innerHTML = mode==='item'
+    ? ['completed','components','all'].map(f=>'<button class="chip'+(f===modalFilter?' on':'')+'" data-filter="'+f+'">'+f[0].toUpperCase()+f.slice(1)+'</button>').join('')
+    : '';
+  $('mCols').classList.toggle('norail', mode!=='item');
+  if(mode!=='item') $('mRail').innerHTML='';
+  fillModal();
+  $('modal').classList.add('on');
+  $('mSearch').focus();
+}
+function closeModal(){ $('modal').classList.remove('on'); modalMode=null; }
+
+/* The rail down the left: every category, with how many items are in it right
+   now. Counts follow the search box as well as the Completed/Components chips,
+   so typing "hydra" turns the rail into an index of where the matches are. */
+function renderRail(base){
+  const count = cat => itemsInCat(base.slice(), cat).length;
+  const btn = (cat, label, n, extra) =>
+    '<button class="catbtn'+(extra||'')+(modalCat===cat?' on':'')+'" data-icat="'+cat+'">'
+    + label + '<span class="n">'+n+'</span></button>';
+  let h = '';
+  if(cur.champ)
+    h += '<div class="grp">Recommended</div>' + btn('rec', 'For '+esc(CHAMPS[cur.champ].name), count('rec'), ' rec');
+  h += '<div class="grp">Everything</div>' + btn('all', 'All items', base.length);
+  CAT_GROUPS.forEach(g => {
+    const rows = ITEM_CATS.filter(c => c.group===g).map(c => [c, count(c.key)]).filter(r => r[1] > 0);
+    if(!rows.length) return;
+    h += '<div class="grp">'+g+'</div>' + rows.map(r => btn(r[0].key, r[0].label, r[1])).join('');
+  });
+  h += '<div class="grp">By class</div>'
+     + CLASS_ORDER.map(k => btn('class:'+k, k, count('class:'+k))).join('');
+  $('mRail').innerHTML = h;
+}
+
+function catNote(){
+  if(modalCat==='rec' && cur.champ)
+    return '<div class="catnote"><b>'+esc(CHAMPS[cur.champ].name)+'</b> is a '+champLabel()
+      + ', so this is the ' + champClasses().join(' + ') + ' set, ordered for a '+champRange()
+      + ' champion. Scored from Riot’s item tags and the champion’s class — Riot’s own'
+      + ' recommendations ship empty in Data Dragon, so nothing here is their list.</div>';
+  if(modalCat.slice(0,6)==='class:'){
+    const k = modalCat.slice(6);
+    return '<div class="catnote"><b>'+k+'</b> — '+CLASS_SETS[k].hint
+      + '. Scored from item tags, so treat it as the shop aisle a '+k.toLowerCase()
+      + ' walks down first, not a build guide.</div>';
+  }
+  if(modalCat!=='all')
+    return '<div class="catnote">Everything carrying the <b>'+CAT_BY_KEY[modalCat].label.toLowerCase()
+      + '</b> tag. Items sit in more than one category, so you’ll meet these again elsewhere.</div>';
+  return '';
+}
+
+function fillModal(){
+  const q = $('mSearch').value.toLowerCase();
+  let h='';
+  if(modalMode==='champ'){
+    h = Object.values(CHAMPS).filter(c=>c.name.toLowerCase().includes(q))
+      .map(c=>'<button class="pick" data-pick="'+c.id+'"><img src="'+champImg(c)+'" alt="">'+c.name+'</button>').join('');
+  }else if(modalMode==='item'){
+    const base = pickItems().filter(p => {
+      const completed = !p[1].into || p[1].into.length===0;
+      if(modalFilter==='completed' && !completed) return false;
+      if(modalFilter==='components' && completed) return false;
+      return p[1].name.toLowerCase().includes(q);
+    });
+    renderRail(base);
+    const shown = itemsInCat(base.slice(), modalCat);
+    h = modalCat==='all' ? groupedItemCells(shown, true) : shown.map(p => itemCell(p, true)).join('');
+    if(h) h += catNote();
+    else h = '<div class="empty" style="grid-column:1/-1"><b>Nothing matches here</b>'
+      + (base.length
+          ? base.length+' item'+(base.length===1?'':'s')+' match'+(base.length===1?'es':'')+' in other categories. '
+            + '<button class="linkbtn" data-icat="all">Show all categories</button>'
+          : 'Try a shorter search.')
+      + '</div>';
+  }else if(modalMode==='spell'){
+    h = Object.values(SPELLS).filter(s=>s.modes.includes('CLASSIC') && s.name.toLowerCase().includes(q))
+      .map(s=>'<button class="pick" data-pick="'+s.id+'"><img src="'+spellImg(s)+'" alt="">'+s.name+'</button>').join('');
+  }
+  $('mGrid').innerHTML = h || '<div class="empty" style="grid-column:1/-1"><b>Nothing matches</b></div>';
+}
+/* ---------- EVENTS ---------- */
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-go],[data-slot],[data-spell],[data-clear],[data-pick],[data-filter],[data-icat],[data-champinfo],[data-champclose],[data-champload],[data-ptree],[data-stree],[data-prune],[data-srune],[data-shard],[data-load],[data-del],[data-optapply],[data-optdismiss],[data-rank],[data-abil],[data-dup],[data-perf]');
+  if(!t) return;
+  const d = t.dataset;
+  if(d.go){ switchScreen(d.go); }
+  else if(d.clear !== undefined){ e.stopPropagation(); cur.items[+d.clear]=null; touch(); }
+  else if(d.slot !== undefined){ openModal('item', +d.slot); }
+  else if(d.spell !== undefined){ openModal('spell', +d.spell); }
+  else if(d.filter){ modalFilter=d.filter; $('mFilters').querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.filter===d.filter)); fillModal(); }
+  else if(d.icat){ modalCat=d.icat; fillModal(); $('mCols').querySelector('.mbody').scrollTop=0; }
+  else if(d.champinfo){
+    browseChamp = browseChamp === d.champinfo ? null : d.champinfo;   // click again to close
+    renderBrowse();
+    if(browseChamp) $('champSheet').scrollIntoView({block:'nearest'});
+  }
+  else if(d.champclose){ browseChamp = null; renderBrowse(); }
+  else if(d.champload){ cur.champ = d.champload; switchScreen('builder'); touch(); }
+  else if(d.pick){
+    if(modalMode==='champ') cur.champ = d.pick;
+    else if(modalMode==='item') cur.items[modalSlot] = d.pick;
+    else if(modalMode==='spell') cur.spells[modalSlot] = d.pick;
+    closeModal(); touch();
+  }
+  else if(d.ptree){ const id=+d.ptree; if(cur.primaryTree!==id){ cur.primaryTree=id; cur.keystone=null; cur.primary=[null,null,null]; if(cur.secondaryTree===id){cur.secondaryTree=null; cur.secondary=[null,null];} } touch(); }
+  else if(d.stree){ const id=+d.stree; if(cur.secondaryTree!==id){ cur.secondaryTree=id; cur.secondary=[null,null]; } touch(); }
+  else if(d.prune){ const [si,rid]=d.prune.split(':').map(Number); if(si===0) cur.keystone=rid; else cur.primary[si-1]=rid; touch(); }
+  else if(d.srune){ const rid=+d.srune;
+    if(cur.secondary.includes(rid)) cur.secondary = cur.secondary.map(x=>x===rid?null:x);
+    else { const i = cur.secondary.indexOf(null); if(i>=0) cur.secondary[i]=rid; else cur.secondary=[cur.secondary[1],rid]; }
+    touch(); }
+  else if(d.shard){ const [ri,si]=d.shard.split(':').map(Number); cur.shards[ri]=si; touch(); }
+  else if(d.load !== undefined){ cur = JSON.parse(JSON.stringify(saved[+d.load])); switchScreen('builder'); touch(); }
+  else if(d.dup !== undefined){
+    const copy = JSON.parse(JSON.stringify(saved[+d.dup]));
+    copy.name = copyName((copy.name || 'Unnamed') + ' copy');
+    saved.splice(+d.dup + 1, 0, copy);   // sit next to the original, not at the end
+    persist(); renderBuilds(); renderCompare();
+  }
+  else if(d.del !== undefined){ saved.splice(+d.del,1); persist(); renderBuilds(); renderCompare(); }
+  else if(d.optapply){ if(optResult){ cur.items = optResult.items.slice(); optResult=null; $('optOut').innerHTML=''; touch(); } }
+  else if(d.optdismiss){ optResult=null; $('optOut').innerHTML=''; }
+  else if(d.rank){ const [slot,r]=d.rank.split(':'); cur.ranks[slot]=+r; touch(); }
+  else if(d.abil){ cur.combo[d.abil] = cur.combo[d.abil] === false; touch(); }
+  else if(d.perf){
+    const rec = PERFECT[d.perf] && PERFECT[d.perf][$('perfGoal').value];
+    if(rec){
+      cur = blankBuild();
+      cur.champ = d.perf;
+      cur.items = rec.i.slice();
+      level = PERFECT_AT.level; $('lvl').value = level;
+      goal = $('perfGoal').value; $('goal').value = goal;
+      switchScreen('builder'); touch(); renderStats();
+    }
+  }
+});
+$('champBtn').addEventListener('click', ()=>openModal('champ'));
+$('champBtn2').addEventListener('click', ()=>openModal('champ'));
+$('mClose').addEventListener('click', closeModal);
+$('modal').addEventListener('click', e=>{ if(e.target===$('modal')) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+$('mSearch').addEventListener('input', fillModal);
+// renderChamp too: Tristana's and Kayle's range on the card moves with the slider.
+$('lvl').addEventListener('input', e=>{ level=+e.target.value; renderChamp(); renderAbilities(); renderStats(); persist(); });
+$('goal').addEventListener('change', e=>{ goal=e.target.value; renderStats(); persist(); });
+['tgtArmor','tgtMr'].forEach(id=>$(id).addEventListener('input', e=>{
+  const v = Math.max(0, Math.min(500, +e.target.value || 0));
+  if(id==='tgtArmor') target.armor = v; else target.mr = v;
+  persist(); renderAbilities(); renderStats();
+}));
+$('exactBtn').addEventListener('click', ()=>{
+  const btn = $('exactBtn');
+  if(!cur.champ){
+    $('optOut').innerHTML = '<div class="empty"><b>Pick a champion first</b>The search scores items against a champion\'s base stats.</div>';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Proving…';
+  setTimeout(()=>{
+    try{ optRender(exactRun()); }
+    finally{ btn.disabled = false; btn.textContent = 'Prove the optimum'; }
+  }, 20);
+});
+$('optBtn').addEventListener('click', ()=>{
+  const btn = $('optBtn');
+  if(!cur.champ){
+    $('optOut').innerHTML = '<div class="empty"><b>Pick a champion first</b>The optimizer scores items against a champion\'s base stats, so it needs one.</div>';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Searching…';
+  // Let the button repaint before the search blocks the thread.
+  setTimeout(()=>{
+    try{ optRender(optRun()); }
+    finally{ btn.disabled = false; btn.textContent = 'Propose a build'; }
+  }, 20);
+});
+$('browseQ').addEventListener('input', renderBrowse);
+$('browseCat').addEventListener('change', renderBrowse);
+$('browseItemCat').addEventListener('change', renderBrowse);
+$('perfQ').addEventListener('input', renderPerfect);
+$('perfGoal').addEventListener('change', renderPerfect);
+$('cmpA') && $('cmpA').addEventListener('change', renderCompare);
+$('cmpB').addEventListener('change', renderCompare);
+$('saveBtn').addEventListener('click', ()=>{
+  if(!cur.champ){ $('buildName').placeholder='Pick a champion first'; return; }
+  const name = $('buildName').value.trim() || (CHAMPS[cur.champ].name+' build');
+  const copy = JSON.parse(JSON.stringify(cur)); copy.name=name;
+  saved.push(copy); persist();
+  $('buildName').value='';
+  $('saveBtn').textContent='Saved ✓';
+  setTimeout(()=>{ $('saveBtn').textContent='Save'; }, 1200);
+  renderBuilds(); renderCompare();
+});
+
+function switchScreen(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.go===id));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id==='scr-'+id));
+  if(id==='builds') renderBuilds();
+  if(id==='browse'){ fillBrowseCats(); renderBrowse(); }   // counts follow the champion
+  if(id==='compare') renderCompare();
+  if(id==='perfect') renderPerfect();
+}
+function touch(){ persist(); renderChamp(); renderItems(); renderSpells(); renderRunes(); renderAbilities(); renderStats(); }
+
+boot();
+</script>
+</body>
+</html>

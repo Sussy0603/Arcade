@@ -1,0 +1,22 @@
+# Per-machine and per-editor state. None of it belongs to the arcade, all of
+# it is rewritten constantly, and none of it means anything on another
+# machine.
+#
+# The Android project under apps/ carries its own .gitignore for its build
+# output (~180MB of compiled classes and Gradle caches). This file is only
+# for the things that turn up loose anywhere in the folder.
+
+# IntelliJ / Android Studio project state, wherever it lands — including
+# inside a game folder, which is how it got here.
+.idea/
+*.iml
+
+# Windows and macOS file-browser droppings.
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editors
+.vscode/
+*.swp
+*~

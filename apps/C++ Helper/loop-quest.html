@@ -1,0 +1,1099 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{ color-scheme: light dark; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body{ margin:0; }
+  img{ max-width:100%; }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<title>Loop Quest</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root{
+    --paper:#F3EEE3;
+    --card:#FFFCF6;
+    --card-2:#FAF5EA;
+    --ink:#2B2621;
+    --ink-soft:#6E655A;
+    --ink-faint:#9A9084;
+    --rule:#E0D6C4;
+    --pine:#2C6A50;
+    --pine-ink:#1F4E3A;
+    --pine-soft:#E2EEE6;
+    --amber:#B57614;
+    --amber-soft:#F6EBD2;
+    --rose:#9E3F3F;
+    --rose-soft:#F6E4E1;
+    --shadow:0 1px 0 rgba(43,38,33,.05), 0 6px 18px -12px rgba(43,38,33,.35);
+    --r:14px;
+    --f-disp:"Fraunces",Georgia,"Times New Roman",serif;
+    --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+    --f-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#1E1B17;
+      --card:#28241F;
+      --card-2:#302B25;
+      --ink:#F2EADB;
+      --ink-soft:#AFA495;
+      --ink-faint:#7E7568;
+      --rule:#3C352D;
+      --pine:#79C79C;
+      --pine-ink:#A7DDC0;
+      --pine-soft:#23332A;
+      --amber:#E2B15E;
+      --amber-soft:#34291A;
+      --rose:#E58F8B;
+      --rose-soft:#38241F;
+      --shadow:0 1px 0 rgba(0,0,0,.2), 0 8px 22px -14px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#1E1B17; --card:#28241F; --card-2:#302B25;
+    --ink:#F2EADB; --ink-soft:#AFA495; --ink-faint:#7E7568; --rule:#3C352D;
+    --pine:#79C79C; --pine-ink:#A7DDC0; --pine-soft:#23332A;
+    --amber:#E2B15E; --amber-soft:#34291A;
+    --rose:#E58F8B; --rose-soft:#38241F;
+    --shadow:0 1px 0 rgba(0,0,0,.2), 0 8px 22px -14px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--f-body); font-size:16px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--f-disp); font-weight:700; line-height:1.2; text-wrap:balance; margin:0}
+  button{font-family:inherit; font-size:inherit; cursor:pointer}
+  :focus-visible{outline:3px solid var(--amber); outline-offset:2px; border-radius:6px}
+
+  .wrap{max-width:1180px; margin:0 auto; padding-inline:16px; padding-block:0 48px}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex; flex-wrap:wrap; gap:16px 24px; align-items:center;
+    justify-content:space-between;
+    padding-block:20px 18px; border-bottom:1px solid var(--rule); margin-bottom:24px;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px}
+  .brand .mark{
+    font-family:var(--f-mono); font-weight:700; color:var(--pine);
+    background:var(--pine-soft); border-radius:8px; padding:2px 8px; font-size:15px;
+  }
+  .brand h1{font-size:25px; letter-spacing:-.01em}
+  .brand .sub{font-size:13px; color:var(--ink-faint); margin-left:2px}
+
+  .lvlbox{display:flex; align-items:center; gap:14px; min-width:260px; flex:1 1 260px; max-width:420px}
+  .lvlbadge{
+    flex:none; width:46px; height:46px; border-radius:50%;
+    display:grid; place-items:center; text-align:center;
+    background:var(--pine); color:#FFFCF6;
+    font-family:var(--f-disp); font-weight:700; font-size:19px;
+    box-shadow:var(--shadow);
+  }
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lvlbadge{color:#1E1B17}}
+  :root[data-theme="dark"] .lvlbadge{color:#1E1B17}
+  .lvlmeta{flex:1 1 auto; min-width:0}
+  .lvlmeta .row{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; color:var(--ink-soft)}
+  .lvlmeta .row strong{color:var(--ink); font-variant-numeric:tabular-nums}
+  .xptrack{height:9px; background:var(--card-2); border:1px solid var(--rule); border-radius:99px; overflow:hidden; margin-top:5px}
+  .xpfill{height:100%; width:0%; background:var(--amber); border-radius:99px; transition:width .45s ease}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid; grid-template-columns:274px minmax(0,1fr); gap:28px; align-items:start}
+  @media (max-width:860px){ .layout{grid-template-columns:minmax(0,1fr)} }
+
+  .rail{display:flex; flex-direction:column; gap:20px; position:sticky; top:env(safe-area-inset-top, 0px)}
+  @media (max-width:860px){ .rail{position:static} }
+
+  .tabs{display:flex; gap:4px; background:var(--card-2); border:1px solid var(--rule); border-radius:11px; padding:4px}
+  .tabs button{
+    flex:1; border:0; background:none; color:var(--ink-soft);
+    padding:8px 4px; border-radius:8px; font-size:13.5px; font-weight:700;
+  }
+  .tabs button[aria-selected="true"]{background:var(--card); color:var(--ink); box-shadow:var(--shadow)}
+
+  .railhead{font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); font-weight:700}
+
+  .ladder{list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column}
+  .ladder li{position:relative; padding-left:0}
+  .ladder .stem{
+    position:absolute; left:19px; top:0; bottom:0; width:2px; background:var(--rule);
+  }
+  .ladder li:first-child .stem{top:24px}
+  .ladder li:last-child .stem{bottom:auto; height:24px}
+  .node{
+    display:flex; gap:12px; align-items:flex-start; width:100%; text-align:left;
+    background:none; border:0; padding:10px 8px; border-radius:11px; position:relative;
+  }
+  .node:hover:not(:disabled){background:var(--card)}
+  .node:disabled{cursor:default}
+  .ring{flex:none; width:38px; height:38px; position:relative; z-index:1}
+  .ring svg{display:block; transform:rotate(-90deg)}
+  .ring .track{fill:var(--paper); stroke:var(--rule); stroke-width:3}
+  .ring .prog{fill:none; stroke:var(--pine); stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .5s ease}
+  .ring .glyph{
+    position:absolute; inset:0; display:grid; place-items:center;
+    font-size:12px; font-weight:700; color:var(--pine-ink); font-variant-numeric:tabular-nums;
+  }
+  .node.locked .ring .glyph{color:var(--ink-faint)}
+  .nodetext{min-width:0; padding-top:2px}
+  .nodetext .t{font-weight:700; font-size:14.5px; line-height:1.3}
+  .nodetext .d{font-size:12.5px; color:var(--ink-faint); line-height:1.4}
+  .node.active{background:var(--card); box-shadow:var(--shadow)}
+  .node.active .nodetext .t{color:var(--pine-ink)}
+  .node.locked .nodetext .t{color:var(--ink-soft)}
+
+  .ghostbtn{
+    background:none; border:1px solid var(--rule); color:var(--ink-soft);
+    padding:8px 12px; border-radius:9px; font-size:13px; align-self:flex-start;
+  }
+  .ghostbtn:hover{color:var(--ink); border-color:var(--ink-faint)}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--card); border:1px solid var(--rule); border-radius:var(--r); box-shadow:var(--shadow)}
+  .pad{padding:24px}
+  @media (max-width:520px){ .pad{padding:18px} }
+
+  .welcome{
+    background:var(--pine-soft); border:1px solid var(--rule); border-radius:var(--r);
+    padding:18px 20px; margin-bottom:20px; display:flex; gap:16px; align-items:flex-start;
+  }
+  .welcome p{margin:4px 0 0; font-size:14px; color:var(--ink-soft); max-width:60ch}
+  .welcome h2{font-size:18px; color:var(--pine-ink)}
+  .welcome button{
+    flex:none; margin-left:auto; background:none; border:1px solid var(--pine);
+    color:var(--pine-ink); border-radius:8px; padding:6px 12px; font-size:13px; font-weight:700;
+  }
+
+  .chalhead{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px}
+  .chip{
+    font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    padding:4px 10px; border-radius:99px; background:var(--card-2);
+    color:var(--ink-soft); border:1px solid var(--rule); font-variant-numeric:tabular-nums;
+  }
+  .chip.done{background:var(--pine-soft); color:var(--pine-ink); border-color:transparent}
+  .chip.tag{background:var(--amber-soft); color:var(--amber); border-color:transparent}
+
+  .qprompt{font-family:var(--f-disp); font-size:21px; font-weight:500; margin:0 0 16px; max-width:36ch; line-height:1.35}
+
+  pre.code{
+    margin:0 0 20px; background:var(--card-2); border:1px solid var(--rule);
+    border-left:3px solid var(--pine); border-radius:10px;
+    padding:16px 18px; overflow-x:auto;
+    font-family:var(--f-mono); font-size:14px; line-height:1.75; tab-size:4;
+  }
+  pre.code code{font:inherit}
+  .c-kw{color:var(--pine-ink); font-weight:700}
+  .c-str{color:var(--amber)}
+  .c-num{color:var(--rose)}
+  .c-com{color:var(--ink-faint); font-style:italic}
+
+  .choices{display:grid; gap:9px; margin-bottom:4px}
+  @media (min-width:700px){ .choices.two{grid-template-columns:1fr 1fr} }
+  .choice{
+    display:flex; gap:12px; align-items:flex-start; text-align:left; width:100%;
+    background:var(--card); border:1.5px solid var(--rule); border-radius:11px;
+    padding:12px 14px; color:var(--ink); transition:border-color .15s, background .15s;
+  }
+  .choice:hover:not(:disabled){border-color:var(--pine); background:var(--pine-soft)}
+  .choice:disabled{cursor:default}
+  .choice .key{
+    flex:none; width:22px; height:22px; border-radius:6px; display:grid; place-items:center;
+    background:var(--card-2); border:1px solid var(--rule);
+    font-family:var(--f-mono); font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-top:1px;
+  }
+  .choice .val{min-width:0; flex:1}
+  .choice .val.mono{font-family:var(--f-mono); font-size:13.5px; white-space:pre-line; line-height:1.6}
+  .choice.right{border-color:var(--pine); background:var(--pine-soft)}
+  .choice.right .key{background:var(--pine); color:var(--card); border-color:transparent}
+  .choice.wrong{border-color:var(--rose); background:var(--rose-soft)}
+  .choice.wrong .key{background:var(--rose); color:var(--card); border-color:transparent}
+  .choice.dim{opacity:.5}
+
+  .note{border-radius:11px; padding:14px 16px; margin-top:16px; font-size:14.5px; line-height:1.65}
+  .note h3{font-family:var(--f-body); font-size:12px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:5px}
+  .note p{margin:0; max-width:62ch}
+  .note.hint{background:var(--amber-soft); border:1px solid var(--rule)}
+  .note.hint h3{color:var(--amber)}
+  .note.why{background:var(--pine-soft); border:1px solid var(--rule)}
+  .note.why h3{color:var(--pine-ink)}
+  .note.miss{background:var(--rose-soft); border:1px solid var(--rule)}
+  .note.miss h3{color:var(--rose)}
+
+  .chalfoot{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:20px; padding-top:18px; border-top:1px solid var(--rule)}
+  .btn{border:1.5px solid var(--rule); background:var(--card); color:var(--ink); border-radius:10px; padding:10px 16px; font-weight:700; font-size:14px}
+  .btn:hover{border-color:var(--ink-faint)}
+  .btn.primary{background:var(--pine); border-color:var(--pine); color:#FFFCF6}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#1E1B17}}
+  :root[data-theme="dark"] .btn.primary{color:#1E1B17}
+  .btn.primary:hover{filter:brightness(1.07)}
+  .xpgain{margin-left:auto; font-family:var(--f-disp); font-weight:700; color:var(--pine-ink); font-size:16px; font-variant-numeric:tabular-nums}
+
+  .dots{display:flex; flex-wrap:wrap; gap:6px; margin-top:22px}
+  .dot{
+    width:24px; height:24px; border-radius:7px; border:1.5px solid var(--rule);
+    background:var(--card-2); font-family:var(--f-mono); font-size:10.5px; color:var(--ink-faint);
+    display:grid; place-items:center; padding:0;
+  }
+  .dot:hover{border-color:var(--pine)}
+  .dot.done{background:var(--pine); border-color:var(--pine); color:var(--card)}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .dot.done{color:#1E1B17}}
+  :root[data-theme="dark"] .dot.done{color:#1E1B17}
+  .dot.here{border-color:var(--amber); border-width:2.5px; color:var(--ink)}
+
+  /* ---------- lesson ---------- */
+  .lesson h2{font-size:26px; margin-bottom:6px}
+  .lesson .lede{color:var(--ink-soft); font-size:15px; margin:0 0 26px; max-width:60ch}
+  .lesson h3{font-family:var(--f-disp); font-size:18px; margin:26px 0 8px}
+  .lesson p{margin:0 0 10px; max-width:62ch}
+  .lesson ul{margin:0 0 10px; padding-left:20px; max-width:62ch}
+  .lesson li{margin-bottom:7px}
+  .lesson code{font-family:var(--f-mono); font-size:.92em; background:var(--card-2); border:1px solid var(--rule); border-radius:5px; padding:1px 5px}
+  .anatomy{
+    background:var(--card-2); border:1px solid var(--rule); border-radius:10px; padding:18px;
+    font-family:var(--f-mono); font-size:14px; line-height:2.1; overflow-x:auto; margin-bottom:8px;
+  }
+  .anatomy .part{border-bottom:2.5px solid; padding-bottom:1px}
+  .anatomy .p1{border-color:var(--pine)}
+  .anatomy .p2{border-color:var(--amber)}
+  .anatomy .p3{border-color:var(--rose)}
+  .legend{display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; color:var(--ink-soft); margin-bottom:18px}
+  .legend span{display:flex; align-items:center; gap:7px}
+  .legend i{width:14px; height:3px; border-radius:2px; display:block}
+  .trap{display:flex; gap:12px; padding:12px 0; border-top:1px solid var(--rule)}
+  .trap .n{flex:none; font-family:var(--f-mono); font-weight:700; color:var(--rose); font-size:13px; padding-top:3px}
+  .trap div p{margin:0}
+  .trap .fix{font-size:13.5px; color:var(--ink-soft); margin-top:3px !important}
+
+  /* ---------- stats ---------- */
+  .stats h2{font-size:26px; margin-bottom:22px}
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:12px; margin-bottom:28px}
+  .tile{background:var(--card-2); border:1px solid var(--rule); border-radius:11px; padding:14px 16px}
+  .tile .k{font-size:11.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-faint); font-weight:700}
+  .tile .v{font-family:var(--f-disp); font-size:29px; font-weight:700; line-height:1.15; margin-top:4px; font-variant-numeric:tabular-nums}
+  .tile .v small{font-size:15px; color:var(--ink-faint); font-weight:500}
+  .stats h3{font-family:var(--f-disp); font-size:18px; margin:0 0 4px}
+  .stats .hint-line{font-size:13.5px; color:var(--ink-faint); margin:0 0 14px}
+  .emptystate{text-align:center; padding:34px 20px; color:var(--ink-soft)}
+  .emptystate .big{font-family:var(--f-mono); font-size:30px; color:var(--rule); margin-bottom:10px}
+  .emptystate p{margin:0 auto; max-width:38ch; font-size:14.5px}
+
+  .lockcard{text-align:left; padding:26px}
+  .lockcard h2{font-size:23px; margin-bottom:8px}
+  .lockcard .why{color:var(--ink-soft); max-width:58ch; margin:0 0 18px}
+  .lockcard ul{margin:0; padding-left:20px; color:var(--ink-soft); max-width:58ch}
+  .lockcard li{margin-bottom:6px}
+  .gate{background:var(--amber-soft); border:1px solid var(--rule); border-radius:10px; padding:13px 16px; margin-bottom:18px; font-size:14px}
+  .gate strong{color:var(--amber)}
+
+  .foot{margin-top:28px; font-size:12.5px; color:var(--ink-faint); text-align:center}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important} }
+</style>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">for(;;)</span>
+      <div>
+        <h1>Loop Quest</h1>
+        <div class="sub">C++ practice, one loop at a time</div>
+      </div>
+    </div>
+    <div class="lvlbox">
+      <div class="lvlbadge" id="lvlBadge" aria-hidden="true">1</div>
+      <div class="lvlmeta">
+        <div class="row">
+          <span>Level <strong id="lvlNum">1</strong></span>
+          <span><strong id="xpNow">0</strong> / <span id="xpNeed">40</span> XP</span>
+        </div>
+        <div class="xptrack" role="progressbar" aria-label="Experience toward next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="xpBar">
+          <div class="xpfill" id="xpFill"></div>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <span id="xpTotal">0 XP earned</span>
+          <span id="solvedCount">0 of 22 cleared</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="rail">
+      <div class="tabs" role="tablist" aria-label="Screens">
+        <button role="tab" id="tabChallenge" aria-selected="true" aria-controls="viewChallenge">Practice</button>
+        <button role="tab" id="tabLesson" aria-selected="false" aria-controls="viewLesson">Lesson</button>
+        <button role="tab" id="tabStats" aria-selected="false" aria-controls="viewStats">Progress</button>
+      </div>
+      <div>
+        <div class="railhead">Your ladder</div>
+        <ul class="ladder" id="ladder"></ul>
+      </div>
+      <button class="ghostbtn" id="resetBtn">Start over</button>
+    </aside>
+
+    <main>
+      <div class="welcome" id="welcome" hidden>
+        <div>
+          <h2>Start here, Sis.</h2>
+          <p>Read the code, guess what it prints, tap your answer. Wrong is fine &mdash; you get a hint first, then the full reason. Nothing to set up, your progress saves itself in this browser.</p>
+        </div>
+        <button id="welcomeDismiss">Got it</button>
+      </div>
+
+      <section class="card pad" id="viewChallenge" role="tabpanel" aria-labelledby="tabChallenge">
+        <div class="chalhead">
+          <span class="chip" id="chalNum">Challenge 1 of 22</span>
+          <span class="chip tag" id="chalTag">for loops</span>
+          <span class="chip done" id="chalDone" hidden>Cleared</span>
+        </div>
+        <p class="qprompt" id="qPrompt"></p>
+        <pre class="code"><code id="qCode"></code></pre>
+        <div class="choices" id="qChoices" role="group" aria-label="Answer options"></div>
+        <div id="qNotes" aria-live="polite"></div>
+        <div class="chalfoot">
+          <button class="btn" id="hintBtn">Show me a hint</button>
+          <button class="btn" id="revealBtn">Show the answer</button>
+          <button class="btn primary" id="nextBtn" hidden>Next challenge &rarr;</button>
+          <span class="xpgain" id="xpGain" hidden></span>
+        </div>
+        <div class="dots" id="dots" aria-label="All challenges"></div>
+      </section>
+
+      <section class="card pad lesson" id="viewLesson" role="tabpanel" aria-labelledby="tabLesson" hidden></section>
+      <section class="card pad stats" id="viewStats" role="tabpanel" aria-labelledby="tabStats" hidden></section>
+
+      <p class="foot">Keys <strong>1</strong>&ndash;<strong>4</strong> pick an answer &middot; <strong>Enter</strong> moves on &middot; <strong>H</strong> asks for a hint</p>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     1. THE CONTENT — every challenge lives in this one array.
+        Each answer was checked against a real g++ compiler.
+     ============================================================ */
+  var CHALLENGES = [
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 0; i < 3; i++) {\n    cout << i << " ";\n}',
+      choices:['0 1 2','1 2 3','0 1 2 3','1 2'], mono:true, answer:0,
+      hint:"i starts at 0. The loop stops the moment i < 3 stops being true.",
+      why:"i takes the values 0, 1, 2 — three numbers. When i becomes 3, the test 3 < 3 is false, so the loop quits before printing it."
+    },
+    {
+      prompt:"How many stars land on the screen?",
+      code:'for (int i = 1; i <= 5; i++) {\n    cout << "*";\n}',
+      choices:['4 stars','5 stars','6 stars','It never stops'], answer:1,
+      hint:"Write out every value i takes. Does <= include the 5 or not?",
+      why:"i goes 1, 2, 3, 4, 5 — five values, so five stars. <= includes the last number. If it were i < 5 you would only get four."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 0; i <= 3; i++) {\n    cout << i;\n}',
+      choices:['0123','012','123','1234'], mono:true, answer:0,
+      hint:"Start at 0 AND include 3. Count the values on your fingers.",
+      why:"0, 1, 2, 3 — that is four numbers, not three. Starting at 0 and using <= is the classic way a loop runs one more time than you meant. This is the famous off-by-one."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 3; i > 0; i--) {\n    cout << i << " ";\n}\ncout << "Go!";',
+      choices:['3 2 1 Go!','3 2 1 0 Go!','2 1 Go!','0 1 2 3 Go!'], mono:true, answer:0,
+      hint:"i-- takes one away each turn. The loop ends when i > 0 turns false.",
+      why:"3, 2 and 1 print. Then i becomes 0, and 0 > 0 is false, so it stops — the 0 never prints. The \"Go!\" line sits outside the braces, so it runs once at the very end."
+    },
+    {
+      prompt:"What number comes out?",
+      code:'int total = 0;\nfor (int i = 1; i <= 4; i++) {\n    total += i;\n}\ncout << total;',
+      choices:['10','4','6','24'], answer:0,
+      hint:"total += i is short for total = total + i. Add 1, then 2, then 3, then 4.",
+      why:"1 + 2 + 3 + 4 = 10. The important bit: total is declared OUTSIDE the loop, so it keeps its value between turns. Declare it inside and it would reset to 0 every single time."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 0; i < 10; i += 2) {\n    cout << i << " ";\n}',
+      choices:['0 2 4 6 8','0 2 4 6 8 10','2 4 6 8 10','0 1 2 3 4 5 6 7 8 9'], mono:true, answer:0,
+      hint:"i += 2 jumps two at a time. Where does it have to stop?",
+      why:"0, 2, 4, 6, 8. The next jump would be 10, but 10 < 10 is false. The step does not have to be 1 — you can count by any amount."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 5; i < 3; i++) {\n    cout << "hi";\n}\ncout << "done";',
+      choices:['done','hidone','hihidone','It loops forever'], mono:true, answer:0,
+      hint:"A for loop checks its condition BEFORE the first turn. Is 5 < 3 true?",
+      why:"The test runs first and 5 < 3 is false straight away, so the body never runs at all. Zero times is a perfectly legal number of times for a loop to run."
+    },
+    {
+      prompt:"What happens when you run this?",
+      code:'for (int i = 0; i < 5; i--) {\n    cout << i;\n}',
+      choices:['It prints 0 1 2 3 4','It prints nothing','It runs forever — i keeps shrinking','It refuses to compile'], answer:2,
+      hint:"Which direction is i moving, and which direction does the condition need it to move?",
+      why:"i-- makes i smaller: 0, -1, -2, -3... and i < 5 stays true the whole way down. The step and the condition have to agree on direction, or the loop never ends."
+    },
+    {
+      prompt:"What does this print?",
+      code:'int i = 5;\ncout << i++;\ncout << " ";\ncout << ++i;',
+      choices:['5 7','5 6','6 7','6 6'], mono:true, answer:0,
+      hint:"i++ hands over the OLD value and then adds. ++i adds first, then hands over the NEW value.",
+      why:"cout << i++ prints 5 and leaves i at 6. Then ++i bumps i to 7 first and prints 7. Inside a normal for header it makes no difference at all — but inside a cout it absolutely does."
+    },
+    {
+      prompt:"What happens with this one?",
+      code:'for (int i = 0; i < 3; i++) {\n    cout << i;\n}\ncout << i;',
+      choices:['It prints 0120','It prints 0123','It will not compile — i does not exist after the loop','It prints 012'], answer:2,
+      hint:"Where was i born? Does it still exist after the closing brace?",
+      why:"int i was declared inside the for header, so it only lives inside the loop. After the } it is gone, and the compiler says \"i was not declared in this scope\". If you need i afterwards, declare it before the loop."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 1; i <= 5; i++) {\n    if (i == 3) break;\n    cout << i << " ";\n}',
+      choices:['1 2','1 2 3','1 2 4 5','1 2 3 4 5'], mono:true, answer:0,
+      hint:"break walks out of the whole loop. It does not just skip one turn.",
+      why:"1 and 2 print. When i hits 3, break exits the loop immediately — before the cout — so 3 never prints and 4 and 5 never happen."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 1; i <= 5; i++) {\n    if (i == 3) continue;\n    cout << i << " ";\n}',
+      choices:['1 2 4 5','1 2','1 2 3 4 5','1 2 5'], mono:true, answer:0,
+      hint:"continue skips the REST of this one turn, then carries on with the next.",
+      why:"Only the turn where i is 3 gets skipped. continue jumps straight to i++ and keeps going. That is the whole difference from break: continue skips one, break quits all."
+    },
+    {
+      prompt:"How many x characters print?",
+      code:'for (int i = 0; i < 3; i++) {\n    for (int j = 0; j < 2; j++) {\n        cout << "x";\n    }\n}',
+      choices:['6','2','3','5'], answer:0,
+      hint:"The inner loop runs all the way through for EACH turn of the outer one.",
+      why:"The outer loop runs 3 times, and each of those times the inner loop runs 2 times. 3 × 2 = 6. Nested loops multiply — they do not add."
+    },
+    {
+      prompt:"What does this print?",
+      code:'for (int i = 1; i <= 2; i++) {\n    for (int j = 1; j <= 3; j++) {\n        cout << i << j << " ";\n    }\n}',
+      choices:['11 12 13 21 22 23','11 21 12 22 13 23','12 34 56','11 22 33'], mono:true, answer:0,
+      hint:"The inner loop finishes all of its turns before the outer one moves along.",
+      why:"i stays at 1 while j runs 1, 2, 3 — giving 11 12 13. Then i becomes 2 and j starts over at 1 — giving 21 22 23. j resets every time because it is declared in the inner header."
+    },
+    {
+      prompt:"What shape does this draw?",
+      code:'for (int i = 1; i <= 3; i++) {\n    for (int j = 1; j <= i; j++) {\n        cout << "*";\n    }\n    cout << endl;\n}',
+      choices:['*\n**\n***','***\n**\n*','***\n***\n***','*\n*\n*'], mono:true, answer:0,
+      hint:"Look hard at the inner loop's limit. It is not a number — it is i, and i grows every row.",
+      why:"Row 1: j runs 1 to 1, one star. Row 2: j runs 1 to 2, two stars. Row 3: three stars. Using the outer counter as the inner limit is exactly how you draw triangles and pyramids."
+    },
+    {
+      prompt:"What number comes out?",
+      code:'int sum = 0;\nfor (int i = 1; i <= 6; i++) {\n    if (i % 2 == 0) sum += i;\n}\ncout << sum;',
+      choices:['12','9','21','6'], answer:0,
+      hint:"i % 2 == 0 is asking \"is i even?\". Only the even ones get added.",
+      why:"2 + 4 + 6 = 12. The % sign is the remainder operator: 4 % 2 leaves 0 so 4 is even, 5 % 2 leaves 1 so 5 is odd. This is the standard even-or-odd test in C++."
+    },
+    {
+      prompt:"This array has 4 slots. What happens?",
+      code:'int n[4] = {10, 20, 30, 40};\nfor (int i = 0; i <= 4; i++) {\n    cout << n[i] << " ";\n}',
+      choices:['It prints 10 20 30 40','It prints 10 20 30 40 then junk — it reads past the end','The compiler blocks it','It prints 20 30 40'], answer:1,
+      hint:"Four slots. What are their index numbers? Now check the last value i reaches.",
+      why:"The slots are n[0] to n[3]. But i climbs to 4, so n[4] is one step past the end of the array. C++ will not stop you — it just reads whatever happens to be sitting in that memory, which could be 0, a huge random number, or a crash. For an array of size 4, the safe condition is i < 4."
+    },
+    {
+      prompt:"Which for loop does exactly the same job as this while loop?",
+      code:'int i = 0;\nwhile (i < 3) {\n    cout << i;\n    i++;\n}',
+      choices:[
+        'for (int i = 0; i < 3; i++) {\n    cout << i;\n}',
+        'for (int i = 1; i < 3; i++) {\n    cout << i;\n}',
+        'for (int i = 0; i <= 3; i++) {\n    cout << i;\n}',
+        'for (int i = 3; i > 0; i--) {\n    cout << i;\n}'
+      ], mono:true, answer:0,
+      hint:"A for loop is just a while loop with its three moving parts written on one line: the start, the test, the step.",
+      why:"Start is int i = 0, test is i < 3, step is i++. Same three parts, same output: 012. Use for when you know how many turns you want, and while when you do not."
+    },
+    {
+      prompt:"There are no braces here. What does it print?",
+      code:'for (int i = 0; i < 3; i++)\n    cout << "a";\n    cout << "b";',
+      choices:['aaab','ababab','aaabbb','ab'], mono:true, answer:0,
+      hint:"With no { }, exactly how many lines belong to the loop?",
+      why:"Without braces a for loop owns exactly ONE line — the cout << \"a\". So you get aaa, and then the \"b\" line runs once, on its own, after the loop is done. The indentation is lying to you. Always use braces."
+    },
+    {
+      prompt:"i gets changed inside the loop too. What prints?",
+      code:'for (int i = 0; i < 6; i++) {\n    cout << i << " ";\n    i++;\n}',
+      choices:['0 2 4','0 1 2 3 4 5','0 2 4 6','0 1 2'], mono:true, answer:0,
+      hint:"Count how many times i grows in one single turn. There are two places.",
+      why:"The body prints i and adds 1, then the header adds 1 more — so i climbs by 2 per turn: 0, 2, 4. Legal, but a great way to confuse yourself. If you want to count by 2, say i += 2 in the header where everyone can see it."
+    },
+    {
+      prompt:"What is the average that prints?",
+      code:'int marks[3] = {80, 90, 70};\nint total = 0;\nfor (int i = 0; i < 3; i++) {\n    total += marks[i];\n}\ncout << total / 3;',
+      choices:['80','240','79','83'], answer:0,
+      hint:"Add all three marks first, then divide by how many there are.",
+      why:"80 + 90 + 70 = 240, and 240 / 3 = 80. Worth knowing: both numbers are ints, so C++ does integer division and throws away the decimals. If the total were 241, this would print 80, not 80.33."
+    },
+    {
+      prompt:"What does this print?",
+      code:'string s = "cat";\nfor (int i = 0; i < s.length(); i++) {\n    cout << s[i] << "-";\n}',
+      choices:['c-a-t-','cat-','-c-a-t','c-a-t'], mono:true, answer:0,
+      hint:"The dash prints on every single turn — including the very last one.",
+      why:"s.length() is 3, so i goes 0, 1, 2, and each turn prints one letter then a dash: c- a- t-. That trailing dash is a real puzzle to get rid of — the usual trick is to print the dash BEFORE the letter whenever i > 0. (Small note: length() gives an unsigned number, so some compilers grumble about comparing it to an int. Not wrong, just chatty.)"
+    }
+  ];
+
+  var TOPICS = [
+    { id:"basics", name:"Before loops", desc:"Variables, cout, if / else, while", state:"soon",
+      blurb:"The ground that loops stand on — declaring variables, printing with cout, making choices with if and else, and the while loop that a for loop is secretly built from.",
+      items:["Declaring and changing variables","cout, cin and endl","if / else if / else","Comparison and % remainder","while and do-while"] },
+    { id:"loops", name:"For loops", desc:CHALLENGES.length + " challenges", state:"open" },
+    { id:"arrays", name:"Arrays & functions", desc:"Unlocks at 18 cleared", state:"gated", gate:18,
+      blurb:"Where loops get genuinely useful: a box with many slots, and loops that walk through every slot. Then functions, so you stop copy-pasting the same loop.",
+      items:["Declaring and filling an array","Looping over an array safely","Finding the biggest / smallest","Writing your own function","Passing an array into a function"] },
+    { id:"pointers", name:"Pointers & memory", desc:"A long way ahead", state:"soon",
+      blurb:"The part of C++ everyone warns you about. Honest heads-up: this is several chapters past where you are now, so it is parked here on purpose rather than hidden.",
+      items:["What an address actually is","* and & and what they do","Pointers walking through arrays","new and delete","Why this is where the bugs live"] }
+  ];
+
+  /* ============================================================
+     2. SAVED PROGRESS — one object, stored in this browser.
+        Every read and write is wrapped, so a blocked or empty
+        localStorage just means a fresh start, never a crash.
+     ============================================================ */
+  var KEY = "loop-quest-v1";
+
+  function fresh(){
+    return { xp:0, solved:{}, firstTry:{}, attempts:0, correct:0, seenWelcome:false, at:0 };
+  }
+
+  function load(){
+    var s = fresh();
+    try {
+      var raw = window.localStorage.getItem(KEY);
+      if(!raw) return s;
+      var g = JSON.parse(raw);
+      if(!g || typeof g !== "object") return s;
+      s.xp          = Number(g.xp) || 0;
+      s.attempts    = Number(g.attempts) || 0;
+      s.correct     = Number(g.correct) || 0;
+      s.at          = Number(g.at) || 0;
+      s.seenWelcome = !!g.seenWelcome;
+      var k;
+      if(g.solved   && typeof g.solved   === "object"){ for(k in g.solved){   if(g.solved[k])   s.solved[k]   = true; } }
+      if(g.firstTry && typeof g.firstTry === "object"){ for(k in g.firstTry){ if(g.firstTry[k]) s.firstTry[k] = true; } }
+    } catch(e){ return fresh(); }
+    return s;
+  }
+
+  var save = load();
+  function persist(){
+    try { window.localStorage.setItem(KEY, JSON.stringify(save)); } catch(e){ /* nothing stored, app still works */ }
+  }
+
+  /* ============================================================
+     3. LEVELS — each level costs 20 XP more than the last.
+     ============================================================ */
+  function levelOf(xp){
+    var lvl = 1, need = 40, rest = Math.max(0, xp);
+    while(rest >= need){ rest -= need; lvl++; need += 20; }
+    return { lvl:lvl, into:rest, need:need };
+  }
+
+  /* ============================================================
+     4. SYNTAX COLOURING — one pass, escapes as it goes so no
+        stray < or > can ever break the page.
+     ============================================================ */
+  var KEYWORDS = /^(int|float|double|char|bool|void|string|for|while|do|if|else|return|break|continue|const|true|false|using|namespace|std|cout|cin|endl|main|length|size)$/;
+  function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function highlight(code){
+    var re = /(\/\/[^\n]*)|("(?:[^"\\]|\\.)*")|('(?:[^'\\]|\\.)*')|(\b\d+\b)|([A-Za-z_]\w*)/g;
+    var out = "", last = 0, m;
+    while((m = re.exec(code)) !== null){
+      out += esc(code.slice(last, m.index));
+      var t = m[0];
+      if(m[1])                 out += '<span class="c-com">' + esc(t) + '</span>';
+      else if(m[2] || m[3])    out += '<span class="c-str">' + esc(t) + '</span>';
+      else if(m[4])            out += '<span class="c-num">' + esc(t) + '</span>';
+      else if(KEYWORDS.test(t))out += '<span class="c-kw">'  + esc(t) + '</span>';
+      else                     out += esc(t);
+      last = m.index + t.length;
+    }
+    return out + esc(code.slice(last));
+  }
+
+  /* ============================================================
+     5. SCREEN STATE
+     ============================================================ */
+  var at = clampIndex(save.at);
+  var phase = "asking";      // asking | hinted | won | shown
+  var hintUsed = false;
+  var missed = [];           // indexes she has tried and got wrong, this visit
+
+  function clampIndex(n){
+    n = parseInt(n, 10);
+    if(isNaN(n) || n < 0 || n >= CHALLENGES.length) return 0;
+    return n;
+  }
+  function solvedCount(){
+    var c = 0;
+    for(var i = 0; i < CHALLENGES.length; i++){ if(save.solved[i]) c++; }
+    return c;
+  }
+  function el(id){ return document.getElementById(id); }
+
+  /* ============================================================
+     6. DRAWING THE SCREENS
+     ============================================================ */
+  function renderHeader(){
+    var L = levelOf(save.xp);
+    var pct = Math.round((L.into / L.need) * 100);
+    el("lvlNum").textContent  = L.lvl;
+    el("lvlBadge").textContent = L.lvl;
+    el("xpNow").textContent   = L.into;
+    el("xpNeed").textContent  = L.need;
+    el("xpFill").style.width  = pct + "%";
+    el("xpBar").setAttribute("aria-valuenow", String(pct));
+    el("xpTotal").textContent = save.xp + " XP earned";
+    el("solvedCount").textContent = solvedCount() + " of " + CHALLENGES.length + " cleared";
+  }
+
+  function renderLadder(){
+    var list = el("ladder");
+    list.innerHTML = "";
+    var done = solvedCount();
+
+    TOPICS.forEach(function(topic){
+      var li = document.createElement("li");
+      var stem = document.createElement("span");
+      stem.className = "stem";
+      li.appendChild(stem);
+
+      var pctDone = 0, glyph = "", locked = true;
+      if(topic.state === "open"){
+        locked = false;
+        pctDone = done / CHALLENGES.length;
+        glyph = done;
+      } else if(topic.state === "gated"){
+        pctDone = Math.min(1, done / topic.gate);
+        glyph = done >= topic.gate ? "✓" : "•";
+      } else {
+        glyph = "•";
+      }
+
+      var r = 16, circ = 2 * Math.PI * r;
+      var btn = document.createElement("button");
+      btn.className = "node" + (locked ? " locked" : "") + (topic.id === currentTopic() ? " active" : "");
+      btn.innerHTML =
+        '<span class="ring">' +
+          '<svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">' +
+            '<circle class="track" cx="19" cy="19" r="' + r + '"></circle>' +
+            '<circle class="prog" cx="19" cy="19" r="' + r + '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + (circ * (1 - pctDone)).toFixed(1) + '"></circle>' +
+          '</svg>' +
+          '<span class="glyph">' + glyph + '</span>' +
+        '</span>' +
+        '<span class="nodetext"><span class="t">' + esc(topic.name) + '</span><br><span class="d">' + esc(topic.desc) + '</span></span>';
+      btn.addEventListener("click", function(){ openTopic(topic); });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  var viewingTopic = "loops";
+  function currentTopic(){ return viewingTopic; }
+
+  function openTopic(topic){
+    viewingTopic = topic.id;
+    if(topic.state === "open"){ showTab("challenge"); renderChallenge(); }
+    else { showLocked(topic); showTab("challenge"); }
+    renderLadder();
+  }
+
+  function showLocked(topic){
+    var done = solvedCount();
+    var gateLine = "";
+    if(topic.state === "gated"){
+      gateLine = '<div class="gate">Opens when you clear <strong>' + topic.gate + ' of ' + CHALLENGES.length +
+                 '</strong> loop challenges. You are at <strong>' + done + '</strong>.</div>';
+    } else {
+      gateLine = '<div class="gate">Not built yet &mdash; this is the <strong>next thing to add</strong>, not a thing that is broken.</div>';
+    }
+    var host = el("viewChallenge");
+    host.classList.add("lockcard");
+    host.innerHTML =
+      '<span class="chip">Locked</span>' +
+      '<h2 style="margin-top:12px">' + esc(topic.name) + '</h2>' +
+      '<p class="why">' + esc(topic.blurb) + '</p>' +
+      gateLine +
+      '<div class="railhead">What will be in here</div>' +
+      '<ul style="margin-top:8px">' + topic.items.map(function(i){ return '<li>' + esc(i) + '</li>'; }).join("") + '</ul>' +
+      '<div class="chalfoot"><button class="btn primary" id="backToLoops">Back to for loops</button></div>';
+    el("backToLoops").addEventListener("click", function(){
+      openTopic(TOPICS.filter(function(t){ return t.id === "loops"; })[0]);
+    });
+  }
+
+  var CHALLENGE_SHELL = el("viewChallenge").innerHTML;
+
+  function renderChallenge(){
+    var host = el("viewChallenge");
+    if(host.classList.contains("lockcard")){
+      host.classList.remove("lockcard");
+      host.innerHTML = CHALLENGE_SHELL;
+      wireChallenge();
+    }
+    var c = CHALLENGES[at];
+
+    el("chalNum").textContent = "Challenge " + (at + 1) + " of " + CHALLENGES.length;
+    el("chalDone").hidden = !save.solved[at];
+    el("qPrompt").textContent = c.prompt;
+    el("qCode").innerHTML = highlight(c.code);
+
+    var box = el("qChoices");
+    box.innerHTML = "";
+    var allShort = c.choices.every(function(s){ return s.length <= 18 && s.indexOf("\n") === -1; });
+    box.className = "choices" + (allShort ? " two" : "");
+
+    c.choices.forEach(function(text, i){
+      var b = document.createElement("button");
+      b.className = "choice";
+      b.type = "button";
+      var key = document.createElement("span");
+      key.className = "key";
+      key.textContent = String(i + 1);
+      var val = document.createElement("span");
+      val.className = "val" + (c.mono ? " mono" : "");
+      val.textContent = text;
+      b.appendChild(key); b.appendChild(val);
+      b.addEventListener("click", function(){ answer(i); });
+      box.appendChild(b);
+    });
+
+    el("qNotes").innerHTML = "";
+    el("nextBtn").hidden = true;
+    el("xpGain").hidden = true;
+    el("hintBtn").hidden = false;
+    el("hintBtn").disabled = false;
+    el("hintBtn").textContent = "Show me a hint";
+    el("revealBtn").hidden = false;
+
+    phase = "asking"; hintUsed = false; missed = [];
+
+    if(save.solved[at]){
+      // Already cleared — show it solved, but she can still replay it.
+      markChoices(c.answer, -1);
+      addNote("why", "Why", c.why);
+      el("hintBtn").hidden = true;
+      el("revealBtn").hidden = true;
+      el("nextBtn").hidden = false;
+      phase = "won";
+    }
+    renderDots();
+  }
+
+  function renderDots(){
+    var d = el("dots");
+    if(!d) return;
+    d.innerHTML = "";
+    for(var i = 0; i < CHALLENGES.length; i++){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "dot" + (save.solved[i] ? " done" : "") + (i === at ? " here" : "");
+      b.textContent = String(i + 1);
+      b.setAttribute("aria-label", "Challenge " + (i + 1) + (save.solved[i] ? ", cleared" : ", not cleared yet"));
+      (function(n){ b.addEventListener("click", function(){ at = n; save.at = n; persist(); renderChallenge(); }); })(i);
+      d.appendChild(b);
+    }
+  }
+
+  function markChoices(right, picked){
+    var kids = el("qChoices").children;
+    for(var i = 0; i < kids.length; i++){
+      kids[i].disabled = true;
+      if(i === right) kids[i].classList.add("right");
+      else if(i === picked) kids[i].classList.add("wrong");
+      else kids[i].classList.add("dim");
+    }
+  }
+
+  function addNote(kind, title, body){
+    var n = document.createElement("div");
+    n.className = "note " + kind;
+    var h = document.createElement("h3"); h.textContent = title;
+    var p = document.createElement("p");  p.textContent = body;
+    n.appendChild(h); n.appendChild(p);
+    el("qNotes").appendChild(n);
+  }
+
+  /* ============================================================
+     7. ANSWERING — wrong gives a hint first, the reason second.
+     ============================================================ */
+  function answer(i){
+    if(phase === "won" || phase === "shown") return;
+    var c = CHALLENGES[at];
+    save.attempts++;
+
+    if(i === c.answer){
+      save.correct++;
+      var gain = hintUsed ? 6 : (missed.length ? 5 : 10);
+      if(!save.solved[at]){
+        save.solved[at] = true;
+        if(!hintUsed && !missed.length) save.firstTry[at] = true;
+        save.xp += gain;
+      } else { gain = 0; }
+      phase = "won";
+      markChoices(c.answer, -1);
+      var stale = el("qNotes").querySelector(".note.miss");
+      if(stale) stale.remove();
+      addNote("why", "Why", c.why);
+      el("hintBtn").hidden = true;
+      el("revealBtn").hidden = true;
+      el("nextBtn").hidden = false;
+      if(gain > 0){
+        el("xpGain").textContent = "+" + gain + " XP";
+        el("xpGain").hidden = false;
+      }
+      persist(); renderHeader(); renderLadder(); renderDots();
+      el("nextBtn").focus();
+      return;
+    }
+
+    // wrong
+    if(missed.indexOf(i) === -1) missed.push(i);
+    var kids = el("qChoices").children;
+    kids[i].classList.add("wrong");
+    kids[i].disabled = true;
+
+    if(!hintUsed){
+      el("qNotes").innerHTML = "";
+      addNote("miss", "Not that one", "Take the hint below, then try again — nothing is lost.");
+      showHint();
+    } else {
+      el("qNotes").innerHTML = "";
+      addNote("miss", "Still not it", "Two tries used. Tap “Show the answer” whenever you want the whole thing explained.");
+      addNote("hint", "Hint", CHALLENGES[at].hint);
+    }
+    persist();
+  }
+
+  function showHint(){
+    hintUsed = true;
+    if(phase === "asking") phase = "hinted";
+    var already = el("qNotes").querySelector(".note.hint");
+    if(!already) addNote("hint", "Hint", CHALLENGES[at].hint);
+    el("hintBtn").textContent = "Hint is showing";
+    el("hintBtn").disabled = true;
+  }
+
+  function reveal(){
+    if(phase === "won" || phase === "shown") return;
+    var c = CHALLENGES[at];
+    phase = "shown";
+    markChoices(c.answer, -1);
+    el("qNotes").innerHTML = "";
+    addNote("why", "Why", c.why);
+    if(!save.solved[at]){
+      save.solved[at] = true;
+      save.xp += 2;
+      el("xpGain").textContent = "+2 XP";
+      el("xpGain").hidden = false;
+    }
+    el("hintBtn").hidden = true;
+    el("revealBtn").hidden = true;
+    el("nextBtn").hidden = false;
+    persist(); renderHeader(); renderLadder(); renderDots();
+    el("nextBtn").focus();
+  }
+
+  function next(){
+    var start = at;
+    for(var step = 1; step <= CHALLENGES.length; step++){
+      var i = (start + step) % CHALLENGES.length;
+      if(!save.solved[i]){ at = i; save.at = i; persist(); renderChallenge(); return; }
+    }
+    at = (start + 1) % CHALLENGES.length;
+    save.at = at; persist();
+    renderChallenge();
+  }
+
+  /* ============================================================
+     8. LESSON CARD
+     ============================================================ */
+  function renderLesson(){
+    el("viewLesson").innerHTML =
+      '<h2>The for loop, plainly</h2>' +
+      '<p class="lede">A for loop is a way of saying &ldquo;do this again, this many times&rdquo; without writing it out over and over.</p>' +
+
+      '<h3>It has three moving parts</h3>' +
+      '<div class="anatomy">for (<span class="part p1">int i = 0</span>; <span class="part p2">i &lt; 5</span>; <span class="part p3">i++</span>) {\n    cout &lt;&lt; i;   <span class="c-com">// the body</span>\n}</div>' +
+      '<div class="legend">' +
+        '<span><i style="background:var(--pine)"></i> the start &mdash; runs once</span>' +
+        '<span><i style="background:var(--amber)"></i> the test &mdash; checked every turn</span>' +
+        '<span><i style="background:var(--rose)"></i> the step &mdash; runs after every turn</span>' +
+      '</div>' +
+
+      '<h3>The order it actually happens in</h3>' +
+      '<ul>' +
+        '<li><strong>Start</strong> &mdash; <code>int i = 0</code>. Once, at the very beginning.</li>' +
+        '<li><strong>Test</strong> &mdash; is <code>i &lt; 5</code> true? If no, the loop is over right now.</li>' +
+        '<li><strong>Body</strong> &mdash; run the code inside the braces.</li>' +
+        '<li><strong>Step</strong> &mdash; <code>i++</code>, so i grows.</li>' +
+        '<li>Back to the <strong>test</strong>. Round and round until the test says no.</li>' +
+      '</ul>' +
+      '<p>The test comes before the body. That is why a loop can run zero times.</p>' +
+
+      '<h3>How many times will it run?</h3>' +
+      '<p>Count the values <code>i</code> actually takes. Do not guess from the numbers in the header.</p>' +
+      '<ul>' +
+        '<li><code>i = 0; i &lt; 5</code> &rarr; 0,1,2,3,4 &rarr; <strong>5 turns</strong></li>' +
+        '<li><code>i = 0; i &lt;= 5</code> &rarr; 0,1,2,3,4,5 &rarr; <strong>6 turns</strong></li>' +
+        '<li><code>i = 1; i &lt;= 5</code> &rarr; 1,2,3,4,5 &rarr; <strong>5 turns</strong></li>' +
+      '</ul>' +
+      '<p>Starting at 0 with <code>&lt;</code> gives you a round number of turns. That is why almost all C++ loops look like that.</p>' +
+
+      '<h3>Loops inside loops multiply</h3>' +
+      '<p>An outer loop of 3 with an inner loop of 4 runs the inner body <strong>12</strong> times. The inner loop finishes completely before the outer one takes its next turn.</p>' +
+
+      '<h3>break and continue</h3>' +
+      '<ul>' +
+        '<li><code>break</code> &mdash; walk out of the loop entirely, right now.</li>' +
+        '<li><code>continue</code> &mdash; skip the rest of <em>this</em> turn only, then carry on.</li>' +
+      '</ul>' +
+
+      '<h3>Three traps that get everybody</h3>' +
+      '<div class="trap"><span class="n">01</span><div><p>Off by one: <code>&lt;=</code> when you meant <code>&lt;</code>.</p><p class="fix">Fix: count the values out loud before you run it.</p></div></div>' +
+      '<div class="trap"><span class="n">02</span><div><p>No braces, so only the first line is really in the loop.</p><p class="fix">Fix: always write the <code>{ }</code>, even for one line.</p></div></div>' +
+      '<div class="trap"><span class="n">03</span><div><p>Walking off the end of an array &mdash; <code>i &lt;= 4</code> on an array of 4.</p><p class="fix">Fix: for a size-n array the condition is <code>i &lt; n</code>. Always.</p></div></div>';
+  }
+
+  /* ============================================================
+     9. PROGRESS SCREEN
+     ============================================================ */
+  function renderStats(){
+    var done = solvedCount();
+    var L = levelOf(save.xp);
+    var firsts = Object.keys(save.firstTry).length;
+    var acc = save.attempts ? Math.round((save.correct / save.attempts) * 100) : 0;
+
+    var body =
+      '<h2>Where you are</h2>' +
+      '<div class="tiles">' +
+        tile("Level", L.lvl) +
+        tile("XP earned", save.xp) +
+        tile("Cleared", done + '<small> / ' + CHALLENGES.length + '</small>') +
+        tile("First-try wins", firsts) +
+        tile("Accuracy", save.attempts ? acc + '<small>%</small>' : '&mdash;') +
+      '</div>';
+
+    if(!save.attempts){
+      body += '<div class="emptystate"><div class="big">{ }</div>' +
+              '<p>Nothing to show yet. Answer one challenge and this page starts filling in.</p></div>';
+    } else {
+      body += '<h3>Every challenge</h3>' +
+              '<p class="hint-line">Filled in means cleared. Tap any square to jump there.</p>' +
+              '<div class="dots" id="statsDots"></div>';
+      if(done === CHALLENGES.length){
+        body += '<div class="note why" style="margin-top:22px"><h3>All ' + CHALLENGES.length + ' cleared</h3>' +
+                '<p>That is the whole for-loop chapter. Arrays and functions are the honest next step — ask me and I will build that topic out.</p></div>';
+      } else {
+        body += '<div class="note hint" style="margin-top:22px"><h3>Next up</h3>' +
+                '<p>' + (CHALLENGES.length - done) + ' challenge' + (CHALLENGES.length - done === 1 ? '' : 's') + ' left in for loops. ' +
+                (done >= 18 ? 'Arrays and functions is already unlocked.' : (18 - done) + ' more opens up arrays and functions.') + '</p></div>';
+      }
+    }
+    el("viewStats").innerHTML = body;
+
+    var sd = el("statsDots");
+    if(sd){
+      for(var i = 0; i < CHALLENGES.length; i++){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "dot" + (save.solved[i] ? " done" : "") + (i === at ? " here" : "");
+        b.textContent = String(i + 1);
+        b.setAttribute("aria-label", "Challenge " + (i + 1));
+        (function(n){ b.addEventListener("click", function(){
+          at = n; save.at = n; persist();
+          viewingTopic = "loops"; renderLadder();
+          showTab("challenge"); renderChallenge();
+        }); })(i);
+        sd.appendChild(b);
+      }
+    }
+  }
+  function tile(k, v){
+    return '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
+  }
+
+  /* ============================================================
+     10. TABS + KEYBOARD
+     ============================================================ */
+  function showTab(which){
+    var map = { challenge:["tabChallenge","viewChallenge"], lesson:["tabLesson","viewLesson"], stats:["tabStats","viewStats"] };
+    Object.keys(map).forEach(function(k){
+      var on = (k === which);
+      el(map[k][0]).setAttribute("aria-selected", on ? "true" : "false");
+      el(map[k][1]).hidden = !on;
+    });
+    if(which === "lesson") renderLesson();
+    if(which === "stats")  renderStats();
+  }
+
+  function wireChallenge(){
+    el("hintBtn").addEventListener("click", showHint);
+    el("revealBtn").addEventListener("click", reveal);
+    el("nextBtn").addEventListener("click", next);
+  }
+
+  el("tabChallenge").addEventListener("click", function(){ showTab("challenge"); });
+  el("tabLesson").addEventListener("click", function(){ showTab("lesson"); });
+  el("tabStats").addEventListener("click",  function(){ showTab("stats");  });
+
+  el("resetBtn").addEventListener("click", function(){
+    if(!window.confirm("Wipe your XP, level and cleared challenges and start from challenge 1?")) return;
+    save = fresh();
+    save.seenWelcome = true;
+    at = 0;
+    try { window.localStorage.removeItem(KEY); } catch(e){}
+    persist();
+    viewingTopic = "loops";
+    renderHeader(); renderLadder(); showTab("challenge"); renderChallenge();
+  });
+
+  document.addEventListener("keydown", function(e){
+    if(e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if(el("viewChallenge").hidden) return;
+    if(el("viewChallenge").classList.contains("lockcard")) return;
+    if(e.key >= "1" && e.key <= "4"){
+      var kids = el("qChoices").children;
+      var i = parseInt(e.key, 10) - 1;
+      if(kids[i] && !kids[i].disabled){ e.preventDefault(); answer(i); }
+    } else if(e.key === "Enter"){
+      if(!el("nextBtn").hidden){ e.preventDefault(); next(); }
+    } else if(e.key === "h" || e.key === "H"){
+      if(!el("hintBtn").hidden && !el("hintBtn").disabled){ e.preventDefault(); showHint(); }
+    }
+  });
+
+  /* ============================================================
+     11. FIRST PAINT
+     ============================================================ */
+  if(!save.seenWelcome){
+    el("welcome").hidden = false;
+    el("welcomeDismiss").addEventListener("click", function(){
+      el("welcome").hidden = true;
+      save.seenWelcome = true;
+      persist();
+    });
+  }
+  wireChallenge();
+  renderHeader();
+  renderLadder();
+  renderChallenge();
+})();
+</script>
+
+</body>
+</html>

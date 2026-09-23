@@ -10,8 +10,9 @@
 // "Loading…" forever). Keep it a file.
 //
 // STANDALONE. This build has no connection to the MOS platform: no API, no
-// session cookie, no shared origin. The game list is games.json next to this
-// file, written by tools/build-catalog.mjs from whatever is in games/.
+// session cookie, no shared origin. The lists are games.json and apps.json
+// next to this file, written by tools/build-catalog.mjs from whatever is in
+// games/ and apps/.
 (function(){
 "use strict";
 
@@ -53,11 +54,75 @@ syncButton();
 function esc(s){
   return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+/* ---------------- The two sections ----------------
+   The Arcade lists two kinds of thing, and this is one page with a switch on
+   it rather than two pages. The search box, the sort pills, the chips, the
+   grid and the card are the same objects either way; all that genuinely
+   differs is which catalog the rows came out of and which folder holds their
+   screenshots. Two pages would mean two copies of the stylesheet, two copies
+   of this file, and a slow divergence between them that nobody decided on.
+
+   So everything that differs lives in this one table, and a third section
+   one day is a row here plus a button in index.html — not a hunt through
+   this file for the word "games".
+
+   Today's pick and Surprise me are games-only, and that is the single real
+   asymmetry between the sections. Both are lotteries, and a lottery is a
+   fine way to meet a game you did not know you wanted. Nobody wants to be
+   handed a random invoice tool. */
+const COLLECTIONS = {
+  games: {
+    file: 'games.json',
+    shots: 'shots',
+    one: 'game', many: 'games',
+    note: 'These are developmental-stage games, made by MOS employees.',
+    emoji: ['🎮','🕹️','⭐','🧩','🚀','🎲','🏆','✨'],
+    // Mirrors ARCADE_CATEGORIES in tools/arcade-categories.mjs. See the
+    // comment on categoriesIn() for what happens when the two disagree.
+    catOrder: ['Puzzle','Action','Word','Chill','Arcade','Kids'],
+    lottery: true,
+  },
+  apps: {
+    file: 'apps.json',
+    shots: 'app-shots',
+    one: 'app', many: 'apps',
+    note: 'Tools built by MOS employees. Nothing to install, nothing to sign up for.',
+    // Its own set, not the games' one. The emoji is what a card wears until
+    // somebody takes its screenshot, so on a fresh section it is what the
+    // whole grid looks like — and a gamepad sitting on an internships
+    // platform is the sort of small wrongness that makes a page look
+    // unattended.
+    emoji: ['🧰','📊','🗂️','⚡','🧮','📋','🔖','✨'],
+    // Mirrors APP_CATEGORIES in tools/app-categories.mjs.
+    catOrder: ['Productivity','Tools','Money','Learning','Health','Fun'],
+    lottery: false,
+  },
+};
+const TAB_KEY = 'mosArcadeTab';
+// Both catalogs, held side by side. Switching sections is then a swap of a
+// reference and a repaint — no second fetch, and no wait on a list the
+// visitor already has.
+const data = { games: [], apps: [] };
+let mode = (function(){
+  try{
+    const v = localStorage.getItem(TAB_KEY);
+    return COLLECTIONS[v] ? v : 'games';
+  }catch(e){ return 'games'; }
+})();
+// The section currently on screen. Everything that differs between the two
+// is read through here rather than branched on `mode`.
+function col(){ return COLLECTIONS[mode]; }
+
 // Deterministic per-entry colour + icon so every card looks hand-picked
 // and, crucially, keeps the same look on every page load. The colour is
 // applied as a class rather than an inline style so that both themes'
 // versions of that tint live in CSS and the toggle needs no re-render.
-const EMOJI = ['🎮','🕹️','⭐','🧩','🚀','🎲','🏆','✨'];
+// The eight tints are shared by both sections; the icons are not — see
+// `emoji` in COLLECTIONS above.
+function iconFor(h){
+  const set = col().emoji;
+  return set[h % set.length];
+}
 function hashOf(id){
   let h = 0;
   for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
@@ -70,52 +135,51 @@ function hashOf(id){
 function lookHash(it){
   return hashOf(String(it.id ?? it.name ?? ''));
 }
-// The game's slug, read back out of its own games/<slug> link. This is the
-// closest thing the listing has to a stable identity — the server treats it
-// as exactly that when it evicts duplicate entries — whereas `id` is a
-// mos-app app id that a re-seeded Registry can replace. Anything that isn't
-// a /games/ link (an outside site, a dropped app) has no slug, and that
-// absence is also how this page tells a game from everything else.
-function slugOf(url){
-  // (?:^|\/) rather than a bare \/ : this build's links are RELATIVE
-  // ('games/antics/index.html'), so the folder can sit at a domain root or in
-  // a subfolder and work either way. The original links were absolute paths on
-  // the hosted origin and always had the leading slash this used to require —
-  // without this, every card loses its slug, which silently costs it its
-  // screenshot AND drops it out of Today's pick and Surprise me.
-  const m = String(url ?? '').match(/(?:^|\/)games\/([a-z0-9-]+)(?:[/?#]|$)/i);
-  return m ? m[1].toLowerCase() : null;
+/* An entry's identity: the slug build-catalog.mjs filed it under, which is
+   also the name its screenshot is saved as.
+
+   This used to be parsed back out of the entry's own /games/<slug> URL,
+   because back then `id` was a mos-app app id that a re-seeded Registry
+   could replace. In this build the catalog is generated here and `id` IS the
+   slug, so reading the URL was deriving a fact the row already states.
+
+   It is not just redundant, it is wrong now: a folder is no longer required
+   to be named in slug form, so apps/C++ Helper/ is listed at the escaped
+   path apps/C%2B%2B%20Helper/… under the slug c-helper. There is no slug in
+   that URL to find. Anything without an id is not a listable entry, and that
+   absence is how this page tells an entry it can open from one it cannot. */
+function idOf(it){
+  return String(it?.id ?? '').trim().toLowerCase();
 }
-// A listing entry's URL is typed by a member of staff and ends up here as a
-// navigation target — an href on every card and, since Surprise me, an
-// argument to window.open. slugOf() already insists on a /games/ path, but
-// "contains /games/" and "is an http link" are different claims and only the
-// second one is safe to open. Anything else is treated as not being a game,
-// which is the quietest way to refuse it.
+// A listing entry's URL ends up here as a navigation target — an href on
+// every card and, since Surprise me, an argument to window.open. A relative
+// path out of the generator is the normal case, but the catalog is a file a
+// person can also edit by hand, and "is a string in the url field" and "is
+// an http link" are different claims. Only the second is safe to open, and
+// anything else is treated as not being an entry at all, which is the
+// quietest way to refuse it.
 function playableUrl(url){
   try{
     const u = new URL(url, location.href);
     return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : null;
   }catch(e){ return null; }
 }
-// The Arcade can also carry an app or a website that somebody opted in by
-// hand, and two things on this page mean games specifically: Today's pick,
-// whose "Play ▶" is a promise a brochure site does not keep, and Surprise
-// me, which would not have surprised anyone in a good way. Asked in one
-// place so the two cannot drift apart.
-function gamesOnly(items){
-  return items.filter(it=>slugOf(it.url) && playableUrl(it.url));
+// Entries this page can actually open. Asked in one place because two things
+// lean on it — Today's pick, whose "Play ▶" is a promise, and Surprise me,
+// which hands the URL straight to window.open — and they must not drift.
+function openable(items){
+  return items.filter(it=>idOf(it) && playableUrl(it.url));
 }
 
-// A card's picture is a real screenshot of the game, taken by
-// mos-server's tools/capture-arcade-shots.mjs and filed under its slug.
-// The listing itself carries no image field, which means a game that gets
-// listed later needs nothing more than a re-run of that tool. Anything with
-// no slug gets no picture and keeps the emoji, and so does a game whose shot
-// hasn't been taken yet.
-function shotFor(url){
-  const slug = slugOf(url);
-  return slug ? `shots/${slug}.jpg` : null;
+// A card's picture is a real screenshot, filed under the entry's slug —
+// shots/<slug>.jpg for a game, app-shots/<slug>.jpg for an app. The catalog
+// carries no image field at all, which is what makes adding a screenshot
+// later a matter of dropping a file in: nothing has to be regenerated. An
+// entry whose shot has not been taken yet keeps the tinted emoji, and so
+// does one with no id.
+function shotFor(it){
+  const id = idOf(it);
+  return id ? `${col().shots}/${encodeURIComponent(id)}.jpg` : null;
 }
 // Reveal each shot only once it's decoded, and drop any that 404 so the
 // tinted emoji panel underneath is what shows. Wired in JS rather than with
@@ -222,6 +286,7 @@ function clearSearch(){
   if(searchBox) searchBox.value = '';
   if(searchClear) searchClear.hidden = true;
   if(allItems.length) paint();
+  syncLucky();
   if(searchBox) searchBox.focus();
 }
 // Wired only if the box is actually on the page — see byId above for why
@@ -231,11 +296,73 @@ if(searchBox){
     query = searchBox.value.trim();
     if(searchClear) searchClear.hidden = !query;
     if(allItems.length) paint();
+    // A search that matches nothing leaves the dice with nothing to deal,
+    // the same as a chip that matches nothing. It used to stay lit and do
+    // nothing when pressed, which is the one state its own comment says it
+    // should never be in.
+    syncLucky();
   });
   // Escape in the box wipes it — the keyboard version of the ✕.
   searchBox.addEventListener('keydown', e=>{ if(e.key === 'Escape' && query) { e.preventDefault(); clearSearch(); } });
 }
 if(searchClear) searchClear.addEventListener('click', clearSearch);
+
+/* ---------------- Games / Apps ----------------
+   The section switch. Everything downstream already reads what it needs
+   through col(), so switching is: point allItems at the other catalog,
+   restore that section's remembered chip, rebuild the controls that are
+   built from data, repaint.
+
+   No fetch — both catalogs were loaded up front (see load()) — so this is a
+   repaint and nothing else, and the section switches as fast as a sort pill.
+
+   The search text deliberately survives the switch. Typing "invoice", finding
+   no game, and pressing Apps is a real sequence, and wiping the box at that
+   exact moment would throw away the question the visitor is in the middle of
+   asking. The section's remembered chip does NOT survive it, because that one
+   was never about the other section's vocabulary — see CAT_KEYS. */
+const TAB_BTNS = { games:'tabGames', apps:'tabApps' };
+const tabBar = byId('tabBar');
+const headerNote = byId('headerNote');
+
+// The wording that names what is being listed. Called after every switch,
+// and once on the first paint, so a visitor returning to the Apps section
+// never sees the markup's games wording flash first.
+function syncTabs(){
+  Object.entries(TAB_BTNS).forEach(([m,id])=>{
+    const b = byId(id);
+    if(b) b.setAttribute('aria-pressed', m===mode ? 'true' : 'false');
+  });
+  if(headerNote) headerNote.textContent = col().note;
+  if(searchBox){
+    searchBox.placeholder = `Search ${col().many}…`;
+    searchBox.setAttribute('aria-label', `Search ${col().many} by name`);
+  }
+  // These two name what they act on, so they are wrong rather than merely
+  // stale in the other section — a screen reader offering to "filter games
+  // by category" over a grid of apps is reading out the wrong page.
+  if(catBar) catBar.setAttribute('aria-label', `Filter ${col().many} by category`);
+  if(luckyBtn) luckyBtn.title = `Opens a random ${col().one} in a new tab`;
+}
+
+function setMode(next){
+  if(!COLLECTIONS[next] || next === mode) return;
+  mode = next;
+  try{ localStorage.setItem(TAB_KEY, next); }catch(e){}
+  allItems = data[mode];
+  activeCat = readCat(mode);
+  syncTabs();
+  // Before paint, so the first grid of the new section arrives already
+  // filtered rather than flashing whole and then hiding two thirds of itself.
+  buildChips(allItems);
+  paint();
+  syncLucky();
+}
+
+Object.entries(TAB_BTNS).forEach(([m,id])=>{
+  const b = byId(id);
+  if(b) b.addEventListener('click', ()=>setMode(m));
+});
 
 /* ---------------- Today's pick ----------------
    One game shown big above the listing, chosen by the date and by nothing
@@ -275,8 +402,8 @@ function dealKey(cycle, slug){
   return (h ^ (h >>> 16)) >>> 0;
 }
 function pickFor(day){
-  // See gamesOnly(). If there are no games, there is no tile.
-  const pool = gamesOnly(allItems);
+  // See openable(). If there is nothing to open, there is no tile.
+  const pool = openable(allItems);
   if(!pool.length) return null;
   const n = pool.length;
   const cycle = Math.floor(day / n);        // which pass through the whole pool
@@ -285,7 +412,7 @@ function pickFor(day){
   // on a 32-bit hash still land in one fixed order rather than whichever one
   // the engine's sort happened to leave first.
   const dealt = pool.slice().sort((a,b)=>{
-    const sa = slugOf(a.url), sb = slugOf(b.url);
+    const sa = idOf(a), sb = idOf(b);
     return dealKey(cycle, sa) - dealKey(cycle, sb) || sa.localeCompare(sb);
   });
   return dealt[seat];
@@ -300,15 +427,17 @@ function paintFeatured(){
   // from paint(), so throwing would take the grid down with it.
   if(!featured) return;
   // Hidden while a search is running. A search is a specific question and a
-  // big unrelated game sitting on top of the answer is in the way.
-  const pick = query ? null : pickFor(shownDay);
+  // big unrelated game sitting on top of the answer is in the way. Hidden in
+  // the Apps section too — see COLLECTIONS for why the lottery is a games
+  // idea and not an arcade-wide one.
+  const pick = (query || !col().lottery) ? null : pickFor(shownDay);
   if(!pick){
     featured.hidden = true;
     featured.innerHTML = '';
     return;
   }
   const h = lookHash(pick);
-  const shot = shotFor(pick.url);
+  const shot = shotFor(pick);
   featured.hidden = false;
   // The pick is deliberately still in the grid below as well. A–Z has to be
   // complete — a game going missing from the list on the one day it is
@@ -316,7 +445,7 @@ function paintFeatured(){
   featured.innerHTML = `
     <a class="feat-card" href="${esc(pick.url)}" target="_blank" rel="noopener">
       <div class="top t${h % 8}">
-        <span class="emoji">${EMOJI[h % EMOJI.length]}</span>
+        <span class="emoji">${iconFor(h)}</span>
         ${shot ? `<img class="shot" src="${esc(shot)}" alt="" decoding="async" fetchpriority="high" width="600" height="375">` : ''}
       </div>
       <div class="feat-body">
@@ -355,9 +484,10 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refresh
 /* ---------------- Surprise me ----------------
    The dice button, and the one control on this page that takes you off it.
 
-   Games only, through gamesOnly() — which is also what makes the url below
-   safe to hand to window.open, since nothing that is not an http link gets
-   into the pool in the first place.
+   Games only — it is hidden entirely in the Apps section, see COLLECTIONS.
+   The pool is drawn through openable(), which is also what makes the url
+   below safe to hand to window.open, since nothing that is not an http link
+   gets into it in the first place.
 
    It draws from what is on screen. Typing "puzzle" and then pressing the
    dice should hand you a puzzle game; drawing from the whole list there
@@ -369,17 +499,26 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refresh
 const luckyBtn = byId('luckyBtn');
 let lastLucky = null;
 
+/* Disabled when there is nothing on screen to deal, and taken off the page
+   entirely in the Apps section. Called on every change to what is visible:
+   the first paint, a search, a chip, and a section switch. */
+function syncLucky(){
+  if(!luckyBtn) return;
+  luckyBtn.hidden = !col().lottery;
+  luckyBtn.disabled = !openable(visibleItems()).length;
+}
+
 if(luckyBtn) luckyBtn.addEventListener('click', ()=>{
-  const pool = gamesOnly(visibleItems());
+  const pool = openable(visibleItems());
   if(!pool.length) return;
   // The previous pick is taken out of the hat rather than re-rolled against.
   // Pressing a dice button and being handed the game you were just handed
   // reads as a stuck button, not as luck — and a re-roll only makes that
   // less likely, where removing it makes it impossible.
-  const fresh = pool.filter(it=>slugOf(it.url) !== lastLucky);
+  const fresh = pool.filter(it=>idOf(it) !== lastLucky);
   const hat = fresh.length ? fresh : pool;
   const pick = hat[Math.floor(Math.random()*hat.length)];
-  lastLucky = slugOf(pick.url);
+  lastLucky = idOf(pick);
   // New tab, with noopener, exactly as every card on this page opens.
   window.open(pick.url, '_blank', 'noopener');
 });
@@ -401,22 +540,23 @@ if(luckyBtn) luckyBtn.addEventListener('click', ()=>{
    against the live listing on the way back in: a category that has since
    been emptied would otherwise restore as a pressed chip showing nothing. */
 const CAT_ALL = '__all__';
-const CAT_KEY = 'mosArcadeCategory';
-// The order the chips appear in, mirroring ARCADE_CATEGORIES on the server.
-// A category not in this list still gets a chip — it files after the known
-// ones — so the two lists disagreeing is a cosmetic fault, not a missing
-// control.
-const CAT_ORDER = ['Puzzle','Action','Word','Chill','Arcade','Kids'];
+// One remembered chip per section, not one for the page. They are different
+// vocabularies — a visitor filtered to Puzzle has said nothing at all about
+// which apps they want — and sharing a key would restore Puzzle over a grid
+// of apps, find no match, and show an empty section to somebody who pressed
+// nothing.
+const CAT_KEYS = { games:'mosArcadeCategory', apps:'mosArcadeCategoryApps' };
 const UNCATEGORIZED = 'Uncategorized';
 
 const catBar = byId('catBar');
 const catEmpty = byId('catEmpty');
 const catEmptyText = byId('catEmptyText');
 
-let activeCat = (function(){
-  try{ return localStorage.getItem(CAT_KEY) || CAT_ALL; }
+function readCat(m){
+  try{ return localStorage.getItem(CAT_KEYS[m]) || CAT_ALL; }
   catch(e){ return CAT_ALL; }
-})();
+}
+let activeCat = readCat(mode);
 
 // An entry's category, with the same fallback the server uses — belt and
 // braces for a listing served by an older build that carries no category
@@ -434,9 +574,14 @@ function inActiveCat(it){
    last rather than absent because "not filed yet" is the one category whose
    chip is also a to-do list. */
 function categoriesIn(items){
+  // The section's own order — see catOrder in COLLECTIONS. A category not in
+  // that list still gets a chip, it just files after the known ones, so the
+  // list drifting out of step with tools/*-categories.mjs is a cosmetic
+  // fault rather than a missing control.
+  const order = col().catOrder;
   const seen = new Set(items.map(catOf));
-  const known = CAT_ORDER.filter(c=>seen.has(c));
-  const extra = [...seen].filter(c=>!CAT_ORDER.includes(c) && c !== UNCATEGORIZED)
+  const known = order.filter(c=>seen.has(c));
+  const extra = [...seen].filter(c=>!order.includes(c) && c !== UNCATEGORIZED)
                          .sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:'base'}));
   return [...known, ...extra, ...(seen.has(UNCATEGORIZED) ? [UNCATEGORIZED] : [])];
 }
@@ -450,27 +595,50 @@ function syncChips(){
 
 function setCategory(cat){
   activeCat = cat;
-  try{ localStorage.setItem(CAT_KEY, cat); }catch(e){}
+  try{ localStorage.setItem(CAT_KEYS[mode], cat); }catch(e){}
   syncChips();
   applyCategoryFilter();
   // Surprise me draws from what is on screen, and the chips have just
   // changed what that is — a category with no games in it leaves nothing to
   // deal, same as a search that matches nothing.
-  if(luckyBtn) luckyBtn.disabled = !gamesOnly(visibleItems()).length;
+  syncLucky();
 }
 
-/* Builds the row once, from the listing. createElement rather than innerHTML
-   because a category is a string the server hands over and this page has a
-   standing rule about not building executable-looking markup out of values
-   it did not write; textContent sidesteps the question entirely.
+/* One listener for the whole row, attached once here rather than inside
+   buildChips. Delegation was always the design — the comment that used to
+   sit in buildChips said as much — but buildChips now runs again on every
+   section switch, and an addEventListener in there would stack a fresh
+   handler per switch until one chip press ran the handler five times.
+   Harmless by luck rather than by design: setCategory ignores a press on the
+   chip that is already active, so only the first of those calls does
+   anything. Attaching once means not relying on that. */
+if(catBar) catBar.addEventListener('click', e=>{
+  const btn = e.target.closest('.cat-btn');
+  if(btn && btn.dataset.cat !== activeCat) setCategory(btn.dataset.cat);
+});
+
+/* Builds the row from the listing — once per section, and again whenever the
+   section changes. createElement rather than innerHTML because a category is
+   a string that arrives from a file this page did not write, and this page
+   has a standing rule about not building executable-looking markup out of
+   such values; textContent sidesteps the question entirely.
 
    One chip and All is a control that can only ever say the same thing twice,
    so the row stays hidden until there are at least two categories to choose
-   between. */
+   between. An unfiled section — every entry in Uncategorized, which is where
+   a fresh apps/ starts out — therefore shows no chip row at all rather than
+   a single chip that filters nothing. */
 function buildChips(items){
   if(!catBar) return;
   const cats = categoriesIn(items);
-  if(cats.length < 2){ catBar.hidden = true; return; }
+  if(cats.length < 2){
+    // Emptied, not just hidden: the previous section's chips must not be
+    // left in the document for applyCategoryFilter and syncChips to find.
+    catBar.replaceChildren();
+    catBar.hidden = true;
+    activeCat = CAT_ALL;
+    return;
+  }
   // A remembered category that is no longer in the listing falls back to All
   // rather than restoring as a pressed chip over an empty grid.
   if(activeCat !== CAT_ALL && !cats.includes(activeCat)) activeCat = CAT_ALL;
@@ -492,13 +660,6 @@ function buildChips(items){
   catBar.replaceChildren(frag);
   catBar.hidden = false;
   syncChips();
-  // One listener for the whole row rather than one per chip: the set is
-  // rebuilt only here, but a delegated handler cannot be left behind on a
-  // detached button if that ever changes.
-  catBar.addEventListener('click', e=>{
-    const btn = e.target.closest('.cat-btn');
-    if(btn && btn.dataset.cat !== activeCat) setCategory(btn.dataset.cat);
-  });
 }
 
 /* The filter. Reads the cards that are already there and writes one class.
@@ -522,7 +683,7 @@ function applyCategoryFilter(){
     const where = activeCat === CAT_ALL ? 'here' : `in ${activeCat}`;
     catEmptyText.textContent = query
       ? `Nothing ${where} matches “${query}” — try another category, or clear the search.`
-      : `No games ${where} yet — pick another category, or tap All.`;
+      : `No ${col().many} ${where} yet — pick another category, or tap All.`;
   }
   catEmpty.hidden = !empty;
 }
@@ -534,33 +695,66 @@ function visibleItems(){
   return matching().filter(inActiveCat);
 }
 
+// One catalog. A file, not an API — regenerate both with
+// tools/build-catalog.mjs after adding or removing a folder under games/ or
+// apps/. null means "could not read it", which each caller answers
+// differently; an empty array means "read it, there is nothing in it".
+async function fetchList(file){
+  try{
+    const res = await fetch(file);
+    if(!res.ok) return null;
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : null;
+  }catch(err){ return null; }
+}
+
 async function load(){
   const content = document.getElementById('content');
-  let items;
-  try{
-    // games.json, not an API. Regenerate it with tools/build-catalog.mjs
-    // after adding or removing a folder under games/.
-    const res = await fetch('games.json');
-    if(!res.ok) throw new Error('bad response');
-    items = await res.json();
-  }catch(err){
+  // Both at once rather than one and then the other: they are two small
+  // files on the same host, and fetching them in series would make the Apps
+  // tab wait on a round trip it has no reason to wait for.
+  const [games, apps] = await Promise.all([
+    fetchList('games.json'),
+    fetchList('apps.json'),
+  ]);
+
+  // games.json missing is the failure state. apps.json missing is not: a copy
+  // of this folder that predates the Apps section, or one deployed with no
+  // apps/ folder at all, has no apps.json to find and should show the games
+  // exactly as it always did rather than an error over the top of them.
+  if(!games){
     content.className = 'error';
     content.innerHTML = `<div class="big">⚠️</div><p>Couldn't load the arcade list right now. Try refreshing in a moment.</p>`;
     return;
   }
-  if(!Array.isArray(items) || !items.length){
+  data.games = games;
+  data.apps = apps || [];
+
+  if(!data.games.length && !data.apps.length){
     content.className = 'empty';
     content.innerHTML = `<div class="big">🕹️</div><p>Nothing's been made public yet — check back soon!</p>`;
     return;
   }
-  allItems = items;
+
+  // The tab row is shown only when both sections have something in them. One
+  // section is not a choice, and a tab leading to an empty room is a worse
+  // answer than no tab: before any app is added, this page is exactly the
+  // page it was.
+  if(tabBar) tabBar.hidden = !(data.games.length && data.apps.length);
+  // A remembered section that has since been emptied falls back to the one
+  // that has not, rather than restoring as a pressed tab over nothing.
+  if(!data[mode].length) mode = data.games.length ? 'games' : 'apps';
+
+  allItems = data[mode];
+  activeCat = readCat(mode);
+  syncTabs();
   // Before the first paint, so the cards it paints are filtered on arrival
   // rather than flashing the whole grid and then hiding two thirds of it.
-  buildChips(items);
-  // A listing with entries but no actual games leaves the dice disabled —
-  // there would be nothing for it to deal.
-  if(luckyBtn) luckyBtn.disabled = !gamesOnly(visibleItems()).length;
+  buildChips(allItems);
   paint();
+  // A listing with entries but nothing openable in it leaves the dice
+  // disabled — there would be nothing for it to deal.
+  syncLucky();
 }
 
 /* What is on screen right now: the whole list, or the part of it a search
@@ -611,13 +805,13 @@ function paint(){
 
   // Said out loud for screen readers on every repaint, quietly.
   const count = document.getElementById('searchCount');
-  if(count) count.textContent = query ? `${matches.length} game${matches.length === 1 ? '' : 's'} match “${query}”` : '';
+  if(count) count.textContent = query ? `${matches.length} ${matches.length === 1 ? col().one : col().many} match “${query}”` : '';
 
   if(query && !matches.length){
     // Same styled empty state the page already uses, with the query echoed
     // back — through esc(), since it is the visitor's own text.
     content.className = 'empty';
-    content.innerHTML = `<div class="big">🔍</div><p>No game called “${esc(query)}” here — try fewer letters, or clear the search.</p>`;
+    content.innerHTML = `<div class="big">🔍</div><p>No ${col().one} called “${esc(query)}” here — try fewer letters, or clear the search.</p>`;
     // One empty state at a time: this branch owns the message, so the
     // category box comes down rather than stacking under it.
     applyCategoryFilter();
@@ -627,13 +821,13 @@ function paint(){
   content.className = 'grid';
   content.innerHTML = sorted(matches).map(it=>{
     const h = lookHash(it);
-    const shot = shotFor(it.url);
+    const shot = shotFor(it);
     // alt="" on purpose: the card's own <h3> already names the game, so a
     // screen reader announcing the picture too would just say it twice.
     return `
     <a class="card" data-cat="${esc(catOf(it))}" href="${esc(it.url)}" target="_blank" rel="noopener">
       <div class="top t${h % 8}">
-        <span class="emoji">${EMOJI[h % EMOJI.length]}</span>
+        <span class="emoji">${iconFor(h)}</span>
         ${shot ? `<img class="shot" src="${esc(shot)}" alt="" loading="lazy" decoding="async" width="600" height="375">` : ''}
       </div>
       <div class="body">

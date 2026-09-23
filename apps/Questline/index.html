@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0D10">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Questline">
+<meta name="description" content="Turn your day into a mini-game. Tick off quests, earn XP, level up, and pin your own trophies.">
+<title>Questline — your life, as a mini-game</title>
+
+<!--
+════════════════════════════════════════════════════════════════════════
+  QUESTLINE — v2
+════════════════════════════════════════════════════════════════════════
+  One self-contained file: no build step, no dependencies, no server. Open
+  it and it works, including offline.
+
+  HOW THE CODE IS LAID OUT (top to bottom, and it only flows one way):
+
+    1. STATE     what we know, and how it survives a reload
+    2. RULES     pure functions — levels, trophy conditions. No DOM here.
+    3. RENDER    state -> HTML. Reads state, never changes it.
+    4. ACTIONS   the only things that change state. Each one ends by
+                 saving and re-rendering.
+    5. BOOT      wire up events, draw the first frame.
+
+  The one rule worth keeping: RENDER never mutates and ACTIONS never touch
+  the DOM directly. When those two blur, an app this size stops being
+  followable.
+
+  THE ONE JOB is completing a quest. It is the first thing on screen, every
+  row is a full-width tap target, and it is reachable in one tap from a cold
+  open. Everything else got arranged around protecting that.
+
+  LISTS arrived in v2. A quest belongs to one named list (Everyday, Home,
+  Work, whatever you make), and the chips above the board switch between
+  them — plus an ALL chip that shows the whole day at once. XP, levels and
+  trophies stay global on purpose: lists sort the work, they do not split
+  the score, because three separate levels would be three weaker reasons
+  to tap anything.
+
+  NOT IN v2, deliberately — the loop above works completely first:
+    · Streaks (consecutive days). The strongest habit mechanic there is,
+      but it needs date-gap logic and a "you broke it" state, which is a
+      feature with feelings attached and deserves its own pass.
+    · Stats and history — a chart of XP over time, quests most/least done.
+    · Sub-tasks inside a single quest.
+    · Sound and haptics on completion.
+    · Editing a trophy after you have pinned it.
+    · Reordering quests by dragging.
+════════════════════════════════════════════════════════════════════════
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ── Palette ──────────────────────────────────────────────────────────
+   One accent doing the work: acid lime. It is the action colour, the
+   progress colour and the "you did it" colour, so anything lime on this
+   screen means "you, or something you can press". Gold is reserved
+   entirely for trophies so the two never compete. */
+:root{
+  --bg:#0B0D10;
+  --panel:#14181E;
+  --panel-2:#1A2029;
+  --line:#252D38;
+  --text:#EEF2F6;
+  --dim:#8B97A6;
+  --acc:#C6FF3D;
+  --acc-dark:#9BD117;
+  --acc-ink:#0B0D10;
+  --gold:#FFC53D;
+  --danger:#FF5E6D;
+  --radius:14px;
+  --tap:48px;              /* never smaller than a thumb */
+  --display:'Bungee', 'Impact', sans-serif;
+  --body:'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--body);
+  -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;
+  /* A faint glow behind the top of the screen, like a cabinet's marquee
+     light. Fixed so it does not travel with the list. */
+  background-image:radial-gradient(120% 60% at 50% -10%, rgba(198,255,61,.10), transparent 60%);
+  background-attachment:fixed;
+}
+button{font:inherit; color:inherit; cursor:pointer;}
+:focus-visible{outline:3px solid var(--acc); outline-offset:2px; border-radius:6px;}
+.sr{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;}
+
+/* ── Shell ───────────────────────────────────────────────────────────── */
+#app{
+  max-width:520px; margin:0 auto; min-height:100dvh;
+  display:flex; flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+main{flex:1; padding:0 16px 140px;}
+
+/* ── Header: level and the XP bar ─────────────────────────────────────
+   Sticky because it is the scoreboard — the reason to tap anything is
+   watching this move, so it must never scroll away. */
+header{
+  position:sticky; top:0; z-index:20;
+  padding:14px 16px 12px;
+  background:linear-gradient(180deg, var(--bg) 72%, transparent);
+  backdrop-filter:blur(8px);
+}
+.brand{display:flex; align-items:center; gap:9px; margin-bottom:12px;}
+.brand-mark{
+  width:26px; height:26px; border-radius:7px; flex:none;
+  background:var(--acc); color:var(--acc-ink);
+  font-family:var(--display); font-size:13px;
+  display:grid; place-items:center;
+}
+.brand-name{font-family:var(--display); font-size:15px; letter-spacing:.06em;}
+.brand-spacer{flex:1;}
+.icon-btn{
+  width:38px; height:38px; border-radius:10px; flex:none;
+  background:var(--panel); border:1px solid var(--line); color:var(--dim);
+  display:grid; place-items:center; font-size:15px;
+}
+.icon-btn:hover{color:var(--text); border-color:var(--acc);}
+
+.level-row{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:8px;}
+.level{font-family:var(--display); font-size:30px; line-height:1; color:var(--acc);}
+.level small{display:block; font-family:var(--body); font-size:10px; letter-spacing:.22em; color:var(--dim); margin-bottom:3px;}
+.xp-total{text-align:right; font-size:12px; color:var(--dim); line-height:1.35;}
+.xp-total b{display:block; font-size:19px; color:var(--text); font-weight:700; font-variant-numeric:tabular-nums;}
+
+.bar{
+  height:12px; border-radius:99px; background:var(--panel-2);
+  border:1px solid var(--line); overflow:hidden;
+}
+.bar-fill{
+  height:100%; background:linear-gradient(90deg, var(--acc-dark), var(--acc));
+  border-radius:99px; transition:width .35s ease; min-width:2px;
+}
+.bar-caption{margin:6px 0 0; font-size:11px; color:var(--dim); letter-spacing:.02em;}
+
+/* ── Screens ─────────────────────────────────────────────────────────── */
+.screen[hidden]{display:none;}
+.sec-title{
+  font-family:var(--display); font-size:12px; letter-spacing:.16em;
+  color:var(--dim); margin:22px 0 10px;
+}
+
+/* ── A quest row: the whole point of the app ─────────────────────────── */
+.quest{
+  display:flex; align-items:center; gap:12px;
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); margin-bottom:10px; overflow:hidden;
+}
+.quest-tap{
+  flex:1; min-width:0; min-height:var(--tap);
+  display:flex; align-items:center; gap:12px;
+  background:none; border:0; padding:13px 4px 13px 14px; text-align:left;
+}
+.quest-tap:hover .tick{border-color:var(--acc);}
+.tick{
+  width:24px; height:24px; border-radius:8px; flex:none;
+  border:2px solid var(--line); background:var(--bg);
+  display:grid; place-items:center; font-size:13px; color:var(--acc-ink);
+  transition:background .15s ease, border-color .15s ease;
+}
+.quest.is-done .tick{background:var(--acc); border-color:var(--acc);}
+.quest-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+.quest-title{
+  display:block;
+  font-weight:500; font-size:15px; line-height:1.3;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.quest.is-done .quest-title{color:var(--dim); text-decoration:line-through;}
+.quest-meta{font-size:11px; color:var(--dim); letter-spacing:.04em; margin-top:2px;}
+.quest-pts{
+  font-family:var(--display); font-size:13px; color:var(--acc);
+  flex:none; padding-right:2px; font-variant-numeric:tabular-nums;
+}
+.quest.is-done .quest-pts{color:var(--dim);}
+.quest-more{
+  width:38px; align-self:stretch; flex:none;
+  background:none; border:0; border-left:1px solid var(--line); color:var(--dim);
+  font-size:16px; line-height:1;
+}
+.quest-more:hover{color:var(--text); background:var(--panel-2);}
+
+/* ── List chips: which board am I looking at ──────────────────────────
+   Switching lists costs one tap and no navigation, so the chips sit
+   directly above the quests they filter. They scroll sideways rather than
+   wrapping: the row is the same height whether you keep two lists or ten,
+   so the board never jumps down the screen when you add one. */
+.lists{
+  display:flex; gap:8px; overflow-x:auto; padding:14px 0 2px;
+  scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
+}
+.lists::-webkit-scrollbar{display:none;}
+.chip{
+  flex:none; min-height:40px; padding:0 13px; border-radius:99px;
+  background:var(--panel); border:1px solid var(--line); color:var(--dim);
+  display:inline-flex; align-items:center; gap:7px;
+  font-size:13px; font-weight:500; white-space:nowrap;
+}
+.chip:hover{border-color:var(--acc); color:var(--text);}
+.chip.is-on{background:var(--acc); border-color:var(--acc); color:var(--acc-ink); font-weight:700;}
+.chip-ico{font-size:14px; line-height:1;}
+.chip-n{
+  font-size:11px; font-variant-numeric:tabular-nums;
+  background:var(--panel-2); color:var(--dim);
+  border-radius:99px; padding:1px 6px; min-width:20px; text-align:center;
+}
+.chip.is-on .chip-n{background:rgba(11,13,16,.20); color:var(--acc-ink);}
+.chip-add{font-size:17px; padding:0 15px; color:var(--acc);}
+
+/* ── Trophies ────────────────────────────────────────────────────────── */
+.trophy-grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
+.trophy{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 12px; text-align:center; position:relative; overflow:hidden;
+}
+.trophy.is-locked{opacity:.5;}
+.trophy.is-unlocked{border-color:rgba(255,197,61,.45);}
+.trophy-ico{font-size:26px; line-height:1; display:block; margin-bottom:8px;}
+.trophy-name{font-size:13px; font-weight:700; line-height:1.25;}
+.trophy-note{font-size:11px; color:var(--dim); margin-top:4px; line-height:1.35;}
+.trophy-photo{
+  width:100%; aspect-ratio:1/1; object-fit:cover;
+  border-radius:10px; margin-bottom:9px; display:block; background:var(--panel-2);
+}
+.trophy-del{
+  position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:8px;
+  background:rgba(11,13,16,.75); border:1px solid var(--line); color:var(--dim); font-size:12px;
+  display:grid; place-items:center;
+}
+.trophy-del:hover{color:var(--danger); border-color:var(--danger);}
+
+/* ── Empty states ────────────────────────────────────────────────────── */
+.empty{
+  border:1px dashed var(--line); border-radius:var(--radius);
+  padding:30px 22px; text-align:center; margin-top:6px;
+}
+.empty-ico{font-size:32px; display:block; margin-bottom:10px;}
+.empty-title{font-family:var(--display); font-size:14px; letter-spacing:.08em; margin-bottom:6px;}
+.empty-text{font-size:13px; color:var(--dim); line-height:1.55; margin:0 auto; max-width:30ch;}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn{
+  min-height:var(--tap); padding:0 18px; border-radius:12px;
+  border:1px solid var(--line); background:var(--panel); color:var(--text);
+  font-weight:700; font-size:14px;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn:hover{border-color:var(--acc);}
+.btn-primary{
+  background:var(--acc); color:var(--acc-ink); border-color:var(--acc);
+  font-family:var(--display); letter-spacing:.05em; font-size:13px;
+}
+.btn-primary:hover{background:#D4FF63;}
+.btn-ghost{background:none;}
+.btn-danger{color:var(--danger); border-color:rgba(255,94,109,.4);}
+.btn-danger:hover{border-color:var(--danger);}
+.btn-block{width:100%;}
+
+/* The add button floats above the list: the second-most-common action,
+   always in reach of a thumb, never scrolling out of view. */
+.fab-wrap{
+  position:fixed; left:0; right:0; bottom:calc(64px + env(safe-area-inset-bottom));
+  z-index:25; pointer-events:none; padding:0 16px;
+}
+.fab-inner{max-width:520px; margin:0 auto; display:flex; justify-content:flex-end;}
+.fab{
+  pointer-events:auto; min-height:52px; padding:0 20px; border-radius:99px;
+  background:var(--acc); color:var(--acc-ink); border:0;
+  font-family:var(--display); font-size:13px; letter-spacing:.05em;
+  box-shadow:0 8px 26px rgba(198,255,61,.28);
+  display:inline-flex; align-items:center; gap:8px;
+}
+.fab:hover{background:#D4FF63;}
+
+/* ── Bottom tabs ─────────────────────────────────────────────────────── */
+.tabs{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  background:rgba(11,13,16,.94); backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs-inner{max-width:520px; margin:0 auto; display:flex;}
+.tab{
+  flex:1; min-height:64px; background:none; border:0; color:var(--dim);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-family:var(--display); font-size:10px; letter-spacing:.12em;
+  border-top:2px solid transparent; margin-top:-1px;
+}
+.tab-ico{font-size:17px; line-height:1;}
+.tab[aria-selected="true"]{color:var(--acc); border-top-color:var(--acc);}
+
+/* ── Sheet (add / edit / trophy) ─────────────────────────────────────── */
+.sheet-back{
+  position:fixed; inset:0; z-index:40; background:rgba(4,6,8,.72);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.sheet-back[hidden]{display:none;}
+.sheet{
+  width:100%; max-width:520px; max-height:92dvh; overflow-y:auto;
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:20px 20px 0 0; padding:20px 16px calc(24px + env(safe-area-inset-bottom));
+}
+.sheet-title{font-family:var(--display); font-size:15px; letter-spacing:.06em; margin:0 0 16px;}
+.field{display:block; margin-bottom:14px;}
+.field > span{display:block; font-size:11px; letter-spacing:.14em; color:var(--dim); margin-bottom:6px; text-transform:uppercase;}
+.input, textarea.input, select.input{
+  width:100%; min-height:var(--tap); padding:12px 13px;
+  background:var(--bg); border:1px solid var(--line); border-radius:11px;
+  color:var(--text); font-family:var(--body); font-size:15px;
+}
+textarea.input{min-height:70px; resize:vertical;}
+.input::placeholder{color:#5C6773;}
+.input:focus{border-color:var(--acc); outline:none;}
+
+.seg{display:flex; gap:8px;}
+.seg button{
+  flex:1; min-height:var(--tap); border-radius:11px;
+  background:var(--bg); border:1px solid var(--line); color:var(--dim); font-size:13px; font-weight:500;
+}
+.seg button[aria-pressed="true"]{background:var(--acc); border-color:var(--acc); color:var(--acc-ink); font-weight:700;}
+
+.pts-row{display:flex; gap:8px;}
+.pts-row .input{flex:1;}
+.pts-quick{display:flex; gap:6px;}
+.pts-quick button{
+  min-width:44px; min-height:var(--tap); border-radius:11px;
+  background:var(--bg); border:1px solid var(--line); color:var(--dim); font-size:13px;
+}
+.pts-quick button:hover{border-color:var(--acc); color:var(--text);}
+
+.photo-drop{
+  border:1px dashed var(--line); border-radius:12px; padding:16px;
+  text-align:center; color:var(--dim); font-size:13px; width:100%;
+  background:var(--bg); min-height:var(--tap);
+}
+.photo-drop:hover{border-color:var(--acc); color:var(--text);}
+.photo-preview{width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:12px; margin-bottom:10px;}
+
+.sheet-actions{display:flex; gap:10px; margin-top:18px;}
+.sheet-actions .btn{flex:1;}
+
+/* One row per list in the manager: icon, name, remove — the three things
+   you can do to a list, all reachable without leaving the sheet. */
+.list-row, .list-new{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+.list-row .input, .list-new .input{flex:1; min-width:0;}
+.list-new .btn{flex:none;}
+.list-ico{
+  width:var(--tap); height:var(--tap); flex:none; border-radius:11px;
+  background:var(--bg); border:1px solid var(--line);
+  font-size:19px; line-height:1; display:grid; place-items:center;
+}
+.list-ico:hover{border-color:var(--acc);}
+.list-del{
+  width:var(--tap); height:var(--tap); flex:none; border-radius:11px;
+  background:none; border:1px solid var(--line); color:var(--dim);
+  font-size:13px; display:grid; place-items:center;
+}
+.list-del:hover{color:var(--danger); border-color:var(--danger);}
+
+/* ── Toast: the reward moment ────────────────────────────────────────── */
+#toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(130px + env(safe-area-inset-bottom)); z-index:50;
+  background:var(--acc); color:var(--acc-ink);
+  font-family:var(--display); font-size:13px; letter-spacing:.06em;
+  padding:12px 18px; border-radius:99px; box-shadow:0 10px 30px rgba(0,0,0,.5);
+  max-width:calc(100% - 32px); text-align:center;
+}
+#toast[hidden]{display:none;}
+/* With a sheet open, the usual spot is behind it — and what a sheet has to
+   say ("3 quests moved to Everyday") is exactly what you must not miss.
+   Same toast, other end of the screen. */
+#toast.is-high{bottom:auto; top:calc(14px + env(safe-area-inset-top));}
+#toast.is-gold{background:var(--gold);}
+#toast.is-bad{background:var(--danger); color:#fff;}
+
+/* ── Error banner ────────────────────────────────────────────────────── */
+.banner{
+  border:1px solid rgba(255,94,109,.45); background:rgba(255,94,109,.10);
+  border-radius:12px; padding:12px 14px; margin:10px 0 0;
+  font-size:13px; line-height:1.5; color:#FFC9CE;
+}
+.banner[hidden]{display:none;}
+.banner b{color:#fff; display:block; margin-bottom:2px;}
+
+/* Anything animated is a courtesy, not information. */
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important; animation:none !important;}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">Q</span>
+      <span class="brand-name">QUESTLINE</span>
+      <span class="brand-spacer"></span>
+      <button class="icon-btn" id="dataBtn" aria-label="Backup and restore your data" title="Backup &amp; restore">⇅</button>
+    </div>
+
+    <div class="level-row">
+      <div class="level"><small>LEVEL</small><span id="levelNum">1</span></div>
+      <div class="xp-total"><b id="xpNum">0</b>total XP</div>
+    </div>
+    <div class="bar">
+      <div class="bar-fill" id="barFill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Progress to next level"></div>
+    </div>
+    <p class="bar-caption" id="barCaption">Tap a quest to begin.</p>
+    <div class="banner" id="banner" hidden role="alert"></div>
+  </header>
+
+  <main>
+    <!-- QUESTS ------------------------------------------------------- -->
+    <section class="screen" id="screenQuests">
+      <h2 class="sr">Quests</h2>
+      <div class="lists" id="listRow" role="group" aria-label="Quest lists"></div>
+      <div id="todayWrap">
+        <p class="sec-title" id="todayTitle">TODAY</p>
+        <div id="todayList"></div>
+      </div>
+      <div id="clearedWrap" hidden>
+        <p class="sec-title">CLEARED</p>
+        <div id="clearedList"></div>
+      </div>
+    </section>
+
+    <!-- TROPHIES ----------------------------------------------------- -->
+    <section class="screen" id="screenTrophies" hidden>
+      <h2 class="sr">Trophies</h2>
+      <p class="sec-title">YOUR BONUS TROPHIES</p>
+      <div id="customList"></div>
+      <p class="sec-title">MILESTONES</p>
+      <div class="trophy-grid" id="builtinList"></div>
+    </section>
+  </main>
+
+  <div class="fab-wrap">
+    <div class="fab-inner">
+      <button class="fab" id="fabBtn">+ NEW QUEST</button>
+    </div>
+  </div>
+
+  <nav class="tabs" aria-label="Sections">
+    <div class="tabs-inner" role="tablist">
+      <button class="tab" id="tabQuests" role="tab" aria-selected="true" aria-controls="screenQuests">
+        <span class="tab-ico" aria-hidden="true">⚔️</span>QUESTS
+      </button>
+      <button class="tab" id="tabTrophies" role="tab" aria-selected="false" aria-controls="screenTrophies">
+        <span class="tab-ico" aria-hidden="true">🏆</span>TROPHIES
+      </button>
+    </div>
+  </nav>
+</div>
+
+<div class="sheet-back" id="sheetBack" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div>
+</div>
+
+<div id="toast" hidden role="status" aria-live="polite"></div>
+<p class="sr" id="live" role="status" aria-live="polite"></p>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════
+   1. STATE — what we know, and how it survives a reload
+   ═══════════════════════════════════════════════════════════════════ */
+
+var KEY = 'questline.v1';
+var storageBroken = false;   // set if localStorage throws; app still runs
+
+/* The icons a list can wear. A fixed set rather than a free emoji field:
+   every one of these still reads at 14px on a chip, which an arbitrary
+   emoji does not. Tapping a list's icon walks along this row. */
+var LIST_EMOJI = ['🗒️','🌱','🏠','💼','💪','📚','🎯','🧹','💸','🎨','🐾','🍳'];
+
+/* Past this, the chip row is a thing to scroll through rather than a thing
+   to glance at, which is the only reason it earns its space. */
+var MAX_LISTS = 12;
+
+/* Three starter lists with a few quests in each, so the first tap is
+   available immediately rather than after a form — and so lists are a
+   thing you can see rather than a thing to go looking for. They are
+   ordinary lists and ordinary quests, editable and deletable like any
+   other, not a special seeded thing to reason about later. */
+function starterState(){
+  var t = Date.now();
+  var L = { everyday:'seed-everyday', home:'seed-home', work:'seed-work' };
+  function q(listId, title, points, nth){
+    return { id: uid(), listId: listId, title: title, points: points,
+             repeat: 'daily', doneOn: null, createdAt: t + nth };
+  }
+  return {
+    v: 2,
+    xp: 0,
+    completions: 0,
+    lists: [
+      { id: L.everyday, name: 'Everyday', emoji: '🌱', createdAt: t },
+      { id: L.home,     name: 'Home',     emoji: '🏠', createdAt: t + 1 },
+      { id: L.work,     name: 'Work',     emoji: '💼', createdAt: t + 2 }
+    ],
+    /* 'all', or the id of the list on screen. It survives a reload because
+       the list you work in is a setting, not a mood. */
+    activeList: L.everyday,
+    quests: [
+      q(L.everyday, 'Drink a glass of water',           5,  0),
+      q(L.everyday, 'Move for 20 minutes',              15, 1),
+      q(L.everyday, 'Tidy one thing',                   10, 2),
+      q(L.home,     'Wash up after dinner',             10, 3),
+      q(L.home,     'Put one load of laundry on',       10, 4),
+      q(L.work,     'Clear the inbox',                  15, 5),
+      q(L.work,     'Plan tomorrow before logging off', 10, 6)
+    ],
+    trophies: [],      // the ones you pin yourself, with a photo
+    unlocked: {}       // built-in milestone id -> timestamp
+  };
+}
+
+var state = starterState();
+
+function uid(){ return Math.random().toString(36).slice(2, 10); }
+
+/* Today as a LOCAL date key. Deliberately not toISOString().slice(0,10),
+   which is the UTC day — west of Greenwich that rolls over during the
+   evening and your daily quests would reset while you are still awake. */
+function todayKey(d){
+  var t = d || new Date();
+  return t.getFullYear() + '-' +
+         String(t.getMonth() + 1).padStart(2, '0') + '-' +
+         String(t.getDate()).padStart(2, '0');
+}
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw === null) return starterState();   // genuinely first visit
+    var parsed = JSON.parse(raw);
+    return migrate(parsed);
+  }catch(err){
+    /* Two very different failures land here and both are survivable:
+       storage is unavailable (private mode, blocked cookies), or what is
+       stored is not valid JSON. Either way the app opens and works — it
+       just cannot remember. Saying so beats a blank screen. */
+    storageBroken = true;
+    return starterState();
+  }
+}
+
+/* Anything read from disk was written by an older version of this file, or
+   by someone editing an export by hand. Nothing downstream should have to
+   wonder whether a field exists. */
+function migrate(raw){
+  var s = starterState();
+  if(!raw || typeof raw !== 'object') return s;
+  s.xp = num(raw.xp, 0);
+  s.completions = num(raw.completions, 0);
+  s.unlocked = (raw.unlocked && typeof raw.unlocked === 'object') ? raw.unlocked : {};
+
+  /* Lists arrived in v2, so a v1 save has quests and no lists at all. Its
+     whole board becomes one list: nothing moves, nothing disappears, and
+     after the update you are looking at what you were looking at before. */
+  var known = {};
+  s.lists = (Array.isArray(raw.lists) ? raw.lists : []).map(function(l, i){
+    return {
+      id: String(l && l.id || uid()),
+      name: String(l && l.name || 'List').slice(0, 24),
+      emoji: (l && typeof l.emoji === 'string' && l.emoji) ? l.emoji.slice(0, 4) : LIST_EMOJI[0],
+      createdAt: num(l && l.createdAt, Date.now() + i)
+    };
+  }).filter(function(l){
+    if(known[l.id]) return false;        // a hand-edited export can repeat one
+    known[l.id] = true;
+    return true;
+  });
+  if(!s.lists.length){
+    s.lists = [{ id: uid(), name: 'My quests', emoji: LIST_EMOJI[0], createdAt: Date.now() }];
+    known[s.lists[0].id] = true;
+  }
+  var fallbackList = s.lists[0].id;
+
+  s.quests = (Array.isArray(raw.quests) ? raw.quests : []).map(function(q){
+    var listId = String(q && q.listId || '');
+    return {
+      id: String(q && q.id || uid()),
+      /* A quest whose list is gone is still a quest. The first list keeps
+         it on screen instead of stranding it on a board nobody can reach. */
+      listId: known[listId] ? listId : fallbackList,
+      title: String(q && q.title || 'Untitled quest').slice(0, 80),
+      points: clamp(num(q && q.points, 5), 1, 999),
+      repeat: (q && q.repeat === 'once') ? 'once' : 'daily',
+      doneOn: (q && typeof q.doneOn === 'string') ? q.doneOn : null,
+      createdAt: num(q && q.createdAt, Date.now())
+    };
+  });
+
+  var wanted = String(raw.activeList || '');
+  s.activeList = (wanted === 'all' || known[wanted]) ? wanted : fallbackList;
+  s.trophies = Array.isArray(raw.trophies) ? raw.trophies.map(function(t){
+    return {
+      id: String(t && t.id || uid()),
+      title: String(t && t.title || 'Trophy').slice(0, 60),
+      note: String(t && t.note || '').slice(0, 140),
+      photo: (t && typeof t.photo === 'string' && t.photo.indexOf('data:image/') === 0) ? t.photo : '',
+      awardedAt: num(t && t.awardedAt, Date.now())
+    };
+  }) : [];
+  return s;
+}
+function num(v, fallback){ var n = Number(v); return isFinite(n) ? n : fallback; }
+function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(state));
+    if(storageBroken){ storageBroken = false; showBanner(null); }
+  }catch(err){
+    storageBroken = true;
+    /* Quota is the one people actually hit, and photos are why. Naming the
+       cause is the difference between a fixable problem and a haunted app. */
+    var quota = err && (err.name === 'QuotaExceededError' || err.code === 22);
+    showBanner(quota
+      ? { title:'Out of storage space', body:'That change is not saved. Trophy photos take the most room — deleting one or two, or exporting a backup and starting fresh, will fix it.' }
+      : { title:'Cannot save right now', body:'The app works, but nothing will be remembered after you close this tab. Private browsing is the usual cause.' });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. RULES — pure functions. Given state, what is true? No DOM here, so
+   every one of these can be reasoned about (or tested) on its own.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Quick early, slower later: level 2 costs 50, and each level after costs
+   30 more than the one before. The first reward lands within a day or two,
+   while the habit is fragile, and levels still mean something months in. */
+function costOfLevel(level){ return 50 + (level - 1) * 30; }
+
+function levelFromXp(xp){
+  var level = 1, spent = 0;
+  while(xp - spent >= costOfLevel(level)){ spent += costOfLevel(level); level++; }
+  return { level: level, into: xp - spent, need: costOfLevel(level) };
+}
+
+function isDone(q){
+  if(q.repeat === 'once') return !!q.doneOn;
+  return q.doneOn === todayKey();     // a daily quest is done only today
+}
+
+function findList(id){
+  for(var i = 0; i < state.lists.length; i++) if(state.lists[i].id === id) return state.lists[i];
+  return null;
+}
+
+/* The quests the board is showing. 'all' is a real choice rather than a
+   missing one — it is how you see the whole day when the work does not
+   divide up neatly, and everything below treats it like any other list. */
+function questsInView(){
+  if(state.activeList === 'all') return state.quests.slice();
+  return state.quests.filter(function(q){ return q.listId === state.activeList; });
+}
+
+/* Where a new quest goes when nothing says otherwise: the list you are
+   looking at, or the first one when you are looking at all of them. */
+function defaultListId(){
+  return state.activeList === 'all' ? state.lists[0].id : state.activeList;
+}
+
+/* Milestones. Each is a pure condition over state, which is what lets the
+   check below be one loop instead of a pile of special cases. */
+var MILESTONES = [
+  { id:'first',    icon:'🥾', name:'First Steps',  note:'Complete your first quest',   test:function(s){ return s.completions >= 1; } },
+  { id:'ten',      icon:'🔟', name:'Getting Going', note:'Complete 10 quests',          test:function(s){ return s.completions >= 10; } },
+  { id:'century',  icon:'💯', name:'Century',       note:'Earn 100 XP',                 test:function(s){ return s.xp >= 100; } },
+  { id:'lvl5',     icon:'⭐', name:'Seasoned',      note:'Reach level 5',               test:function(s){ return levelFromXp(s.xp).level >= 5; } },
+  { id:'fifty',    icon:'🔥', name:'Half Century',  note:'Complete 50 quests',          test:function(s){ return s.completions >= 50; } },
+  { id:'collector',icon:'📸', name:'Collector',     note:'Pin your first bonus trophy', test:function(s){ return s.trophies.length >= 1; } },
+  { id:'k',        icon:'👑', name:'Quest Lord',    note:'Earn 1000 XP',                test:function(s){ return s.xp >= 1000; } }
+];
+
+/* Returns the milestones newly earned by whatever just happened. Called
+   after every action so nothing has to remember to check. */
+function newlyUnlocked(){
+  var fresh = [];
+  MILESTONES.forEach(function(m){
+    if(!state.unlocked[m.id] && m.test(state)){
+      state.unlocked[m.id] = Date.now();
+      fresh.push(m);
+    }
+  });
+  return fresh;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   3. RENDER — state in, HTML out. Reads state, never changes it.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var $ = function(id){ return document.getElementById(id); };
+
+/* Every piece of text a person typed goes through here before it becomes
+   markup. A quest called <img src=x onerror=...> is a perfectly ordinary
+   thing to type, and this is the line between "a funny quest name" and
+   "script running in your app". */
+function esc(s){
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+
+function render(){
+  var lv = levelFromXp(state.xp);
+  $('levelNum').textContent = lv.level;
+  $('xpNum').textContent = state.xp;
+
+  var pct = Math.round((lv.into / lv.need) * 100);
+  var fill = $('barFill');
+  fill.style.width = pct + '%';
+  fill.setAttribute('aria-valuenow', String(pct));
+  fill.setAttribute('aria-valuetext', lv.into + ' of ' + lv.need + ' XP toward level ' + (lv.level + 1));
+  $('barCaption').textContent = (lv.need - lv.into) + ' XP to level ' + (lv.level + 1);
+
+  renderLists();
+  renderQuests();
+  renderTrophies();
+}
+
+function renderLists(){
+  var openPer = {}, openAll = 0;
+  state.quests.forEach(function(q){
+    if(isDone(q)) return;
+    openPer[q.listId] = (openPer[q.listId] || 0) + 1;
+    openAll++;
+  });
+
+  $('listRow').innerHTML =
+    listChip('all', '', 'All', openAll) +
+    state.lists.map(function(l){
+      return listChip(l.id, l.emoji, l.name, openPer[l.id] || 0);
+    }).join('') +
+    '<button class="chip chip-add" id="listsBtn" title="Add or manage lists" ' +
+      'aria-label="Add or manage lists">＋</button>';
+
+  /* The list you just switched to — or just made — can be off the end of a
+     row that scrolls. 'nearest' moves it only if it is actually out of
+     sight, so the common case costs nothing and never jogs the page. */
+  var on = $('listRow').querySelector('.chip.is-on');
+  if(on && on.scrollIntoView) on.scrollIntoView({ block:'nearest', inline:'nearest' });
+}
+
+/* The number on a chip counts what is still open, not what exists: the
+   question you are actually asking at a glance is "is there anything left
+   over there?", and a zero is the answer that a list is done for today. */
+function listChip(id, emoji, name, count){
+  var on = state.activeList === id;
+  return '<button class="chip' + (on ? ' is-on' : '') + '" data-list="' + esc(id) + '" ' +
+      'aria-pressed="' + (on ? 'true' : 'false') + '">' +
+      (emoji ? '<span class="chip-ico" aria-hidden="true">' + esc(emoji) + '</span>' : '') +
+      esc(name) +
+      '<span class="chip-n">' + count + '</span>' +
+    '</button>';
+}
+
+function renderQuests(){
+  var view = questsInView();
+  var open = [], cleared = [];
+  view.forEach(function(q){ (isDone(q) ? cleared : open).push(q); });
+
+  /* Newest quests last, so the list you built stays in the order you built
+     it. Under ALL, list order wins first: quests gather under the list they
+     belong to without needing a heading above every one of them. */
+  var order = {};
+  state.lists.forEach(function(l, i){ order[l.id] = i; });
+  function byBoard(a, b){
+    if(state.activeList === 'all' && order[a.listId] !== order[b.listId]){
+      return (order[a.listId] || 0) - (order[b.listId] || 0);
+    }
+    return a.createdAt - b.createdAt;
+  }
+  open.sort(byBoard);
+  cleared.sort(byBoard);
+
+  var here = findList(state.activeList);     // null while ALL is showing
+  var todayList = $('todayList');
+  if(!state.quests.length){
+    todayList.innerHTML = emptyBlock('🗺️', 'NO QUESTS YET',
+      'Your quest board is empty. Add the first thing you want to get credit for — small counts.');
+  }else if(!view.length){
+    /* Quests exist, just not here. Saying which list is empty stops this
+       reading as "everything is gone" when it is one tap from full. */
+    todayList.innerHTML = emptyBlock('📝', 'THIS LIST IS EMPTY',
+      here.name + ' has nothing in it yet. Anything you add while it is open lands here.');
+  }else if(!open.length){
+    todayList.innerHTML = emptyBlock('🎉', 'BOARD CLEARED',
+      here
+        ? here.name + ' is done. Daily quests come back tomorrow — the other lists are one tap away.'
+        : 'Every list is done. Daily quests come back tomorrow.');
+  }else{
+    todayList.innerHTML = open.map(questRow).join('');
+  }
+
+  $('clearedWrap').hidden = cleared.length === 0;
+  $('clearedList').innerHTML = cleared.map(questRow).join('');
+}
+
+function questRow(q){
+  var done = isDone(q);
+  var meta = q.repeat === 'daily' ? 'Daily' : 'One-off';
+  if(done && q.repeat === 'daily') meta = 'Done today';
+  if(done && q.repeat === 'once') meta = 'Cleared';
+  /* Under ALL a row has to say where it came from. Without it the board is
+     a pile, and "which of these is work?" costs a tap to answer. */
+  if(state.activeList === 'all'){
+    var l = findList(q.listId);
+    if(l) meta += ' · ' + l.emoji + ' ' + l.name;
+  }
+  return '' +
+    '<div class="quest' + (done ? ' is-done' : '') + '">' +
+      '<button class="quest-tap" data-toggle="' + esc(q.id) + '" ' +
+        'aria-pressed="' + (done ? 'true' : 'false') + '">' +
+        '<span class="tick" aria-hidden="true">' + (done ? '✓' : '') + '</span>' +
+        '<span class="quest-body">' +
+          '<span class="quest-title">' + esc(q.title) + '</span>' +
+          '<span class="quest-meta">' + esc(meta) + '</span>' +
+        '</span>' +
+        '<span class="quest-pts">' + (done ? '' : '+') + q.points + '</span>' +
+      '</button>' +
+      '<button class="quest-more" data-edit="' + esc(q.id) + '" ' +
+        'aria-label="Edit ' + esc(q.title) + '">⋯</button>' +
+    '</div>';
+}
+
+function renderTrophies(){
+  var custom = $('customList');
+  if(!state.trophies.length){
+    custom.innerHTML = emptyBlock('📸', 'NO BONUS TROPHIES',
+      'Did something that deserves more than points? Pin it here with a photo.') +
+      '<button class="btn btn-primary btn-block" id="addTrophyBtn" style="margin-top:12px;">+ PIN A TROPHY</button>';
+  }else{
+    custom.innerHTML =
+      '<div class="trophy-grid">' +
+      state.trophies.slice().sort(function(a, b){ return b.awardedAt - a.awardedAt; }).map(function(t){
+        return '<div class="trophy is-unlocked">' +
+          '<button class="trophy-del" data-deltrophy="' + esc(t.id) + '" aria-label="Remove trophy ' + esc(t.title) + '">✕</button>' +
+          (t.photo ? '<img class="trophy-photo" src="' + esc(t.photo) + '" alt="">' : '<span class="trophy-ico">🏅</span>') +
+          '<div class="trophy-name">' + esc(t.title) + '</div>' +
+          (t.note ? '<div class="trophy-note">' + esc(t.note) + '</div>' : '') +
+        '</div>';
+      }).join('') +
+      '</div>' +
+      '<button class="btn btn-primary btn-block" id="addTrophyBtn" style="margin-top:12px;">+ PIN A TROPHY</button>';
+  }
+
+  $('builtinList').innerHTML = MILESTONES.map(function(m){
+    var got = !!state.unlocked[m.id];
+    return '<div class="trophy ' + (got ? 'is-unlocked' : 'is-locked') + '">' +
+      '<span class="trophy-ico" aria-hidden="true">' + (got ? m.icon : '🔒') + '</span>' +
+      '<div class="trophy-name">' + esc(m.name) + '</div>' +
+      '<div class="trophy-note">' + esc(m.note) + '</div>' +
+      '<span class="sr">' + (got ? 'Unlocked' : 'Locked') + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function emptyBlock(icon, title, text){
+  return '<div class="empty">' +
+    '<span class="empty-ico" aria-hidden="true">' + icon + '</span>' +
+    '<div class="empty-title">' + esc(title) + '</div>' +
+    '<p class="empty-text">' + esc(text) + '</p>' +
+  '</div>';
+}
+
+var toastTimer = null;
+function toast(msg, kind){
+  var el = $('toast');
+  el.textContent = msg;
+  el.className = (kind ? 'is-' + kind : '') + ($('sheetBack').hidden ? '' : ' is-high');
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.hidden = true; }, 2200);
+}
+function announce(msg){ $('live').textContent = msg; }
+
+function showBanner(info){
+  var el = $('banner');
+  if(!info){ el.hidden = true; el.innerHTML = ''; return; }
+  el.innerHTML = '<b>' + esc(info.title) + '</b>' + esc(info.body);
+  el.hidden = false;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   4. ACTIONS — the only things that change state. Each one ends the same
+   way: save, re-render, say something. Nothing here touches the DOM by
+   hand, so there is no second copy of the truth to drift.
+   ═══════════════════════════════════════════════════════════════════ */
+
+function toggleQuest(id){
+  var q = find(id);
+  if(!q) return;
+
+  if(isDone(q)){
+    // Undo. Points come back off, so a mis-tap costs nothing.
+    q.doneOn = null;
+    state.xp = Math.max(0, state.xp - q.points);
+    state.completions = Math.max(0, state.completions - 1);
+    commit();
+    toast('Undone · −' + q.points + ' XP');
+    announce(q.title + ' marked not done. ' + state.xp + ' XP.');
+    return;
+  }
+
+  var before = levelFromXp(state.xp).level;
+  q.doneOn = todayKey();
+  state.xp += q.points;
+  state.completions++;
+  var fresh = newlyUnlocked();
+  var after = levelFromXp(state.xp).level;
+  commit();
+
+  /* One thing happened, so one thing gets said — and the biggest news
+     wins. Three stacked toasts for a single tap is noise. */
+  if(after > before){
+    toast('LEVEL ' + after + '!', 'gold');
+  }else if(fresh.length){
+    toast('TROPHY: ' + fresh[0].name.toUpperCase(), 'gold');
+  }else{
+    toast('QUEST COMPLETE  +' + q.points + ' XP');
+  }
+  announce('Completed ' + q.title + '. ' + state.xp + ' XP, level ' + after + '.');
+}
+
+function setActiveList(id){
+  if(id !== 'all' && !findList(id)) return;
+  state.activeList = id;
+  commit();
+  /* commit() rebuilt the chip row, so the button that was just pressed is
+     a different element now. Focus moves to its replacement, otherwise a
+     keyboard or screen-reader user is dropped back to the top of the page
+     every time they change list. */
+  var again = $('listRow').querySelector('[data-list="' + id + '"]');
+  if(again) again.focus();
+  var l = findList(id);
+  announce(l ? 'Showing the ' + l.name + ' list.' : 'Showing every list.');
+}
+
+/* Returns an error string, or null when it worked — the same contract the
+   quest and trophy forms use, so the sheets all report failures one way. */
+function saveList(fields, id){
+  var name = String(fields.name || '').trim().slice(0, 24);
+  if(!name) return 'Give the list a name.';
+
+  if(id){
+    var l = findList(id);
+    if(!l) return 'That list no longer exists.';
+    l.name = name;
+    if(fields.emoji) l.emoji = fields.emoji;
+    commit();
+    return null;
+  }
+  if(state.lists.length >= MAX_LISTS){
+    return 'That is ' + MAX_LISTS + ' lists already. Rename or delete one first.';
+  }
+  var made = { id: uid(), name: name, emoji: fields.emoji || LIST_EMOJI[0], createdAt: Date.now() };
+  state.lists.push(made);
+  state.activeList = made.id;        // you made it in order to put things in it
+  commit();
+  toast('LIST ADDED');
+  return null;
+}
+
+function cycleListIcon(id){
+  var l = findList(id);
+  if(!l) return;
+  l.emoji = LIST_EMOJI[(LIST_EMOJI.indexOf(l.emoji) + 1) % LIST_EMOJI.length];
+  commit();
+}
+
+/* Deleting a list never deletes quests — they move to the first list left
+   standing, and the toast says where they went. A board somebody spent a
+   month filling should not be one mis-tap from gone. */
+function deleteList(id){
+  if(state.lists.length <= 1) return 'There has to be at least one list.';
+  var l = findList(id);
+  if(!l) return null;
+
+  var rest = state.lists.filter(function(x){ return x.id !== id; });
+  var moveTo = rest[0];
+  var moved = 0;
+  state.quests.forEach(function(q){
+    if(q.listId === id){ q.listId = moveTo.id; moved++; }
+  });
+  state.lists = rest;
+  if(state.activeList === id) state.activeList = moveTo.id;
+  commit();
+  toast(moved
+    ? 'LIST DELETED · ' + moved + ' MOVED TO ' + moveTo.name.toUpperCase()
+    : 'LIST DELETED');
+  return null;
+}
+
+function saveQuest(fields, id){
+  var title = fields.title.trim();
+  if(!title) return 'Give the quest a name.';
+  var points = clamp(Math.round(num(fields.points, 0)), 1, 999);
+  if(!isFinite(points) || points < 1) return 'Points must be at least 1.';
+  var listId = findList(fields.listId) ? fields.listId : defaultListId();
+
+  if(id){
+    var q = find(id);
+    if(!q) return 'That quest no longer exists.';
+    q.title = title.slice(0, 80);
+    q.points = points;
+    q.repeat = fields.repeat;
+    q.listId = listId;
+  }else{
+    state.quests.push({
+      id: uid(), listId: listId, title: title.slice(0, 80), points: points,
+      repeat: fields.repeat, doneOn: null, createdAt: Date.now()
+    });
+  }
+  commit();
+  toast(id ? 'SAVED' : 'QUEST ADDED');
+  return null;
+}
+
+function deleteQuest(id){
+  state.quests = state.quests.filter(function(q){ return q.id !== id; });
+  commit();
+  toast('QUEST REMOVED');
+}
+
+function saveTrophy(fields){
+  var title = fields.title.trim();
+  if(!title) return 'Give the trophy a name.';
+  state.trophies.push({
+    id: uid(), title: title.slice(0, 60),
+    note: fields.note.trim().slice(0, 140),
+    photo: fields.photo || '', awardedAt: Date.now()
+  });
+  var fresh = newlyUnlocked();
+  commit();
+  toast(fresh.length ? 'TROPHY: ' + fresh[0].name.toUpperCase() : 'TROPHY PINNED', 'gold');
+  return null;
+}
+
+function deleteTrophy(id){
+  state.trophies = state.trophies.filter(function(t){ return t.id !== id; });
+  commit();
+  toast('TROPHY REMOVED');
+}
+
+function find(id){
+  for(var i = 0; i < state.quests.length; i++) if(state.quests[i].id === id) return state.quests[i];
+  return null;
+}
+function commit(){ save(); render(); }
+
+/* ── Backup ──────────────────────────────────────────────────────────
+   The answer to "my data lives in one browser". Export writes a file you
+   own; import replaces everything, which is why it asks first. */
+function exportData(){
+  try{
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'questline-' + todayKey() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    toast('BACKUP SAVED');
+  }catch(err){
+    toast('Could not save the file', 'bad');
+  }
+}
+
+function importData(file){
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      state = migrate(JSON.parse(String(reader.result)));
+      commit();
+      closeSheet();
+      toast('BACKUP LOADED');
+    }catch(err){
+      toast('That file is not a Questline backup', 'bad');
+    }
+  };
+  reader.onerror = function(){ toast('Could not read that file', 'bad'); };
+  reader.readAsDataURL ? reader.readAsText(file) : reader.readAsText(file);
+}
+
+/* Photos are shrunk before they are stored, not after. localStorage is a
+   few megabytes for everything, and a modern phone photo is several on its
+   own — one unshrunk picture would fill the whole app's budget. 640px is
+   far more than the 150px square it is displayed at, so there is room to
+   look at it properly without paying for a photo nobody zooms into. */
+function readPhoto(file, done){
+  if(!file) return done('');
+  if(file.size > 12 * 1024 * 1024) return done(null, 'That image is very large — try one under 12MB.');
+  var reader = new FileReader();
+  reader.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var max = 640;
+        var scale = Math.min(1, max / Math.max(img.width, img.height));
+        var w = Math.max(1, Math.round(img.width * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        done(c.toDataURL('image/jpeg', 0.78));
+      }catch(err){
+        done(null, 'Could not process that image.');
+      }
+    };
+    img.onerror = function(){ done(null, 'That file is not an image we can read.'); };
+    img.src = String(reader.result);
+  };
+  reader.onerror = function(){ done(null, 'Could not read that file.'); };
+  reader.readAsDataURL(file);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. SHEETS + BOOT — wiring. The sheet is one element reused by three
+   forms, so there is one place where focus, Escape and closing behave.
+   ═══════════════════════════════════════════════════════════════════ */
+
+var lastFocused = null;
+
+/* focusSel picks what to focus instead of the first control — the lists
+   sheet redraws itself after every change and wants the name field back,
+   not the icon button that happens to come first in the markup. */
+function openSheet(html, onReady, focusSel){
+  /* Only remember where we came from when the sheet was actually closed:
+     a redraw would otherwise record a button inside the sheet and leave
+     focus nowhere once it shuts. */
+  if($('sheetBack').hidden) lastFocused = document.activeElement;
+  $('sheet').innerHTML = html;
+  $('sheetBack').hidden = false;
+  if(onReady) onReady($('sheet'));
+  var first = $('sheet').querySelector(focusSel || 'input, select, textarea, button');
+  if(first) first.focus();
+}
+
+function closeSheet(){
+  $('sheetBack').hidden = true;
+  $('sheet').innerHTML = '';
+  if(lastFocused && lastFocused.focus) lastFocused.focus();
+}
+
+function questSheet(id){
+  var q = id ? find(id) : null;
+  var isDaily = q ? q.repeat === 'daily' : true;
+  openSheet(
+    '<h3 class="sheet-title" id="sheetTitle">' + (q ? 'EDIT QUEST' : 'NEW QUEST') + '</h3>' +
+    '<label class="field" for="fTitle"><span>What is it?</span>' +
+      '<input class="input" id="fTitle" maxlength="80" placeholder="e.g. Walk the dog" value="' + esc(q ? q.title : '') + '">' +
+    '</label>' +
+    '<label class="field" for="fList"><span>Which list?</span>' +
+      '<select class="input" id="fList">' + listOptions(q ? q.listId : defaultListId()) + '</select>' +
+    '</label>' +
+    '<div class="field"><span id="repeatLabel">How often?</span>' +
+      '<div class="seg" role="group" aria-labelledby="repeatLabel">' +
+        '<button type="button" id="segDaily" aria-pressed="' + (isDaily ? 'true' : 'false') + '">Every day</button>' +
+        '<button type="button" id="segOnce" aria-pressed="' + (isDaily ? 'false' : 'true') + '">Just once</button>' +
+      '</div>' +
+    '</div>' +
+    '<label class="field" for="fPoints"><span>Worth how much?</span>' +
+      '<div class="pts-row">' +
+        '<input class="input" id="fPoints" type="number" min="1" max="999" inputmode="numeric" value="' + (q ? q.points : 10) + '">' +
+        '<div class="pts-quick">' +
+          '<button type="button" data-pts="5">5</button>' +
+          '<button type="button" data-pts="10">10</button>' +
+          '<button type="button" data-pts="25">25</button>' +
+        '</div>' +
+      '</div>' +
+    '</label>' +
+    '<p class="banner" id="fErr" hidden role="alert"></p>' +
+    '<div class="sheet-actions">' +
+      (q ? '<button class="btn btn-danger" id="fDelete">Delete</button>' : '<button class="btn btn-ghost" id="fCancel">Cancel</button>') +
+      '<button class="btn btn-primary" id="fSave">' + (q ? 'SAVE' : 'ADD QUEST') + '</button>' +
+    '</div>',
+    function(root){
+      var repeat = isDaily ? 'daily' : 'once';
+      root.querySelector('#segDaily').addEventListener('click', function(){
+        repeat = 'daily';
+        root.querySelector('#segDaily').setAttribute('aria-pressed','true');
+        root.querySelector('#segOnce').setAttribute('aria-pressed','false');
+      });
+      root.querySelector('#segOnce').addEventListener('click', function(){
+        repeat = 'once';
+        root.querySelector('#segDaily').setAttribute('aria-pressed','false');
+        root.querySelector('#segOnce').setAttribute('aria-pressed','true');
+      });
+      root.querySelectorAll('[data-pts]').forEach(function(b){
+        b.addEventListener('click', function(){ root.querySelector('#fPoints').value = b.dataset.pts; });
+      });
+      if(root.querySelector('#fCancel')) root.querySelector('#fCancel').addEventListener('click', closeSheet);
+      if(root.querySelector('#fDelete')) root.querySelector('#fDelete').addEventListener('click', function(){
+        deleteQuest(id); closeSheet();
+      });
+      root.querySelector('#fSave').addEventListener('click', function(){
+        var err = saveQuest({
+          title: root.querySelector('#fTitle').value,
+          points: root.querySelector('#fPoints').value,
+          repeat: repeat,
+          listId: root.querySelector('#fList').value
+        }, id);
+        if(err){
+          var box = root.querySelector('#fErr');
+          box.textContent = err; box.hidden = false;
+          root.querySelector('#fTitle').focus();
+          return;
+        }
+        closeSheet();
+      });
+    }
+  );
+}
+
+function listOptions(selected){
+  return state.lists.map(function(l){
+    return '<option value="' + esc(l.id) + '"' + (l.id === selected ? ' selected' : '') + '>' +
+      esc(l.emoji + '  ' + l.name) + '</option>';
+  }).join('');
+}
+
+/* One sheet for everything a list can have done to it: made, renamed,
+   re-iconed, removed. Every change redraws it in place, so the rows you
+   are editing always match the board waiting behind them. */
+function listsSheet(){
+  openSheet(
+    '<h3 class="sheet-title" id="sheetTitle">LISTS</h3>' +
+    '<div class="field"><span>New list</span>' +
+      '<div class="list-new">' +
+        '<button type="button" class="list-ico" id="nIco" title="Change icon" ' +
+          'aria-label="Change the icon for the new list">' + LIST_EMOJI[0] + '</button>' +
+        '<input class="input" id="nName" maxlength="24" placeholder="e.g. Weekend" ' +
+          'aria-label="Name for the new list">' +
+        '<button type="button" class="btn btn-primary" id="nAdd">ADD</button>' +
+      '</div>' +
+    '</div>' +
+    '<p class="banner" id="lErr" hidden role="alert"></p>' +
+    '<p class="sec-title" style="margin:18px 0 10px;">YOUR LISTS</p>' +
+    state.lists.map(function(l){
+      return '<div class="list-row">' +
+        '<button type="button" class="list-ico" data-listicon="' + esc(l.id) + '" title="Change icon" ' +
+          'aria-label="Change the icon for ' + esc(l.name) + '">' + esc(l.emoji) + '</button>' +
+        '<input class="input" data-listname="' + esc(l.id) + '" maxlength="24" ' +
+          'value="' + esc(l.name) + '" aria-label="Name of the list ' + esc(l.name) + '">' +
+        '<button type="button" class="list-del" data-dellist="' + esc(l.id) + '" ' +
+          'aria-label="Delete the list ' + esc(l.name) + '">✕</button>' +
+      '</div>';
+    }).join('') +
+    '<p class="empty-text" style="margin:12px 0 0; max-width:none; text-align:left;">' +
+      'Deleting a list keeps its quests — they move to ' + esc(state.lists[0].name) + '.</p>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost btn-block" id="lClose">Close</button>' +
+    '</div>',
+    function(root){
+      var errBox = root.querySelector('#lErr');
+      function fail(msg){ errBox.textContent = msg; errBox.hidden = false; }
+
+      var newEmoji = LIST_EMOJI[0];
+      root.querySelector('#nIco').addEventListener('click', function(){
+        newEmoji = LIST_EMOJI[(LIST_EMOJI.indexOf(newEmoji) + 1) % LIST_EMOJI.length];
+        this.textContent = newEmoji;
+      });
+      root.querySelector('#nAdd').addEventListener('click', function(){
+        var msg = saveList({ name: root.querySelector('#nName').value, emoji: newEmoji }, null);
+        if(msg) return fail(msg);
+        listsSheet();                    // redraw, now with the new row in it
+      });
+
+      root.querySelectorAll('[data-listicon]').forEach(function(b){
+        b.addEventListener('click', function(){
+          cycleListIcon(b.dataset.listicon);
+          var l = findList(b.dataset.listicon);
+          /* Patch the one button rather than redrawing: cycling icons is a
+             thing you do several times in a row, and a redraw would throw
+             focus back to the top between every tap. */
+          if(l) b.textContent = l.emoji;
+        });
+      });
+
+      root.querySelectorAll('[data-listname]').forEach(function(input){
+        input.addEventListener('change', function(){
+          var msg = saveList({ name: input.value }, input.dataset.listname);
+          if(!msg) return;
+          fail(msg);
+          var l = findList(input.dataset.listname);
+          if(l) input.value = l.name;    // put the rejected edit back to what is stored
+        });
+      });
+
+      root.querySelectorAll('[data-dellist]').forEach(function(b){
+        b.addEventListener('click', function(){
+          var msg = deleteList(b.dataset.dellist);
+          if(msg) return fail(msg);
+          listsSheet();
+        });
+      });
+
+      root.querySelector('#lClose').addEventListener('click', closeSheet);
+    },
+    '#nName'
+  );
+}
+
+function trophySheet(){
+  var photo = '';
+  openSheet(
+    '<h3 class="sheet-title" id="sheetTitle">PIN A TROPHY</h3>' +
+    '<label class="field" for="tTitle"><span>What did you do?</span>' +
+      '<input class="input" id="tTitle" maxlength="60" placeholder="e.g. Ran my first 10k">' +
+    '</label>' +
+    '<label class="field" for="tNote"><span>A line about it <span style="text-transform:none;">(optional)</span></span>' +
+      '<textarea class="input" id="tNote" maxlength="140" placeholder="Rained the whole way."></textarea>' +
+    '</label>' +
+    '<div class="field"><span>Photo</span>' +
+      '<img class="photo-preview" id="tPreview" alt="" hidden>' +
+      '<button type="button" class="photo-drop" id="tPick">📷 Choose a photo</button>' +
+      '<input type="file" id="tFile" accept="image/*" class="sr" aria-label="Choose a photo for this trophy">' +
+    '</div>' +
+    '<p class="banner" id="tErr" hidden role="alert"></p>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost" id="tCancel">Cancel</button>' +
+      '<button class="btn btn-primary" id="tSave">PIN IT</button>' +
+    '</div>',
+    function(root){
+      var err = root.querySelector('#tErr');
+      var pick = root.querySelector('#tPick');
+      root.querySelector('#tCancel').addEventListener('click', closeSheet);
+      pick.addEventListener('click', function(){ root.querySelector('#tFile').click(); });
+      root.querySelector('#tFile').addEventListener('change', function(e){
+        var f = e.target.files && e.target.files[0];
+        if(!f) return;
+        pick.textContent = 'Working on it…';        // the only slow moment in the app
+        pick.disabled = true;
+        readPhoto(f, function(dataUrl, problem){
+          pick.disabled = false;
+          if(problem){
+            pick.textContent = '📷 Choose a photo';
+            err.textContent = problem; err.hidden = false;
+            return;
+          }
+          photo = dataUrl;
+          err.hidden = true;
+          pick.textContent = '📷 Choose a different photo';
+          var prev = root.querySelector('#tPreview');
+          prev.src = dataUrl; prev.hidden = false;
+        });
+      });
+      root.querySelector('#tSave').addEventListener('click', function(){
+        var problem = saveTrophy({
+          title: root.querySelector('#tTitle').value,
+          note: root.querySelector('#tNote').value,
+          photo: photo
+        });
+        if(problem){ err.textContent = problem; err.hidden = false; return; }
+        closeSheet();
+      });
+    }
+  );
+}
+
+function dataSheet(){
+  openSheet(
+    '<h3 class="sheet-title" id="sheetTitle">BACKUP &amp; RESTORE</h3>' +
+    '<p class="empty-text" style="margin:0 0 16px; max-width:none; text-align:left;">' +
+      'Questline keeps everything in this browser on this device — nothing is sent anywhere. ' +
+      'Save a backup file to move to a new phone, or to keep it safe.</p>' +
+    '<div class="sheet-actions" style="margin-top:0;">' +
+      '<button class="btn" id="dExport">⬇ Save backup</button>' +
+      '<button class="btn" id="dImport">⬆ Load backup</button>' +
+    '</div>' +
+    '<input type="file" id="dFile" accept="application/json,.json" class="sr" aria-label="Choose a backup file">' +
+    '<p class="empty-text" style="margin:16px 0 0; max-width:none; text-align:left;">' +
+      'Loading a backup replaces everything currently here.</p>' +
+    '<div class="sheet-actions">' +
+      '<button class="btn btn-ghost btn-block" id="dClose">Close</button>' +
+    '</div>',
+    function(root){
+      root.querySelector('#dClose').addEventListener('click', closeSheet);
+      root.querySelector('#dExport').addEventListener('click', exportData);
+      root.querySelector('#dImport').addEventListener('click', function(){ root.querySelector('#dFile').click(); });
+      root.querySelector('#dFile').addEventListener('change', function(e){
+        var f = e.target.files && e.target.files[0];
+        if(f) importData(f);
+      });
+    }
+  );
+}
+
+/* ── Events ──────────────────────────────────────────────────────────
+   Delegated from the container: quest rows are re-rendered constantly, and
+   listeners attached per row would have to be re-attached every time. */
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-toggle]');
+  if(t){ toggleQuest(t.dataset.toggle); return; }
+
+  var ed = e.target.closest('[data-edit]');
+  if(ed){ questSheet(ed.dataset.edit); return; }
+
+  var del = e.target.closest('[data-deltrophy]');
+  if(del){ deleteTrophy(del.dataset.deltrophy); return; }
+
+  var pick = e.target.closest('[data-list]');
+  if(pick){ setActiveList(pick.dataset.list); return; }
+
+  if(e.target.closest('#listsBtn')){ listsSheet(); return; }
+
+  if(e.target.closest('#addTrophyBtn')){ trophySheet(); return; }
+});
+
+$('fabBtn').addEventListener('click', function(){ questSheet(null); });
+$('dataBtn').addEventListener('click', dataSheet);
+
+$('sheetBack').addEventListener('mousedown', function(e){
+  if(e.target === $('sheetBack')) closeSheet();      // tap the dark area to dismiss
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && !$('sheetBack').hidden) closeSheet();
+});
+
+function showScreen(which){
+  var quests = which === 'quests';
+  $('screenQuests').hidden = !quests;
+  $('screenTrophies').hidden = quests;
+  $('tabQuests').setAttribute('aria-selected', quests ? 'true' : 'false');
+  $('tabTrophies').setAttribute('aria-selected', quests ? 'false' : 'true');
+  // The add-quest button belongs to the quest board and nothing else.
+  document.querySelector('.fab-wrap').style.display = quests ? '' : 'none';
+  window.scrollTo(0, 0);
+}
+$('tabQuests').addEventListener('click', function(){ showScreen('quests'); });
+$('tabTrophies').addEventListener('click', function(){ showScreen('trophies'); });
+
+/* A daily quest goes stale at midnight. Re-rendering when the tab comes
+   back is what stops yesterday's ticks looking like today's. */
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible') render();
+});
+
+/* ── Boot ──────────────────────────────────────────────────────────── */
+try{
+  state = load();
+  if(storageBroken){
+    showBanner({ title:'Nothing can be saved here', body:'The app works, but this browser is not letting it store anything — private browsing is the usual cause. Progress will vanish when you close the tab.' });
+  }
+  render();
+  showScreen('quests');
+}catch(err){
+  /* Last resort. Something in boot threw, which means the normal UI cannot
+     be trusted — so replace it with a plain, styled explanation rather than
+     leaving a half-drawn screen or a blank page. */
+  document.body.innerHTML =
+    '<div style="max-width:420px;margin:60px auto;padding:24px;font-family:\'Space Grotesk\',system-ui,sans-serif;color:#EEF2F6;">' +
+      '<h1 style="font-family:Bungee,sans-serif;font-size:18px;color:#C6FF3D;">SOMETHING WENT WRONG</h1>' +
+      '<p style="line-height:1.6;color:#8B97A6;">Questline could not start. Your saved data has not been touched — reloading usually fixes it.</p>' +
+      '<button onclick="location.reload()" style="min-height:48px;padding:0 18px;border-radius:12px;background:#C6FF3D;color:#0B0D10;border:0;font-weight:700;cursor:pointer;">Reload</button>' +
+    '</div>';
+}
+
+})();
+</script>
+</body>
+</html>

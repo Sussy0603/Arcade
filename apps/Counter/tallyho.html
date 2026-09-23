@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tallyho</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#FFF8EC;          /* warm milk */
+  --card:#FFFFFF;
+  --card-soft:#FFF1DB;
+  --ink:#33261D;         /* cocoa */
+  --ink-soft:#7A6A5C;
+  --accent:#FF7A2F;      /* marmalade */
+  --accent-deep:#E2621B;
+  --butter:#FFD166;
+  --leaf:#5F9E62;
+  --danger:#D9534F;
+  --line:#F0E2CC;
+  --shadow:0 4px 14px rgba(120,80,30,.10);
+  --radius:22px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#221A13;
+    --card:#2F251B;
+    --card-soft:#3A2D20;
+    --ink:#F7ECDD;
+    --ink-soft:#C4B3A0;
+    --accent:#FF8A44;
+    --accent-deep:#FF7A2F;
+    --butter:#E8B84B;
+    --leaf:#7CBB7F;
+    --danger:#E8736F;
+    --line:#4A3A29;
+    --shadow:0 4px 14px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#221A13;
+  --card:#2F251B;
+  --card-soft:#3A2D20;
+  --ink:#F7ECDD;
+  --ink-soft:#C4B3A0;
+  --accent:#FF8A44;
+  --accent-deep:#FF7A2F;
+  --butter:#E8B84B;
+  --leaf:#7CBB7F;
+  --danger:#E8736F;
+  --line:#4A3A29;
+  --shadow:0 4px 14px rgba(0,0,0,.35);
+}
+
+/* ============ BASE ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Nunito', 'Segoe UI', system-ui, sans-serif;
+  min-height:100vh;
+  padding-bottom:110px;
+}
+h1,h2,h3,.num,.tab-btn,.big-time{font-family:'Fredoka','Nunito',system-ui,sans-serif}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+  outline:3px solid var(--accent);
+  outline-offset:2px;
+  border-radius:8px;
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+.wrap{max-width:640px;margin:0 auto;padding:0 16px}
+
+/* ============ HEADER ============ */
+header{padding:26px 0 10px}
+header .wrap{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.logo{font-size:2rem;font-weight:700;letter-spacing:.5px}
+.logo em{font-style:normal;color:var(--accent)}
+.tagline{color:var(--ink-soft);font-size:.95rem;font-weight:600}
+
+/* ============ TABS ============ */
+nav.tabs{
+  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  background:var(--card);border:2px solid var(--line);
+  border-radius:999px;box-shadow:var(--shadow);
+  display:flex;gap:4px;padding:6px;z-index:40;
+}
+.tab-btn{
+  padding:10px 20px;border-radius:999px;font-size:1rem;font-weight:600;
+  color:var(--ink-soft);transition:background .15s,color .15s;
+}
+.tab-btn[aria-selected="true"]{background:var(--accent);color:#fff}
+.tab-btn:hover:not([aria-selected="true"]){background:var(--card-soft);color:var(--ink)}
+
+section[role="tabpanel"]{display:none;padding-top:8px}
+section[role="tabpanel"].active{display:block}
+
+/* ============ CARDS ============ */
+.card{
+  background:var(--card);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:18px 18px 16px;margin:14px 0;
+  border:2px solid var(--line);
+}
+.counter-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.counter-name{font-size:1.25rem;font-weight:600}
+.counter-desc{color:var(--ink-soft);font-size:.95rem;margin-top:2px;font-weight:600}
+
+.menu-btn{
+  font-size:1.3rem;line-height:1;padding:6px 10px;border-radius:12px;color:var(--ink-soft);
+}
+.menu-btn:hover{background:var(--card-soft)}
+.menu{
+  position:absolute;right:0;top:38px;background:var(--card);
+  border:2px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;min-width:150px;overflow:hidden;z-index:30;
+}
+.menu button{padding:11px 16px;text-align:left;font-weight:700;font-size:.95rem}
+.menu button:hover{background:var(--card-soft)}
+.menu button.danger{color:var(--danger)}
+.menu-wrap{position:relative}
+
+/* counter body */
+.counter-body{
+  display:flex;align-items:center;justify-content:center;
+  gap:18px;margin:14px 0 6px;
+}
+.step-btn{
+  width:64px;height:64px;border-radius:50%;
+  background:var(--card-soft);color:var(--accent-deep);
+  font-size:2rem;font-weight:700;font-family:'Fredoka',sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .1s, background .15s;
+  border:2px solid var(--line);
+}
+.step-btn:hover{background:var(--butter);color:var(--ink)}
+.step-btn:active{transform:scale(.92)}
+.num{
+  font-size:3.4rem;font-weight:700;min-width:110px;text-align:center;
+  line-height:1;font-variant-numeric:tabular-nums;
+}
+.step-note{
+  text-align:center;color:var(--ink-soft);font-size:.85rem;font-weight:700;
+}
+
+/* goal / tally */
+.goal-zone{margin-top:12px;padding-top:12px;border-top:2px dashed var(--line)}
+.goal-line{display:flex;justify-content:space-between;font-weight:700;font-size:.9rem;color:var(--ink-soft);margin-bottom:8px}
+.goal-line .hit{color:var(--leaf)}
+.tally{display:flex;flex-wrap:wrap;gap:12px;row-gap:10px;min-height:26px}
+.tgroup{position:relative;display:flex;gap:4px;height:26px;align-items:stretch}
+.tmark{width:4px;background:var(--accent);border-radius:2px}
+.tmark.ghost{background:var(--line)}
+.tstrike{
+  position:absolute;left:-3px;right:-3px;top:50%;height:4px;border-radius:2px;
+  background:var(--accent-deep);transform:rotate(-24deg);
+}
+.pbar{height:14px;border-radius:999px;background:var(--card-soft);overflow:hidden;border:2px solid var(--line)}
+.pbar>div{height:100%;background:var(--accent);border-radius:999px;transition:width .25s}
+.pbar>div.full{background:var(--leaf)}
+
+/* mini timer */
+.mini-timer{
+  display:flex;align-items:center;gap:10px;margin-top:12px;
+  background:var(--card-soft);border-radius:16px;padding:8px 12px;
+}
+.mini-timer .mt-label{font-weight:800;font-size:.8rem;color:var(--ink-soft)}
+.mini-timer .mt-time{
+  font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.15rem;
+  font-variant-numeric:tabular-nums;margin-left:auto;
+}
+.mini-timer .mt-time.running{color:var(--accent-deep)}
+.pill-btn{
+  padding:6px 14px;border-radius:999px;font-weight:800;font-size:.85rem;
+  background:var(--card);border:2px solid var(--line);
+}
+.pill-btn:hover{border-color:var(--accent);color:var(--accent-deep)}
+
+/* ============ BIG BUTTONS ============ */
+.big-btn{
+  display:block;width:100%;padding:16px;border-radius:var(--radius);
+  background:var(--accent);color:#fff;font-size:1.15rem;font-weight:700;
+  font-family:'Fredoka',sans-serif;box-shadow:var(--shadow);
+  transition:transform .1s, background .15s;margin:16px 0;
+}
+.big-btn:hover{background:var(--accent-deep)}
+.big-btn:active{transform:scale(.98)}
+.ghost-btn{
+  background:var(--card);color:var(--accent-deep);border:2px solid var(--accent);
+}
+.ghost-btn:hover{background:var(--card-soft)}
+
+/* ============ EMPTY STATES ============ */
+.empty{
+  text-align:center;padding:44px 20px;color:var(--ink-soft);
+}
+.empty .big-emoji{font-size:3rem;display:block;margin-bottom:10px}
+.empty p{font-weight:700;font-size:1.05rem}
+.empty small{font-weight:600}
+
+/* ============ CHRONO ============ */
+.chrono-card{text-align:center;padding:30px 18px}
+.big-time{
+  font-size:3.6rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1;
+}
+.big-time small{font-size:1.8rem;color:var(--ink-soft)}
+.chrono-controls{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.chrono-controls .cbtn{
+  padding:14px 26px;border-radius:999px;font-family:'Fredoka',sans-serif;
+  font-weight:600;font-size:1.05rem;border:2px solid var(--line);
+  background:var(--card-soft);transition:transform .1s;
+}
+.chrono-controls .cbtn:active{transform:scale(.95)}
+.cbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.cbtn.primary:hover{background:var(--accent-deep)}
+.cbtn.soft:hover{border-color:var(--accent)}
+.laps{margin-top:18px;text-align:left}
+.laps h3{font-size:1rem;margin-bottom:6px}
+.lap-row{
+  display:flex;justify-content:space-between;padding:8px 12px;
+  border-bottom:2px dashed var(--line);font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.lap-row span:first-child{color:var(--ink-soft)}
+
+/* ============ HISTORY ============ */
+.hist-row{display:flex;gap:12px;align-items:flex-start}
+.hist-icon{font-size:1.5rem;line-height:1.3}
+.hist-main{flex:1}
+.hist-title{font-weight:800}
+.hist-sub{color:var(--ink-soft);font-size:.9rem;font-weight:600}
+.hist-time{color:var(--ink-soft);font-size:.8rem;font-weight:700;white-space:nowrap}
+.hist-del{color:var(--ink-soft);font-size:1.1rem;padding:4px 8px;border-radius:10px}
+.hist-del:hover{color:var(--danger);background:var(--card-soft)}
+.link-btn{
+  display:block;margin:8px auto 0;color:var(--ink-soft);font-weight:800;
+  font-size:.9rem;padding:8px 14px;border-radius:12px;
+}
+.link-btn:hover{color:var(--danger);background:var(--card-soft)}
+
+/* ============ DIALOG ============ */
+dialog{
+  border:none;border-radius:var(--radius);background:var(--card);color:var(--ink);
+  box-shadow:0 10px 40px rgba(0,0,0,.25);padding:24px;width:min(92vw,420px);
+  margin:auto;
+}
+dialog::backdrop{background:rgba(40,25,10,.45)}
+dialog h2{margin-bottom:14px;font-size:1.4rem}
+.field{margin-bottom:14px}
+.field label{display:block;font-weight:800;font-size:.9rem;margin-bottom:5px}
+.field input{
+  width:100%;padding:11px 13px;border-radius:14px;border:2px solid var(--line);
+  background:var(--bg);color:var(--ink);font-family:inherit;font-weight:700;font-size:1rem;
+}
+.field input:focus{border-color:var(--accent)}
+.field small{color:var(--ink-soft);font-weight:600}
+.row2{display:flex;gap:12px}
+.row2 .field{flex:1}
+.dialog-actions{display:flex;gap:10px;margin-top:8px}
+.dialog-actions button{
+  flex:1;padding:13px;border-radius:16px;font-weight:700;font-size:1rem;
+  font-family:'Fredoka',sans-serif;
+}
+.dialog-actions .save{background:var(--accent);color:#fff}
+.dialog-actions .save:hover{background:var(--accent-deep)}
+.dialog-actions .cancel{background:var(--card-soft)}
+
+/* toast */
+#toast{
+  position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--bg);padding:10px 20px;border-radius:999px;
+  font-weight:800;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;
+  z-index:60;max-width:90vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:420px){
+  .num{font-size:2.9rem;min-width:92px}
+  .step-btn{width:58px;height:58px}
+  .big-time{font-size:3rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1 class="logo">Tally<em>ho</em></h1>
+    <span class="tagline">count on it</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- COUNTERS -->
+  <section id="panel-counters" role="tabpanel" aria-labelledby="tab-counters" class="active">
+    <div id="counters-list"></div>
+    <div id="counters-empty" class="empty" hidden>
+      <span class="big-emoji">🧮</span>
+      <p>Nothing to count yet.</p>
+      <small>Make your first counter and start tallying.</small>
+    </div>
+    <button class="big-btn" id="btn-new-counter">+ New counter</button>
+  </section>
+
+  <!-- CHRONO -->
+  <section id="panel-chrono" role="tabpanel" aria-labelledby="tab-chrono">
+    <div class="card chrono-card">
+      <div class="big-time" id="chrono-display" aria-live="off">00:00<small>.00</small></div>
+      <div class="chrono-controls">
+        <button class="cbtn primary" id="chrono-startstop">Start</button>
+        <button class="cbtn soft" id="chrono-lap" disabled>Lap</button>
+        <button class="cbtn soft" id="chrono-reset" disabled>Reset</button>
+      </div>
+      <div class="laps" id="laps-zone" hidden>
+        <h3>Laps</h3>
+        <div id="laps-list"></div>
+      </div>
+    </div>
+    <button class="big-btn ghost-btn" id="chrono-save" disabled>Save time to History</button>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="panel-history" role="tabpanel" aria-labelledby="tab-history">
+    <div id="history-list"></div>
+    <div id="history-empty" class="empty" hidden>
+      <span class="big-emoji">📜</span>
+      <p>No history yet.</p>
+      <small>Saved chrono times and reached goals will land here.</small>
+    </div>
+    <button class="link-btn" id="btn-clear-history" hidden>Clear all history</button>
+  </section>
+
+</main>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button class="tab-btn" id="tab-counters" role="tab" aria-selected="true" aria-controls="panel-counters">Counters</button>
+  <button class="tab-btn" id="tab-chrono" role="tab" aria-selected="false" aria-controls="panel-chrono">Chrono</button>
+  <button class="tab-btn" id="tab-history" role="tab" aria-selected="false" aria-controls="panel-history">History</button>
+</nav>
+
+<!-- COUNTER FORM -->
+<dialog id="counter-dialog">
+  <h2 id="dialog-title">New counter</h2>
+  <div class="field">
+    <label for="f-name">Name</label>
+    <input id="f-name" type="text" maxlength="40" placeholder="Push-ups, Coffees, Bugs fixed…">
+  </div>
+  <div class="field">
+    <label for="f-desc">Description</label>
+    <input id="f-desc" type="text" maxlength="80" placeholder="What is this counting?">
+  </div>
+  <div class="row2">
+    <div class="field">
+      <label for="f-step">Step size</label>
+      <input id="f-step" type="number" min="1" step="1" value="1">
+    </div>
+    <div class="field">
+      <label for="f-goal">Goal <small>(optional)</small></label>
+      <input id="f-goal" type="number" min="1" step="1" placeholder="none">
+    </div>
+  </div>
+  <div class="field">
+    <label for="f-start">Starting value</label>
+    <input id="f-start" type="number" step="1" value="0">
+  </div>
+  <div class="dialog-actions">
+    <button class="cancel" id="dialog-cancel">Cancel</button>
+    <button class="save" id="dialog-save">Save counter</button>
+  </div>
+</dialog>
+
+<!-- SAVE CHRONO FORM -->
+<dialog id="save-dialog">
+  <h2>Save this time</h2>
+  <div class="field">
+    <label for="f-savename">Give it a name</label>
+    <input id="f-savename" type="text" maxlength="40" placeholder="Morning run, Deploy build…">
+  </div>
+  <div class="dialog-actions">
+    <button class="cancel" id="save-cancel">Cancel</button>
+    <button class="save" id="save-confirm">Save</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   TALLYHO — counters + chronometer + history
+   State lives in one object, saved to localStorage.
+   ========================================================= */
+
+const STORE_KEY = 'tallyho-v1';
+
+let state = {
+  counters: [],   // {id,name,desc,value,step,goal,goalDone,timer:{elapsed,startedAt}}
+  history: [],    // {id,type:'chrono'|'goal',title,sub,ms,at}
+  chrono: { elapsed: 0, startedAt: null, laps: [] }
+};
+
+/* ---------- storage (safe) ---------- */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && Array.isArray(parsed.counters)){
+        state = Object.assign(state, parsed);
+        state.chrono = parsed.chrono || { elapsed:0, startedAt:null, laps:[] };
+      }
+    }
+  }catch(e){ /* corrupted or blocked storage — start fresh */ }
+}
+function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch(e){ /* storage full or blocked — app keeps working in memory */ }
+}
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const $ = sel => document.querySelector(sel);
+
+/* ---------- time formatting ---------- */
+function fmtChrono(ms){          // mm:ss.cc  (h:mm:ss.cc past an hour)
+  const cs = Math.floor(ms/10)%100;
+  const s  = Math.floor(ms/1000)%60;
+  const m  = Math.floor(ms/60000)%60;
+  const h  = Math.floor(ms/3600000);
+  const p  = n => String(n).padStart(2,'0');
+  return (h?h+':'+p(m):p(m)) + ':' + p(s) + '<small>.' + p(cs) + '</small>';
+}
+function fmtMini(ms){            // mm:ss  (h:mm:ss past an hour)
+  const s = Math.floor(ms/1000)%60;
+  const m = Math.floor(ms/60000)%60;
+  const h = Math.floor(ms/3600000);
+  const p = n => String(n).padStart(2,'0');
+  return (h?h+':'+p(m):p(m)) + ':' + p(s);
+}
+function fmtPlain(ms){ return fmtChrono(ms).replace('<small>','').replace('</small>',''); }
+function fmtWhen(t){
+  return new Date(t).toLocaleString(undefined,
+    {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+}
+function liveElapsed(t){ return t.elapsed + (t.startedAt ? Date.now()-t.startedAt : 0); }
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+/* =========================================================
+   TABS
+   ========================================================= */
+const tabs = ['counters','chrono','history'];
+tabs.forEach(name=>{
+  $('#tab-'+name).addEventListener('click', ()=>{
+    tabs.forEach(n=>{
+      $('#tab-'+n).setAttribute('aria-selected', String(n===name));
+      $('#panel-'+n).classList.toggle('active', n===name);
+    });
+    if(name==='history') renderHistory();
+  });
+});
+
+/* =========================================================
+   COUNTERS
+   ========================================================= */
+let editingId = null;
+
+function tallyHTML(value, goal){
+  if(goal > 30){
+    const pct = Math.min(100, Math.round(value/goal*100));
+    return '<div class="pbar"><div class="'+(value>=goal?'full':'')+'" style="width:'+pct+'%"></div></div>';
+  }
+  const shown = Math.max(0, Math.min(value, goal));
+  let html = '';
+  for(let g=0; g<goal; g+=5){
+    const inGroup = Math.min(5, goal-g);
+    const filled  = Math.max(0, Math.min(inGroup, shown-g));
+    html += '<span class="tgroup">';
+    for(let i=0;i<Math.min(inGroup,4);i++){
+      html += '<span class="tmark'+(i<Math.min(filled,4)?'':' ghost')+'"></span>';
+    }
+    if(inGroup===5) html += '<span class="tstrike"'+(filled===5?'':' style="opacity:.18"')+'></span>';
+    html += '</span>';
+  }
+  return html;
+}
+
+function counterCard(c){
+  const running = !!c.timer.startedAt;
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.dataset.id = c.id;
+  el.innerHTML =
+    '<div class="counter-head">'+
+      '<div><div class="counter-name"></div><div class="counter-desc"></div></div>'+
+      '<div class="menu-wrap">'+
+        '<button class="menu-btn" aria-label="Counter options" aria-haspopup="true">⋯</button>'+
+        '<div class="menu" hidden>'+
+          '<button data-act="edit">Edit</button>'+
+          '<button data-act="zero">Reset to 0</button>'+
+          '<button data-act="del" class="danger">Delete</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="counter-body">'+
+      '<button class="step-btn" data-act="minus" aria-label="Decrease by '+c.step+'">−</button>'+
+      '<div class="num" aria-live="polite">'+c.value+'</div>'+
+      '<button class="step-btn" data-act="plus" aria-label="Increase by '+c.step+'">+</button>'+
+    '</div>'+
+    '<div class="step-note">steps of '+c.step+'</div>'+
+    (c.goal ?
+      '<div class="goal-zone">'+
+        '<div class="goal-line"><span>Goal</span><span class="'+(c.value>=c.goal?'hit':'')+'">'+
+          Math.min(c.value,c.goal)+' / '+c.goal+(c.value>=c.goal?' 🎉':'')+'</span></div>'+
+        '<div class="tally">'+tallyHTML(c.value,c.goal)+'</div>'+
+      '</div>' : '')+
+    '<div class="mini-timer">'+
+      '<span class="mt-label">Timer</span>'+
+      '<button class="pill-btn" data-act="timer">'+(running?'Pause':'Start')+'</button>'+
+      '<button class="pill-btn" data-act="timer-reset">Reset</button>'+
+      '<span class="mt-time'+(running?' running':'')+'" data-mt>'+fmtMini(liveElapsed(c.timer))+'</span>'+
+    '</div>';
+  el.querySelector('.counter-name').textContent = c.name;
+  el.querySelector('.counter-desc').textContent = c.desc || '';
+  if(!c.desc) el.querySelector('.counter-desc').remove();
+  return el;
+}
+
+function renderCounters(){
+  const list = $('#counters-list');
+  list.innerHTML = '';
+  state.counters.forEach(c => list.appendChild(counterCard(c)));
+  $('#counters-empty').hidden = state.counters.length > 0;
+}
+
+/* delegated clicks on the counters list */
+$('#counters-list').addEventListener('click', e=>{
+  const card = e.target.closest('.card');
+  if(!card) return;
+  const c = state.counters.find(x=>x.id===card.dataset.id);
+  if(!c) return;
+
+  if(e.target.classList.contains('menu-btn')){
+    const menu = card.querySelector('.menu');
+    const open = !menu.hidden;
+    document.querySelectorAll('.menu').forEach(m=>m.hidden=true);
+    menu.hidden = open;
+    return;
+  }
+  const act = e.target.dataset.act;
+  if(!act) return;
+
+  if(act==='plus' || act==='minus'){
+    c.value += (act==='plus' ? c.step : -c.step);
+    if(c.goal && c.value >= c.goal && !c.goalDone){
+      c.goalDone = true;
+      addHistory({type:'goal', title:'Goal reached: '+c.name,
+                  sub:c.goal+' hit — nice one', ms:null});
+      toast('🎉 Goal reached on “'+c.name+'”!');
+    }
+    if(c.goal && c.value < c.goal) c.goalDone = false;
+    save(); renderCounters();
+  }
+  else if(act==='timer'){
+    if(c.timer.startedAt){ c.timer.elapsed = liveElapsed(c.timer); c.timer.startedAt = null; }
+    else{ c.timer.startedAt = Date.now(); }
+    save(); renderCounters();
+  }
+  else if(act==='timer-reset'){
+    c.timer = {elapsed:0, startedAt:null};
+    save(); renderCounters();
+  }
+  else if(act==='edit'){ openDialog(c); }
+  else if(act==='zero'){
+    c.value = 0; c.goalDone = false;
+    save(); renderCounters();
+  }
+  else if(act==='del'){
+    if(confirm('Delete “'+c.name+'”? This can’t be undone.')){
+      state.counters = state.counters.filter(x=>x.id!==c.id);
+      save(); renderCounters();
+    }
+  }
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.menu-wrap')) document.querySelectorAll('.menu').forEach(m=>m.hidden=true);
+});
+
+/* ---------- counter dialog ---------- */
+const dlg = $('#counter-dialog');
+function openDialog(c){
+  editingId = c ? c.id : null;
+  $('#dialog-title').textContent = c ? 'Edit counter' : 'New counter';
+  $('#f-name').value  = c ? c.name : '';
+  $('#f-desc').value  = c ? (c.desc||'') : '';
+  $('#f-step').value  = c ? c.step : 1;
+  $('#f-goal').value  = c && c.goal ? c.goal : '';
+  $('#f-start').value = c ? c.value : 0;
+  dlg.showModal();
+  $('#f-name').focus();
+}
+$('#btn-new-counter').addEventListener('click', ()=>openDialog(null));
+$('#dialog-cancel').addEventListener('click', ()=>dlg.close());
+$('#dialog-save').addEventListener('click', ()=>{
+  const name = $('#f-name').value.trim();
+  if(!name){ $('#f-name').focus(); toast('Give it a name first'); return; }
+  const step  = Math.max(1, parseInt($('#f-step').value,10) || 1);
+  const goalV = parseInt($('#f-goal').value,10);
+  const goal  = (goalV > 0) ? goalV : null;
+  const start = parseInt($('#f-start').value,10) || 0;
+
+  if(editingId){
+    const c = state.counters.find(x=>x.id===editingId);
+    if(c){
+      c.name = name; c.desc = $('#f-desc').value.trim();
+      c.step = step; c.goal = goal; c.value = start;
+      c.goalDone = !!(goal && start >= goal);
+    }
+  }else{
+    state.counters.unshift({
+      id: uid(), name, desc: $('#f-desc').value.trim(),
+      value: start, step, goal,
+      goalDone: !!(goal && start >= goal),
+      timer:{elapsed:0, startedAt:null}
+    });
+  }
+  save(); renderCounters(); dlg.close();
+});
+
+/* =========================================================
+   CHRONO
+   ========================================================= */
+function chronoRunning(){ return !!state.chrono.startedAt; }
+function chronoMs(){ return liveElapsed(state.chrono); }
+
+function renderChronoButtons(){
+  const run = chronoRunning();
+  const ms  = chronoMs();
+  $('#chrono-startstop').textContent = run ? 'Pause' : (ms>0 ? 'Resume' : 'Start');
+  $('#chrono-lap').disabled   = !run;
+  $('#chrono-reset').disabled = run || ms===0;
+  $('#chrono-save').disabled  = run || ms===0;
+}
+function renderLaps(){
+  const zone = $('#laps-zone'), list = $('#laps-list');
+  const laps = state.chrono.laps;
+  zone.hidden = laps.length===0;
+  list.innerHTML = '';
+  laps.slice().reverse().forEach((lap,i)=>{
+    const row = document.createElement('div');
+    row.className = 'lap-row';
+    row.innerHTML = '<span>Lap '+(laps.length-i)+'</span><span>'+fmtPlain(lap)+'</span>';
+    list.appendChild(row);
+  });
+}
+$('#chrono-startstop').addEventListener('click', ()=>{
+  if(chronoRunning()){
+    state.chrono.elapsed = chronoMs();
+    state.chrono.startedAt = null;
+  }else{
+    state.chrono.startedAt = Date.now();
+  }
+  save(); renderChronoButtons();
+});
+$('#chrono-lap').addEventListener('click', ()=>{
+  state.chrono.laps.push(chronoMs());
+  save(); renderLaps();
+});
+$('#chrono-reset').addEventListener('click', ()=>{
+  state.chrono = {elapsed:0, startedAt:null, laps:[]};
+  save(); renderLaps(); renderChronoButtons();
+  $('#chrono-display').innerHTML = fmtChrono(0);
+});
+$('#chrono-save').addEventListener('click', ()=>{
+  $('#f-savename').value = '';
+  $('#save-dialog').showModal();
+  $('#f-savename').focus();
+});
+$('#save-cancel').addEventListener('click', ()=>$('#save-dialog').close());
+$('#save-confirm').addEventListener('click', ()=>{
+  const label = $('#f-savename').value.trim() || 'Chrono time';
+  const laps = state.chrono.laps.length;
+  addHistory({type:'chrono', title:label,
+              sub: laps ? laps+' lap'+(laps>1?'s':'') : 'no laps',
+              ms: chronoMs()});
+  state.chrono = {elapsed:0, startedAt:null, laps:[]};
+  save(); renderLaps(); renderChronoButtons();
+  $('#chrono-display').innerHTML = fmtChrono(0);
+  $('#save-dialog').close();
+  toast('Saved to History ✔');
+});
+
+/* =========================================================
+   HISTORY
+   ========================================================= */
+function addHistory(entry){
+  state.history.unshift(Object.assign({id:uid(), at:Date.now()}, entry));
+  save();
+}
+function renderHistory(){
+  const list = $('#history-list');
+  list.innerHTML = '';
+  state.history.forEach(h=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML =
+      '<div class="hist-row">'+
+        '<span class="hist-icon">'+(h.type==='goal'?'🎯':'⏱️')+'</span>'+
+        '<div class="hist-main">'+
+          '<div class="hist-title"></div>'+
+          '<div class="hist-sub">'+(h.ms!=null ? fmtPlain(h.ms)+' — ' : '')+'<span data-sub></span></div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div class="hist-time">'+fmtWhen(h.at)+'</div>'+
+          '<button class="hist-del" data-id="'+h.id+'" aria-label="Delete entry">✕</button>'+
+        '</div>'+
+      '</div>';
+    card.querySelector('.hist-title').textContent = h.title;
+    card.querySelector('[data-sub]').textContent = h.sub || '';
+    list.appendChild(card);
+  });
+  $('#history-empty').hidden = state.history.length > 0;
+  $('#btn-clear-history').hidden = state.history.length === 0;
+}
+$('#history-list').addEventListener('click', e=>{
+  const btn = e.target.closest('.hist-del');
+  if(!btn) return;
+  state.history = state.history.filter(h=>h.id!==btn.dataset.id);
+  save(); renderHistory();
+});
+$('#btn-clear-history').addEventListener('click', ()=>{
+  if(confirm('Clear all history? This can’t be undone.')){
+    state.history = [];
+    save(); renderHistory();
+  }
+});
+
+/* =========================================================
+   TICK — updates all visible running clocks
+   ========================================================= */
+setInterval(()=>{
+  if(chronoRunning() && $('#panel-chrono').classList.contains('active')){
+    $('#chrono-display').innerHTML = fmtChrono(chronoMs());
+  }
+  if($('#panel-counters').classList.contains('active')){
+    document.querySelectorAll('#counters-list .card').forEach(card=>{
+      const c = state.counters.find(x=>x.id===card.dataset.id);
+      if(c && c.timer.startedAt){
+        const t = card.querySelector('[data-mt]');
+        if(t) t.textContent = fmtMini(liveElapsed(c.timer));
+      }
+    });
+  }
+}, 50);
+
+/* =========================================================
+   LATER (v2 candidates — on purpose not in v1):
+   - Sorting / drag-reorder of counters
+   - Export / import data as a file
+   - Shared counters synced between MOS people
+   ========================================================= */
+
+/* ---------- boot ---------- */
+load();
+renderCounters();
+renderLaps();
+renderChronoButtons();
+$('#chrono-display').innerHTML = fmtChrono(chronoMs());
+</script>
+</body>
+</html>
