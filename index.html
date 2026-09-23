@@ -89,6 +89,14 @@
 
   --shadow:#1A1420;
 
+  /* The title's two colours, held as tokens so the spray-paint hover can
+     be written once instead of once per theme. --aqua again, but as parts,
+     because the overspray is the same blue at five different strengths. */
+  --h1-ink:var(--ink);
+  --h1-drop:var(--sun);
+  --hot-ink:#FFFFFF;
+  --aqua-rgb:14,147,166;
+
   /* Shape */
   --r-paper:7px;      /* a torn-off note, not a pill */
   --r-photo:3px;
@@ -131,6 +139,10 @@
     --sun:#FBD23D;
     --tape:rgba(232,200,74,.82);
     --shadow:#000000;
+    --h1-ink:var(--paper);
+    --h1-drop:var(--shadow);
+    --hot-ink:#1A1420;
+    --aqua-rgb:52,216,232;
   }
 }
 :root[data-theme="dark"]{
@@ -150,6 +162,10 @@
   --sun:#FBD23D;
   --tape:rgba(232,200,74,.82);
   --shadow:#000000;
+  --h1-ink:var(--paper);
+  --h1-drop:var(--shadow);
+  --hot-ink:#1A1420;
+  --aqua-rgb:52,216,232;
 }
 
 /* What a note turns over to when you reach for it: hot pink paper, the
@@ -171,6 +187,22 @@
   --lift-play:#FBD23D;     /* the button */
   --lift-shadow:#1A1420;   /* what is dropped behind the name */
 }
+
+/* The resting Play button on a game card. This spends --acid, the fourth
+   accent, which had been declared and then never used — so the palette is
+   now four colours doing four jobs rather than three and a spare.
+
+   Written out rather than referred to as var(--acid) for the reason every
+   other colour on a card is: --acid is #2E9E46 in daylight and #5BE36B at
+   night, and a card must not change colour with the wall behind it. The
+   daylight value is the one pinned, because it is the darker of the two —
+   which is what was asked for — and because it is the one that works:
+   dark ink on it is 5.23:1, where the night value would want white and
+   white on it is 1.66:1.
+
+   It gives the card a second state worth having. At rest the button is
+   green; reach for the card and it goes yellow with the paper. */
+:root{ --play-rest:#2E9E46; }
 
 /* The eight panels behind an emoji, for a game whose screenshot has not
    been taken. They sit INSIDE white paper, so they are mid-tone and
@@ -235,7 +267,9 @@ header,footer,#content{position:relative;z-index:1;}
   border:var(--bw) solid var(--line);border-radius:var(--r-ctl);
   cursor:pointer;
   box-shadow:var(--sh-ctl);
-  transition:transform .14s var(--ease), box-shadow .14s var(--ease), background-color .14s var(--ease);
+  transition:transform .14s var(--ease), box-shadow .14s var(--ease),
+             background-color .14s var(--ease), color .14s var(--ease),
+             border-color .14s var(--ease);
 }
 .theme-btn:hover,.sort-btn:hover,.cat-btn:hover,.tab-btn:hover{
   transform:translate(-1px,-2px);box-shadow:var(--sh-ctl-hi);
@@ -290,8 +324,10 @@ header,footer,#content{position:relative;z-index:1;}
 .sort-btn{font-size:12.5px;padding:8px 15px;}
 .sort-group{display:contents;}
 /* Surprise me is an action, not a state, so it never takes the pressed
-   treatment. It is the one control wearing the sun colour — the page's
-   only filled button, which is what makes it findable. */
+   treatment. It is the one control that wears the sun colour at REST,
+   which is what makes it findable in a row of outlines — every control
+   now takes that same yellow under the cursor, so the distinction is
+   "the one that is already yellow", not "the only yellow one". */
 .lucky-btn{background:var(--sun);color:#1A1420;border-color:#1A1420;}
 .lucky-btn:hover{background:var(--sun);}
 .lucky-btn:disabled{opacity:.4;cursor:default;}
@@ -325,6 +361,28 @@ header,footer,#content{position:relative;z-index:1;}
 .cat-btn.cat-all{border-color:var(--hot);color:var(--hot);}
 .cat-btn.cat-all[aria-pressed="true"]{background:var(--hot);color:#FFF;border-color:var(--hot);}
 
+/* ---------------- Hovering a control ----------------
+   Every button on the wall fills with the sun under the cursor, the same
+   yellow the Play button takes when you reach for a note.
+
+   Deliberately the last word on the subject. It sits after the pressed
+   rule and after the All chip's pink so it beats both, because hover is
+   feedback about what is under the cursor and it has no business asking
+   what state the thing happens to be in first.
+
+   The pressed state is not lost while you are over it, because pressed is
+   carried by depth as well as colour: a hovered pressed pill is yellow AND
+   pushed in, a hovered idle one is yellow AND lifted. That is also why
+   this rule sets no transform — the two rules above own that.
+
+   --sun, not the note's fixed --lift-play, because these sit ON THE WALL
+   and things on the wall are theme-aware. Dark ink on it is 11.1:1 in
+   daylight and 12.4:1 at night. */
+.theme-btn:hover,.sort-btn:hover,.tab-btn:hover,
+.cat-btn:hover,.cat-btn.cat-all:hover{
+  background:var(--sun);color:#1A1420;border-color:#1A1420;
+}
+
 /* One class, one property. ~80 cards are already in the document and
    stay there — a chip press flips this and nothing is parsed or fetched. */
 .card.cat-hidden{display:none;}
@@ -339,19 +397,75 @@ header{text-align:center;margin-bottom:5vmin;}
   font-size:12.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
 }
 h1{
-  margin:0 0 16px;
+  /* display:table, not inline-block: it shrink-wraps the word so the hover
+     is the word rather than the whole line, and it still breaks the line,
+     which inline-block does not — the eyebrow above would climb onto it.
+     Relative so the two spray layers have something to hang off. */
+  position:relative;display:table;
+  margin:0 auto 16px;
   font-family:var(--font-hand);font-weight:400;
   font-size:clamp(52px,12vmin,110px);line-height:.92;letter-spacing:.005em;
   text-transform:uppercase;
-  color:var(--paper);
-  text-shadow:5px 6px 0 var(--shadow);
+  color:var(--h1-ink);
+  text-shadow:5px 6px 0 var(--h1-drop);
+  /* Slow on the way out — the mist hangs around after you have moved on.
+     :hover cuts this to a tenth of a second, because a can lands at once. */
+  transition:color .3s var(--ease),text-shadow .3s var(--ease);
 }
-/* In daylight the wall is pale, so white-on-pale needs the ink instead. */
-:root:not([data-theme="dark"]) h1{color:var(--ink);text-shadow:5px 6px 0 var(--sun);}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) h1{color:var(--paper);text-shadow:5px 6px 0 var(--shadow);}
+/* Reach for the name and it takes a coat of aqua. The hard drop stays put;
+   everything laid over it is soft, and this is the one place on the page
+   where blur is allowed — overspray has no edge, that is what makes it
+   overspray. Three passes, widening and thinning, is the cloud. It is kept
+   deliberately tight: reach much further and this stops being paint on a
+   wall and starts being a neon sign. */
+h1:hover{
+  color:var(--aqua);
+  text-shadow:
+    5px 6px 0 var(--h1-drop),
+    0 0 2px rgba(var(--aqua-rgb),.55),
+    0 0 12px rgba(var(--aqua-rgb),.36),
+    0 0 30px rgba(var(--aqua-rgb),.18);
+  transition-duration:.12s;
 }
-:root[data-theme="dark"] h1{color:var(--paper);text-shadow:5px 6px 0 var(--shadow);}
+
+/* Two spray layers, both copies of the word, both decoration only. The
+   paired content lines hand screen readers an empty string where that
+   syntax is understood, and the plain one is there for the browsers that
+   would otherwise drop the whole rule and take the effect with it. */
+h1::before,h1::after{
+  content:attr(data-text);
+  content:attr(data-text) / "";
+  position:absolute;left:0;top:0;width:100%;
+  pointer-events:none;
+  color:transparent;-webkit-text-fill-color:transparent;
+  text-shadow:none;              /* neither may cast the drop a second time */
+  opacity:0;
+  transition:opacity .3s var(--ease);
+}
+/* The grain: the same generated turbulence the wall uses, clipped to the
+   letters, and overlay again so it thins and thickens the paint instead of
+   laying grey over it. A regular dot grid was tried here first and read as
+   halftone printing — the whole point of a can is that it lands unevenly. */
+h1::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  -webkit-background-clip:text;background-clip:text;
+  mix-blend-mode:overlay;
+}
+/* The overspray: no fill at all, an aqua stroke on the letter outlines, and
+   a grid of holes punched through it. A stroke straddles the outline, so
+   half of every surviving droplet lands outside the letter — which is the
+   whole trick. This is the ragged edge a can leaves and a font cannot.
+   The alpha is high on purpose: dilute droplets on a dark wall go muddy and
+   the edge reads as dirt rather than paint. */
+h1::after{
+  -webkit-text-stroke:4px rgba(var(--aqua-rgb),.8);
+  -webkit-mask-image:radial-gradient(circle,#000 15%,transparent 16%);
+  -webkit-mask-size:4px 4px;
+  mask-image:radial-gradient(circle,#000 15%,transparent 16%);
+  mask-size:4px 4px;
+}
+h1:hover::before{opacity:.55;transition-duration:.12s;}
+h1:hover::after{opacity:1;transition-duration:.12s;}
 
 header p{
   margin:0 auto;max-width:48ch;
@@ -377,20 +491,51 @@ header p.note{
    without cards visibly re-shuffling themselves. Under a degree, which
    is enough to read as hand-placed and small enough that the grid still
    scans as a grid. */
-.card{
-  --tilt:0deg;
-  /* Everything the card inks itself with goes through these three, so the
-     hover state below flips one set of values and the title, the
-     description, the category pill and the Play button all follow. The
-     alternative is five hover rules that have to be kept in step, and the
-     day one of them is forgotten is the day a card has black text on a
-     blue field. */
+/* ---------------- The note palette ----------------
+   A grid card and the Today's pick tile are the same object at two sizes,
+   so they share one set of colour properties and one rule that flips them.
+   Seven properties in a single place beats a dozen hover rules kept in
+   step by hand — and the day one of those is forgotten is the day a note
+   has black text on a pink field.
+
+   --note-shadow-ink is a COLOUR rather than a whole shadow, because the
+   two titles are 19px and up to 52px and want different offsets. Each one
+   states its own offset and takes the colour from here. At rest that
+   colour is transparent, which draws nothing at all. */
+.card,.feat-card{
   --note:var(--paper);
   --note-title:var(--paper-ink);
-  --note-title-shadow:none;
+  --note-badge:var(--hot);
+  --note-shadow-ink:transparent;
   --note-ink:var(--paper-ink);
   --note-ink-soft:var(--paper-ink-soft);
+  --note-play:var(--sun);
+}
+/* Reaching for either one turns the paper over. Keyboard focus does the
+   same thing, so tabbing is not a quieter experience than pointing.
 
+   The name is 2.02:1 on this pink, which is not a ratio you can write a
+   title at, and the shadow is the answer — every glyph gets a hard dark
+   edge on two sides. It does not move the measured contrast, which
+   compares ink against the field behind it, but it is what separates the
+   letterforms from the pink to an eye.
+
+   The description cannot keep its grey: #6B6176 on this pink is 1.67:1.
+   Dark ink is 5.15:1, and it pairs with the dark ink already on the
+   button, so the note reads as one object with the name as its only
+   accent. The badge gives up --hot for the same reason — pink on pink. */
+.card:hover,.card:focus-visible,
+.feat-card:hover,.feat-card:focus-visible{
+  --note:var(--lift);
+  --note-title:var(--lift-name);
+  --note-badge:var(--paper-ink);
+  --note-shadow-ink:var(--lift-shadow);
+  --note-ink-soft:var(--paper-ink);
+  --note-play:var(--lift-play);
+}
+
+.card{
+  --tilt:0deg;
   background:var(--note);color:var(--note-ink);
   border-radius:var(--r-paper);
   padding:10px 10px 0;
@@ -405,25 +550,9 @@ header p.note{
 .card:nth-child(4n+2){--tilt:0.55deg;}
 .card:nth-child(4n+3){--tilt:-0.35deg;}
 .card:nth-child(4n+4){--tilt:0.85deg;}
-/* Hovering straightens it, lifts it, and turns the paper over to the
-   blue — picking a photo off the wall and finding it is a different
-   note underneath. Keyboard focus does the same thing, so tabbing
-   through the grid is not a quieter experience than pointing at it. */
+/* Hovering straightens a card and lifts it — picking a photo off the
+   wall. The colour half of this lives in the note palette above. */
 .card:hover,.card:focus-visible{
-  --note:var(--lift);
-  --note-title:var(--lift-name);
-  /* The shadow the aqua needs. Aqua on hot pink is 2.02:1, which is not a
-     ratio you can write a title at — so every glyph is given a hard dark
-     edge on two sides instead. It does not change the measured contrast,
-     because that measures ink against the field behind it, but it is what
-     makes the letterforms separate from the pink to an eye. Hard and
-     offset, the same treatment the <h1> takes, scaled to 19px. */
-  --note-title-shadow:2px 2px 0 var(--lift-shadow);
-  /* The description cannot keep its grey: #6B6176 on this pink is 1.67:1.
-     Dark ink is 5.15:1 and passes, and it pairs with the dark ink already
-     on the Play button, so the card reads as one thing with the name as
-     its single accent. */
-  --note-ink-soft:var(--paper-ink);
   transform:rotate(0deg) translate(-2px,-6px);
   box-shadow:var(--sh-card-hi);
   outline:none;
@@ -461,7 +590,7 @@ header p.note{
   margin:0;font-family:var(--font-hand);font-weight:400;
   font-size:19px;line-height:1.15;letter-spacing:.01em;
   color:var(--note-title);
-  text-shadow:var(--note-title-shadow);
+  text-shadow:2px 2px 0 var(--note-shadow-ink);
   transition:color .18s var(--ease);
 }
 .card p{margin:0;font-size:12.5px;line-height:1.45;color:var(--note-ink-soft);font-weight:400;flex:1;}
@@ -474,7 +603,7 @@ header p.note{
 .play-row{padding:10px 4px 12px;}
 .play-btn{
   display:block;text-align:center;
-  background:none;color:var(--note-ink,var(--paper-ink));
+  background:var(--play-rest);color:var(--note-ink,var(--paper-ink));
   border:var(--bw) solid var(--note-ink,var(--paper-ink));border-radius:var(--r-ctl);
   padding:8px 14px;font-size:13px;font-weight:700;letter-spacing:.02em;
   transition:background-color .14s var(--ease), color .14s var(--ease);
@@ -482,7 +611,7 @@ header p.note{
 /* The one filled thing on a hovered card, and the page's one yellow.
    Dark ink on it reads at better than 12:1 in either theme. */
 .card:hover .play-btn,.card:focus-visible .play-btn{
-  background:var(--lift-play);color:var(--lift-shadow);border-color:var(--lift-shadow);
+  background:var(--note-play);color:var(--lift-shadow);border-color:var(--lift-shadow);
 }
 
 /* ---------------- Today's pick ----------------
@@ -513,14 +642,15 @@ header p.note{
 .feat-card{
   display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
   min-height:clamp(240px,33vmin,340px);
-  background:var(--paper);color:var(--paper-ink);
+  background:var(--note);color:var(--note-ink);
   border-radius:var(--r-paper);
   padding:12px;gap:12px;
   overflow:hidden;
   text-decoration:none;
   box-shadow:var(--sh-feat);
   transform:rotate(-0.4deg);
-  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease),
+             background-color .18s var(--ease), color .18s var(--ease);
 }
 .feat-card:hover,.feat-card:focus-visible{
   transform:rotate(0deg) translate(-2px,-6px);
@@ -535,25 +665,27 @@ header p.note{
   display:flex;flex-direction:column;align-items:flex-start;gap:9px;justify-content:center;
 }
 .feat-badge{
-  color:var(--hot);background:none;border:0;padding:0;
+  color:var(--note-badge);background:none;border:0;padding:0;
   font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
 }
 .feat-body h2{
   margin:0;font-family:var(--font-hand);font-weight:400;
   font-size:clamp(30px,5.4vmin,52px);line-height:1;letter-spacing:.01em;
-  text-transform:uppercase;color:var(--paper-ink);
+  text-transform:uppercase;color:var(--note-title);
+  text-shadow:4px 4px 0 var(--note-shadow-ink);
+  transition:color .18s var(--ease);
 }
-.feat-body p{margin:0;font-size:clamp(13px,1.8vmin,15px);line-height:1.5;color:var(--paper-ink-soft);font-weight:400;}
+.feat-body p{margin:0;font-size:clamp(13px,1.8vmin,15px);line-height:1.5;color:var(--note-ink-soft);font-weight:400;}
 .feat-play{
   margin-top:4px;
-  background:var(--sun);color:#1A1420;
+  background:var(--note-play);color:#1A1420;
   border:var(--bw) solid #1A1420;border-radius:var(--r-ctl);
   padding:10px 24px;font-size:14.5px;font-weight:700;letter-spacing:.02em;
   box-shadow:3px 3px 0 #1A1420;
   transition:transform .14s var(--ease), box-shadow .14s var(--ease);
 }
 .feat-card:hover .feat-play{transform:translate(-1px,-2px);box-shadow:5px 5px 0 #1A1420;}
-.feat-note{font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--paper-ink-soft);opacity:.75;}
+.feat-note{font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--note-ink-soft);opacity:.75;}
 
 @media (max-width:720px){
   .feat-card{grid-template-columns:1fr;min-height:0;}
@@ -602,7 +734,7 @@ footer{
 
 <header>
   <span class="badge">Free to play</span>
-  <h1>Arcade</h1>
+  <h1 data-text="Arcade">Arcade</h1>
   <p>Jump straight in — no account needed.</p>
   <p class="note" id="headerNote">These are developmental-stage games, made by MOS employees.</p>
 </header>
