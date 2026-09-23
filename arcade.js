@@ -37,7 +37,9 @@ function syncButton(){
   labelEl.textContent = goingTo === 'dark' ? 'Dark' : 'Light';
   btn.setAttribute('aria-label', 'Switch to ' + goingTo + ' mode');
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', activeTheme() === 'dark' ? '#241C40' : '#FFF6E5');
+  // The wall colour, so the browser's own chrome matches the page edge.
+  // These two are the --wall token in index.html; change them together.
+  if(meta) meta.setAttribute('content', activeTheme() === 'dark' ? '#1B1424' : '#E7E0D4');
 }
 btn.addEventListener('click', ()=>{
   const next = activeTheme() === 'dark' ? 'light' : 'dark';

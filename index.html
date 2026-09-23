@@ -3,436 +3,529 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#FFF6E5">
+<meta name="theme-color" content="#E7E0D4">
 <title>Arcade</title>
 <script src="theme-boot.js"></script>
+<link rel="preload" href="fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/permanent-marker-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-/* ---------------- Theme tokens ----------------
-   Every colour lives here twice: once for daylight, once for night. The
-   components below only ever reference the tokens, so the toggle is a
-   single attribute flip with no re-render. Unlike the rest of MOS, the
-   arcade has no accounts to hang a preference on (see the checklist app's
-   profile.dark) — so the choice lives in localStorage instead. */
+/* ================================================================
+   MOS Arcade — the sticker wall
+
+   The look is a wall with paper stuck to it. Games are photographs
+   taped up rather than tiles in a UI, the headings are hand-lettered,
+   and the only straight thing on the page is the grid behind it all.
+
+   Two rules hold the whole thing together:
+
+     · Paper is always light. A note pinned to a dark wall does not turn
+       black at night — it is still paper. So --paper and --paper-ink
+       are the SAME in both themes, and only the wall changes. That is
+       why a card needs no theme-specific rules at all.
+
+     · Shadows are hard. Zero blur, one offset, pure ink. It is what
+       makes a rectangle read as a physical object sitting slightly off
+       the surface rather than a div with a glow.
+
+   Fonts are in fonts/ and served from there — see fonts/README.md for
+   why they are not loaded from Google.
+   ================================================================ */
+
+@font-face{
+  font-family:'Permanent Marker';
+  src:url('fonts/permanent-marker-latin.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap;
+}
+@font-face{
+  font-family:'DM Sans';
+  src:url('fonts/dm-sans-latin.woff2') format('woff2');
+  font-weight:400 700;font-style:normal;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'DM Sans';
+  src:url('fonts/dm-sans-latin-ext.woff2') format('woff2');
+  font-weight:400 700;font-style:normal;font-display:swap;
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* ---------------- Tokens ----------------
+   Colour was already all in here, which is what makes the theme toggle
+   a single attribute flip. Radius, border, shadow and easing now live
+   here too — they used to be hardcoded in about forty places, which is
+   what made the old look impossible to change without a hunt. */
 :root{
   color-scheme:light;
-  --sky-a:#FFF6E5; --sky-b:#E4F3FF;
+
+  /* The wall itself. Light mode is a warm paper wall rather than white:
+     white paper on a white page has nothing to sit against. */
+  --wall:#E7E0D4;
+  --wall-2:#F1EBE1;
+  --grid:rgba(26,20,32,.07);
+  /* Much fainter in daylight than at night. On a dark wall a colour wash
+     reads as depth; on a pale one the same strength reads as a stain. */
+  --glow-a:rgba(232,20,110,.045);
+  --glow-b:rgba(14,147,166,.04);
+  --grain:.30;
+
+  /* Paper. Identical in both themes — see the note at the top. */
   --paper:#FFFFFF;
-  --ink:#2A2140; --ink-soft:#6B6188;
-  --line:#2A2140;
-  --shadow:#2A2140;
-  --title-shadow:3px 4px 0 #FFD9E8, 6px 8px 0 rgba(42,33,64,.10);
-  --emoji-shadow:0 3px 0 rgba(42,33,64,.18);
-  --gloss:rgba(255,255,255,.35);
-  --blob-a:#FFD9E8; --blob-b:#D6F3E0; --blob-c:#FFEFC2;
-  --blob-opacity:.5;
-  --tint-0:#FFD9E8; --tint-1:#D6F3E0; --tint-2:#FFEFC2; --tint-3:#D9E9FF;
-  --tint-4:#EADCFF; --tint-5:#FFE0CC; --tint-6:#CFF3F0; --tint-7:#F6DFFF;
+  --paper-ink:#1A1420;
+  --paper-ink-soft:#6B6176;
+  --tape:rgba(206,170,48,.78);
+
+  /* Type on the wall */
+  --ink:#1A1420;
+  --ink-soft:#5F5669;
+  --line:#1A1420;
+
+  /* Accents. Four, each with a job: hot for the thing you came for,
+     aqua for labels, sun for the one control that is an action, acid
+     kept in reserve. Eight pastels is what made the old page sweet. */
+  --hot:#E8146E;
+  --aqua:#0E93A6;
+  --acid:#2E9E46;
+  --sun:#F5C518;
+
+  --shadow:#1A1420;
+
+  /* Shape */
+  --r-paper:7px;      /* a torn-off note, not a pill */
+  --r-photo:3px;
+  --r-ctl:999px;      /* pills survive, but only on buttons */
+  --bw:2px;
+
+  /* Hard shadows: offset, no blur, ever. */
+  --sh-card:5px 6px 0 var(--shadow);
+  --sh-card-hi:10px 12px 0 var(--shadow);
+  --sh-feat:8px 9px 0 var(--shadow);
+  --sh-feat-hi:13px 15px 0 var(--shadow);
+  --sh-ctl:3px 3px 0 var(--shadow);
+  --sh-ctl-hi:5px 5px 0 var(--shadow);
+
+  /* Motion. The old curve was cubic-bezier(.34,1.56,.64,1) — that 1.56
+     overshoots the target and springs back, which is the single biggest
+     reason the page read as a toy. This one arrives and stops. */
+  --ease:cubic-bezier(.2,.8,.25,1);
+
+  --font-hand:'Permanent Marker','Segoe Script','Bradley Hand',cursive;
+  --font-ui:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 }
+
+/* Night. Only the wall and the type on it change; the paper does not. */
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --sky-a:#241C40; --sky-b:#131A2E;
-    --paper:#2A2348;
-    --ink:#F6F1FF; --ink-soft:#ABA0CF;
-    --line:#EFE6FF;
-    --shadow:#0B0818;
-    --title-shadow:3px 4px 0 #7A3F62, 6px 8px 0 rgba(0,0,0,.35);
-    --emoji-shadow:0 3px 0 rgba(0,0,0,.45);
-    --gloss:rgba(255,255,255,.08);
-    --blob-a:#4A2740; --blob-b:#22473A; --blob-c:#4A3A1C;
-    --blob-opacity:.65;
-    --tint-0:#5B2E4A; --tint-1:#24503C; --tint-2:#5A4620; --tint-3:#23405F;
-    --tint-4:#3E2E63; --tint-5:#5C3A28; --tint-6:#1E4A4C; --tint-7:#4E2B58;
+    --wall:#1B1424;
+    --wall-2:#241A30;
+    --grid:rgba(255,255,255,.04);
+    --glow-a:rgba(255,46,136,.10);
+    --glow-b:rgba(52,216,232,.075);
+    --grain:.42;
+    --ink:#F3EDF9;
+    --ink-soft:#A99CBD;
+    --line:#F3EDF9;
+    --hot:#FF2E88;
+    --aqua:#34D8E8;
+    --acid:#5BE36B;
+    --sun:#FBD23D;
+    --tape:rgba(232,200,74,.82);
+    --shadow:#000000;
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --sky-a:#241C40; --sky-b:#131A2E;
-  --paper:#2A2348;
-  --ink:#F6F1FF; --ink-soft:#ABA0CF;
-  --line:#EFE6FF;
-  --shadow:#0B0818;
-  --title-shadow:3px 4px 0 #7A3F62, 6px 8px 0 rgba(0,0,0,.35);
-  --emoji-shadow:0 3px 0 rgba(0,0,0,.45);
-  --gloss:rgba(255,255,255,.08);
-  --blob-a:#4A2740; --blob-b:#22473A; --blob-c:#4A3A1C;
-  --blob-opacity:.65;
-  --tint-0:#5B2E4A; --tint-1:#24503C; --tint-2:#5A4620; --tint-3:#23405F;
-  --tint-4:#3E2E63; --tint-5:#5C3A28; --tint-6:#1E4A4C; --tint-7:#4E2B58;
+  --wall:#1B1424;
+  --wall-2:#241A30;
+  --grid:rgba(255,255,255,.04);
+  --glow-a:rgba(255,46,136,.10);
+  --glow-b:rgba(52,216,232,.075);
+  --grain:.42;
+  --ink:#F3EDF9;
+  --ink-soft:#A99CBD;
+  --line:#F3EDF9;
+  --hot:#FF2E88;
+  --aqua:#34D8E8;
+  --acid:#5BE36B;
+  --sun:#FBD23D;
+  --tape:rgba(232,200,74,.82);
+  --shadow:#000000;
+}
+
+/* The eight panels behind an emoji, for a game whose screenshot has not
+   been taken. They sit INSIDE white paper, so they are mid-tone and
+   vivid rather than pastel, and they are the same in both themes for the
+   same reason the paper is. */
+:root{
+  --tint-0:#FF6FA8; --tint-1:#43CE9B; --tint-2:#FFCE3D; --tint-3:#6FB0FF;
+  --tint-4:#B892FF; --tint-5:#FF9A5C; --tint-6:#41CFCF; --tint-7:#E58BFF;
 }
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;min-height:100%;}
 body{
-  font-family:"Nunito","Quicksand",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  background:linear-gradient(170deg,var(--sky-a) 0%,var(--sky-b) 100%);
-  background-attachment:fixed;
+  font-family:var(--font-ui);
   color:var(--ink);
+  background:var(--wall);
   min-height:100vh;
-  padding:7vmin 5vmin 12vmin;
+  padding:6vmin 5vmin 12vmin;
   position:relative;overflow-x:hidden;
 }
-/* Soft floating shapes in the background — pure decoration. */
-.blob{position:fixed;border-radius:50%;filter:blur(2px);opacity:var(--blob-opacity);pointer-events:none;z-index:0;}
-.blob.a{width:280px;height:280px;background:var(--blob-a);top:-70px;left:-60px;}
-.blob.b{width:220px;height:220px;background:var(--blob-b);bottom:8%;right:-70px;}
-.blob.c{width:150px;height:150px;background:var(--blob-c);top:38%;left:4%;}
+/* The wall's surface: a faint ruled grid, and a soft warm lift down the
+   page so it is not a flat fill. Fixed, so it does not scroll away. */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/72px 72px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/72px 72px,
+    linear-gradient(175deg, var(--wall-2) 0%, var(--wall) 55%);
+}
+/* Grain. A wall is not a flat fill, and the difference between "dark
+   purple background" and "a surface" is almost entirely this. Generated
+   rather than shipped as an image: it is a few hundred bytes of SVG
+   instead of a texture file, and it cannot go missing.
+
+   overlay blend so it darkens and lightens the wall rather than laying
+   grey on top of it — which is also why it is under the content and
+   never touches the paper. */
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  opacity:var(--grain);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* The three <span class="blob"> in the markup were pastel circles with a
+   blur on them — the most "bubble" thing on the page. Same elements,
+   now soft off-screen colour washes that give the wall some depth
+   without ever being seen as shapes. */
+.blob{position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(90px);}
+.blob.a{width:520px;height:520px;background:var(--glow-a);top:-220px;left:-160px;}
+.blob.b{width:460px;height:460px;background:var(--glow-b);bottom:-180px;right:-180px;}
+.blob.c{width:300px;height:300px;background:var(--glow-a);top:46%;left:-140px;}
 header,footer,#content{position:relative;z-index:1;}
 
-/* ---------------- Theme toggle ---------------- */
+/* ---------------- Controls ----------------
+   One language for every button on the wall: no fill, an ink outline, a
+   hard shadow. Pressed inverts to solid ink. It reads as something
+   stuck on rather than something rendered, and it needs no per-theme
+   rule because both colours are tokens. */
+.theme-btn,.sort-btn,.cat-btn,.tab-btn{
+  font:inherit;font-weight:700;letter-spacing:.02em;
+  color:var(--ink);background:transparent;
+  border:var(--bw) solid var(--line);border-radius:var(--r-ctl);
+  cursor:pointer;
+  box-shadow:var(--sh-ctl);
+  transition:transform .14s var(--ease), box-shadow .14s var(--ease), background-color .14s var(--ease);
+}
+.theme-btn:hover,.sort-btn:hover,.cat-btn:hover,.tab-btn:hover{
+  transform:translate(-1px,-2px);box-shadow:var(--sh-ctl-hi);
+}
+.theme-btn:active,.sort-btn:active,.cat-btn:active,.tab-btn:active{
+  transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
+}
+.theme-btn:focus-visible,.sort-btn:focus-visible,.cat-btn:focus-visible,
+.tab-btn:focus-visible,#searchBox:focus-visible,#searchClear:focus-visible,
+.card:focus-visible,.feat-card:focus-visible{
+  outline:var(--bw) solid var(--hot);outline-offset:3px;
+}
+.sort-btn[aria-pressed="true"],.cat-btn[aria-pressed="true"],.tab-btn[aria-pressed="true"]{
+  background:var(--ink);color:var(--wall);
+  transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
+}
+
 .theme-btn{
   position:fixed;top:16px;right:16px;z-index:5;
-  font:inherit;font-size:13px;font-weight:900;letter-spacing:.04em;
-  color:var(--ink);background:var(--paper);
-  border:3px solid var(--line);border-radius:999px;
-  padding:8px 15px;cursor:pointer;
-  box-shadow:3px 3px 0 var(--shadow);
+  font-size:12.5px;padding:8px 15px;
+  background:var(--wall-2);
   display:flex;align-items:center;gap:7px;
-  transition:transform .12s ease, box-shadow .12s ease;
 }
-.theme-btn:hover{transform:translate(-1px,-2px);box-shadow:5px 5px 0 var(--shadow);}
-.theme-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
-.theme-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
 
-/* The search box, in the same chunky language as everything else on the
-   cabinet. It sits above the sort pills because the two answer different
-   questions in the order people ask them: "do you have X?" first, "how do I
-   browse?" second. The clear button lives inside the pill so wiping a search
-   is one tap on the thing you are already looking at. */
-.search-bar{
-  position:relative;z-index:1;
-  max-width:340px;margin:0 auto 14px;
-}
+/* ---------------- Search ---------------- */
+.search-bar{position:relative;z-index:1;max-width:360px;margin:0 auto 16px;}
 #searchBox{
   width:100%;
-  font:inherit;font-size:15px;font-weight:800;letter-spacing:.02em;
-  color:var(--ink);background:var(--paper);
-  border:3px solid var(--line);border-radius:999px;
-  padding:10px 44px 10px 18px;
-  box-shadow:3px 3px 0 var(--shadow);
+  font:inherit;font-size:15px;font-weight:500;
+  color:var(--ink);background:var(--wall-2);
+  border:var(--bw) solid var(--line);border-radius:var(--r-ctl);
+  padding:11px 44px 11px 18px;
+  box-shadow:var(--sh-ctl);
 }
-#searchBox::placeholder{color:var(--ink-soft);font-weight:700;}
-#searchBox:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
-/* The browser's own clear ✕ doubles ours on WebKit; ours is the styled one. */
+#searchBox::placeholder{color:var(--ink-soft);font-weight:400;}
 #searchBox::-webkit-search-cancel-button{display:none;}
 #searchClear{
-  position:absolute;right:8px;top:50%;transform:translateY(-50%);
-  width:30px;height:30px;border-radius:999px;
-  font:inherit;font-size:13px;font-weight:900;
-  color:var(--paper);background:var(--ink);
+  position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:999px;
+  font:inherit;font-size:12px;font-weight:700;
+  color:var(--wall);background:var(--ink);
   border:0;cursor:pointer;
 }
-#searchClear:focus-visible{outline:3px solid var(--line);outline-offset:2px;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 
-/* Sort pills, same chunky language as the theme button so they read as part
-   of the cabinet rather than a form dropped onto it. The active pill inverts
-   to ink-on-paper's opposite — pressed-in, like the button that is currently
-   down on a real machine. */
+/* ---------------- Sort pills ---------------- */
 .sort-bar{
+  position:relative;z-index:1;
+  display:flex;justify-content:center;gap:9px;flex-wrap:wrap;
+  margin:0 0 5vmin;
+}
+.sort-btn{font-size:12.5px;padding:8px 15px;}
+.sort-group{display:contents;}
+/* Surprise me is an action, not a state, so it never takes the pressed
+   treatment. It is the one control wearing the sun colour — the page's
+   only filled button, which is what makes it findable. */
+.lucky-btn{background:var(--sun);color:#1A1420;border-color:#1A1420;}
+.lucky-btn:hover{background:var(--sun);}
+.lucky-btn:disabled{opacity:.4;cursor:default;}
+.lucky-btn:disabled:hover{transform:none;box-shadow:var(--sh-ctl);}
+
+/* ---------------- Section tabs ----------------
+   Games and Apps: the loudest control after the title, because it is the
+   only one that changes what the page is about. */
+.tab-bar{
   position:relative;z-index:1;
   display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
   margin:0 0 5vmin;
 }
-.sort-btn,.cat-btn{
-  font:inherit;font-size:13px;font-weight:900;letter-spacing:.04em;
-  color:var(--ink);background:var(--paper);
-  border:3px solid var(--line);border-radius:999px;
-  padding:8px 15px;cursor:pointer;
-  box-shadow:3px 3px 0 var(--shadow);
-  transition:transform .12s ease, box-shadow .12s ease;
-}
-.sort-btn:hover,.cat-btn:hover{transform:translate(-1px,-2px);box-shadow:5px 5px 0 var(--shadow);}
-.sort-btn:active,.cat-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
-.sort-btn:focus-visible,.cat-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
-.sort-btn[aria-pressed="true"],.cat-btn[aria-pressed="true"]{
-  background:var(--ink);color:var(--paper);
-  transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
-}
-/* The pills' wrapper contributes grouping and nothing else: display:contents
-   takes the span out of the layout entirely, so its three buttons remain
-   direct flex children of .sort-bar and the row wraps on a narrow phone
-   exactly as it did before the group existed. */
-.sort-group{display:contents;}
-/* Surprise me is an action, not a state, so it never takes the pressed
-   treatment the pills use to show which order is on. It is tinted instead —
-   the same pink the cards already use, so it reads as part of the set while
-   still being the odd one out. Disabled until the listing has arrived: a
-   dice button with nothing to draw from is worse than no dice button. */
-.lucky-btn{background:var(--tint-0);}
-.lucky-btn:disabled{opacity:.45;cursor:default;}
-.lucky-btn:disabled:hover{transform:none;box-shadow:3px 3px 0 var(--shadow);}
-@media (prefers-reduced-motion: reduce){ .sort-btn,.cat-btn{transition:none;} }
-
-/* ---------------- Section tabs ----------------
-   Games and Apps. The loudest control on the page after the title, because
-   it is the only one that changes what the page is *about* — the sort pills
-   and the chips rearrange a list, this swaps it. So it is the same pill
-   language a step larger, sitting above everything it governs including
-   Today's pick.
-
-   Hidden in the markup and shown by arcade.js only when both sections have
-   something in them. A tab that leads to an empty room is worse than no tab.
-
-   aria-pressed rather than role="tablist", deliberately. Real ARIA tabs come
-   with a contract — tabpanel ids, arrow-key roving focus, aria-controls —
-   and half of that contract is worse than none of it. These are two buttons
-   where one is currently down, which is what aria-pressed says, and it is
-   what the sort pills below already say. */
-.tab-bar{
-  position:relative;z-index:1;
-  display:flex;justify-content:center;gap:12px;flex-wrap:wrap;
-  margin:0 0 5vmin;
-}
 .tab-btn{
-  font:inherit;font-size:15px;font-weight:900;letter-spacing:.04em;
-  color:var(--ink);background:var(--paper);
-  border:3px solid var(--line);border-radius:999px;
-  padding:11px 25px;cursor:pointer;
-  box-shadow:4px 5px 0 var(--shadow);
-  transition:transform .12s ease, box-shadow .12s ease;
+  font-size:14px;font-weight:700;letter-spacing:.01em;
+  padding:11px 24px;
+  background:var(--wall-2);
 }
-.tab-btn:hover{transform:translate(-1px,-2px);box-shadow:6px 7px 0 var(--shadow);}
-.tab-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
-.tab-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
-.tab-btn[aria-pressed="true"]{
-  background:var(--ink);color:var(--paper);
-  transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
-}
-@media (prefers-reduced-motion: reduce){ .tab-btn{transition:none;} }
 
 /* ---------------- Category chips ----------------
-   A row of the same pills, one per category the listing actually contains,
-   sitting directly above the grid they act on. Deliberately a step quieter
-   than the sort bar — smaller type, tighter padding, a thinner shadow —
-   because there are seven of them and three sort pills, and seven controls
-   shouting as loudly as three would make the sort bar disappear into them.
-
-   The row is built from the data by arcade.js and is hidden until it is, so
-   a listing that carries no categories at all leaves no empty strip behind.
-   The margin lives on the bar rather than on the sort bar above it for the
-   same reason: when the chips are absent the gap goes with them. */
+   A step quieter than the sort bar: there are seven of them and three
+   sort pills, and seven controls shouting as loudly as three would make
+   the sort bar disappear into them. */
 .cat-bar{
   position:relative;z-index:1;
-  display:flex;justify-content:center;gap:8px;flex-wrap:wrap;
+  display:flex;justify-content:center;gap:7px;flex-wrap:wrap;
   max-width:780px;margin:-3vmin auto 5vmin;
 }
-.cat-btn{
-  font-size:12px;padding:6px 13px;
-  box-shadow:2px 3px 0 var(--shadow);
-}
-.cat-btn:hover{box-shadow:4px 5px 0 var(--shadow);}
-.cat-btn:active,.cat-btn[aria-pressed="true"]{box-shadow:1px 1px 0 var(--shadow);}
-/* "All" is the way back out, so it is tinted like Surprise me rather than
-   left to look like a seventh category. */
-.cat-btn.cat-all{background:var(--tint-3);}
-.cat-btn.cat-all[aria-pressed="true"]{background:var(--ink);}
+.cat-btn{font-size:11.5px;font-weight:700;padding:6px 13px;box-shadow:2px 2px 0 var(--shadow);}
+.cat-btn:hover{box-shadow:4px 4px 0 var(--shadow);}
+.cat-btn.cat-all{border-color:var(--hot);color:var(--hot);}
+.cat-btn.cat-all[aria-pressed="true"]{background:var(--hot);color:#FFF;border-color:var(--hot);}
 
-/* The whole filter: one class, one property. ~83 cards are already in the
-   document and stay there — a chip press flips this class on the ones that
-   do not match and nothing is parsed, built or fetched. */
+/* One class, one property. ~80 cards are already in the document and
+   stay there — a chip press flips this and nothing is parsed or fetched. */
 .card.cat-hidden{display:none;}
 
-header{text-align:center;margin-bottom:6vmin;}
-h1{
-  margin:0 0 14px;
-  font-size:clamp(40px,9vmin,82px);font-weight:900;letter-spacing:-.02em;
-  color:var(--ink);
-  text-shadow:var(--title-shadow);
-}
-header p{
-  margin:0;font-size:clamp(15px,2.3vmin,19px);font-weight:700;color:var(--ink-soft);
-}
-/* Sits a step below the main subtitle: same colour family, smaller and
-   lighter, so it reads as a note about the games rather than a second
-   headline. */
-header p.note{
-  margin:10px auto 0;max-width:44ch;
-  font-size:clamp(13px,1.8vmin,15px);font-weight:600;opacity:.85;
-}
+/* ---------------- Header ---------------- */
+header{text-align:center;margin-bottom:5vmin;}
+/* Was a rotated pill badge. Now the reference's eyebrow: a small aqua
+   label that names the section it sits over and gets out of the way. */
 .badge{
-  display:inline-block;margin-bottom:16px;
-  background:var(--paper);border:3px solid var(--line);border-radius:999px;
-  padding:7px 18px;font-size:12.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
-  box-shadow:3px 3px 0 var(--shadow);
-  transform:rotate(-2deg);
+  display:inline-block;margin-bottom:14px;
+  color:var(--aqua);background:none;border:0;padding:0;
+  font-size:12.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+}
+h1{
+  margin:0 0 16px;
+  font-family:var(--font-hand);font-weight:400;
+  font-size:clamp(52px,12vmin,110px);line-height:.92;letter-spacing:.005em;
+  text-transform:uppercase;
+  color:var(--paper);
+  text-shadow:5px 6px 0 var(--shadow);
+}
+/* In daylight the wall is pale, so white-on-pale needs the ink instead. */
+:root:not([data-theme="dark"]) h1{color:var(--ink);text-shadow:5px 6px 0 var(--sun);}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) h1{color:var(--paper);text-shadow:5px 6px 0 var(--shadow);}
+}
+:root[data-theme="dark"] h1{color:var(--paper);text-shadow:5px 6px 0 var(--shadow);}
+
+header p{
+  margin:0 auto;max-width:48ch;
+  font-size:clamp(14px,2vmin,17px);font-weight:400;line-height:1.55;color:var(--ink-soft);
+}
+header p.note{
+  margin:9px auto 0;max-width:46ch;
+  font-size:clamp(12.5px,1.7vmin,14px);opacity:.8;
 }
 
+/* ---------------- The grid of photographs ---------------- */
 .grid{
-  max-width:1120px;margin:0 auto;
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-  gap:30px 26px;
+  max-width:1140px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+  gap:34px 26px;
 }
+/* A card is a photo on paper. No border — the hard shadow is what lifts
+   it off the wall, and an outline on top of that is the belt-and-braces
+   look the old page had.
+
+   Each one sits very slightly askew. The tilt is a fixed cycle of four
+   rather than anything random, so it survives a re-sort and a repaint
+   without cards visibly re-shuffling themselves. Under a degree, which
+   is enough to read as hand-placed and small enough that the grid still
+   scans as a grid. */
 .card{
-  background:var(--paper);
-  border:3px solid var(--line);
-  border-radius:24px;
-  overflow:hidden;
+  --tilt:0deg;
+  background:var(--paper);color:var(--paper-ink);
+  border-radius:var(--r-paper);
+  padding:10px 10px 0;
   display:flex;flex-direction:column;
-  text-decoration:none;color:inherit;
-  box-shadow:6px 7px 0 var(--shadow);
-  transition:transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease;
+  text-decoration:none;
+  box-shadow:var(--sh-card);
+  transform:rotate(var(--tilt));
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
 }
+.card:nth-child(4n+1){--tilt:-0.8deg;}
+.card:nth-child(4n+2){--tilt:0.55deg;}
+.card:nth-child(4n+3){--tilt:-0.35deg;}
+.card:nth-child(4n+4){--tilt:0.85deg;}
+/* Hovering straightens it and lifts it — picking a photo off the wall. */
 .card:hover,.card:focus-visible{
-  transform:translate(-3px,-5px) rotate(-1deg);
-  box-shadow:10px 12px 0 var(--shadow);
+  transform:rotate(0deg) translate(-2px,-6px);
+  box-shadow:var(--sh-card-hi);
   outline:none;
 }
-.card:focus-visible{outline:3px solid var(--line);outline-offset:4px;}
-.card:active{transform:translate(3px,4px);box-shadow:2px 2px 0 var(--shadow);}
+.card:active{transform:rotate(0deg) translate(2px,3px);box-shadow:2px 2px 0 var(--shadow);}
 
-/* The card's shop window. It holds two things stacked: a tinted panel
-   with an emoji, and — once it loads — a screenshot of the actual game
-   painted over the top. The tint is never removed, so a game with no
-   screenshot yet (or one that fails to load) simply keeps the emoji. */
 .top{
   aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;
-  border-bottom:3px solid var(--line);
+  border-radius:var(--r-photo);
   position:relative;overflow:hidden;
-}
-.top::after{ /* soft highlight arc */
-  content:'';position:absolute;left:-20%;right:-20%;top:-60%;height:120%;
-  background:var(--gloss);border-radius:50%;
 }
 .top.t0{background:var(--tint-0);} .top.t1{background:var(--tint-1);}
 .top.t2{background:var(--tint-2);} .top.t3{background:var(--tint-3);}
 .top.t4{background:var(--tint-4);} .top.t5{background:var(--tint-5);}
 .top.t6{background:var(--tint-6);} .top.t7{background:var(--tint-7);}
 
-.emoji{font-size:52px;line-height:1;position:relative;z-index:1;
-  filter:drop-shadow(var(--emoji-shadow));
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
-.card:hover .emoji{transform:scale(1.14) rotate(-7deg);}
+.emoji{
+  font-size:46px;line-height:1;position:relative;z-index:1;
+  filter:drop-shadow(0 2px 0 rgba(26,20,32,.22));
+  transition:transform .2s var(--ease);
+}
+.card:hover .emoji{transform:scale(1.07);}
 
-/* Faded in only once the file has actually decoded, so a slow shot never
-   shows as a half-painted or broken image on top of the tint. */
 .shot{
   position:absolute;inset:0;z-index:2;
   width:100%;height:100%;object-fit:cover;display:block;
-  opacity:0;
-  transition:opacity .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+  opacity:0;transition:opacity .3s ease;
 }
 .shot.ready{opacity:1;}
-.card:hover .shot{transform:scale(1.05);}
 
-.body{padding:18px 18px 0;display:flex;flex-direction:column;gap:8px;flex:1;}
-.card h3{margin:0;font-size:20px;font-weight:900;letter-spacing:-.01em;}
-.card p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-soft);font-weight:600;flex:1;}
+/* The caption under the photograph, hand-lettered the way you would
+   actually label one. */
+.body{padding:12px 4px 0;display:flex;flex-direction:column;gap:5px;flex:1;}
+.card h3{
+  margin:0;font-family:var(--font-hand);font-weight:400;
+  font-size:19px;line-height:1.15;letter-spacing:.01em;
+  color:var(--paper-ink);
+}
+.card p{margin:0;font-size:12.5px;line-height:1.45;color:var(--paper-ink-soft);font-weight:400;flex:1;}
 .pill{
   align-self:flex-start;
-  font-size:10.5px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;
-  padding:4px 11px;border-radius:999px;
-  border:2px solid var(--line);background:var(--paper);
+  font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  padding:3px 9px;border-radius:999px;
+  border:1px solid var(--paper-ink);color:var(--paper-ink);background:none;
 }
-.play-row{padding:16px 18px 18px;}
+.play-row{padding:10px 4px 12px;}
 .play-btn{
   display:block;text-align:center;
-  /* The one colour that never flips: dark text on arcade yellow reads the
-     same day or night, and inverting it would kill the button's contrast. */
-  background:#FFD23D;color:#2A2140;
-  border:3px solid var(--line);border-radius:999px;
-  padding:10px 16px;font-size:14.5px;font-weight:900;letter-spacing:.03em;
-  box-shadow:0 4px 0 var(--shadow);
-  transition:transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+  background:none;color:var(--paper-ink);
+  border:var(--bw) solid var(--paper-ink);border-radius:var(--r-ctl);
+  padding:8px 14px;font-size:13px;font-weight:700;letter-spacing:.02em;
+  transition:background-color .14s var(--ease), color .14s var(--ease);
 }
-.card:hover .play-btn{background:#FFE27A;}
-.card:active .play-btn{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow);}
+.card:hover .play-btn{background:var(--paper-ink);color:var(--paper);}
 
 /* ---------------- Today's pick ----------------
-   One game, shown big above everything else. It is the same object as a
-   card — same paper, same ink border, same tint panel, same yellow button —
-   turned on its side and scaled up, so it reads as one of the games rather
-   than as an advert sitting on top of them. It reuses .top/.emoji/.shot
-   wholesale and only overrides what has to differ, which is why a screenshot
-   that fails to load falls back to the tinted emoji here exactly as it does
-   on a card, with no second copy of that logic. */
-.featured{
-  position:relative;z-index:1;
-  max-width:1120px;margin:0 auto 5vmin;
+   The same object as a card, scaled up and turned on its side — same
+   paper, same photo, same caption — so it reads as one of the games
+   rather than an advert sitting on top of them. It is the one thing on
+   the page with tape on it. */
+.featured{position:relative;z-index:1;max-width:1140px;margin:0 auto 6vmin;}
+/* The tape. On the wrapper rather than the card because the card clips
+   its own corners and would cut the strip in half. */
+.featured::after{
+  content:'';position:absolute;z-index:3;
+  top:-14px;left:50%;
+  width:132px;height:34px;
+  transform:translateX(-50%) rotate(-2.4deg);
+  background:var(--tape);
+  /* What makes a yellow rectangle read as tape rather than a sticker:
+     you can see what is under it. Half the strip lies on the wall and
+     half on the paper, and because it is translucent that boundary
+     shows straight through — so the strip is visibly ON both surfaces
+     rather than floating above them. */
+  opacity:.72;
+  /* Torn ends. Cut is the giveaway that it came off a roll. */
+  clip-path:polygon(0% 12%,4% 0%,12% 9%,23% 2%,38% 10%,55% 3%,72% 11%,86% 4%,96% 12%,100% 6%,
+                    100% 90%,95% 100%,84% 92%,70% 99%,54% 91%,37% 98%,22% 90%,11% 97%,3% 89%,0% 94%);
+  pointer-events:none;
 }
 .feat-card{
-  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
-  min-height:clamp(230px,32vmin,330px);
-  background:var(--paper);
-  /* A shade thicker and softer-cornered than a card, which is the whole
-     difference in weight — the tile is bigger, not louder. */
-  border:4px solid var(--line);border-radius:30px;
+  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  min-height:clamp(240px,33vmin,340px);
+  background:var(--paper);color:var(--paper-ink);
+  border-radius:var(--r-paper);
+  padding:12px;gap:12px;
   overflow:hidden;
-  text-decoration:none;color:inherit;
-  box-shadow:9px 10px 0 var(--shadow);
-  transition:transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease;
+  text-decoration:none;
+  box-shadow:var(--sh-feat);
+  transform:rotate(-0.4deg);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
 }
 .feat-card:hover,.feat-card:focus-visible{
-  transform:translate(-3px,-5px);
-  box-shadow:13px 15px 0 var(--shadow);
-  outline:none;
+  transform:rotate(0deg) translate(-2px,-6px);
+  box-shadow:var(--sh-feat-hi);outline:none;
 }
-.feat-card:focus-visible{outline:3px solid var(--line);outline-offset:5px;}
-.feat-card:active{transform:translate(4px,5px);box-shadow:3px 3px 0 var(--shadow);}
-/* The panel stretches to the row instead of holding 16/10, so the picture
-   fills its whole half however tall the text beside it turns out to be. */
-.feat-card .top{aspect-ratio:auto;height:100%;border-bottom:0;border-right:4px solid var(--line);}
-.feat-card .emoji{font-size:clamp(56px,11vmin,92px);}
-.feat-card:hover .emoji{transform:scale(1.1) rotate(-6deg);}
-.feat-card:hover .shot{transform:scale(1.04);}
+.feat-card:active{transform:rotate(0deg) translate(3px,4px);box-shadow:3px 3px 0 var(--shadow);}
+.feat-card .top{aspect-ratio:auto;height:100%;}
+.feat-card .emoji{font-size:clamp(50px,10vmin,84px);}
 
 .feat-body{
-  padding:clamp(20px,3.4vmin,32px);
-  display:flex;flex-direction:column;align-items:flex-start;gap:10px;justify-content:center;
+  padding:clamp(10px,2.2vmin,22px) clamp(8px,2vmin,18px);
+  display:flex;flex-direction:column;align-items:flex-start;gap:9px;justify-content:center;
 }
 .feat-badge{
-  background:#FFD23D;color:#2A2140;
-  border:3px solid var(--line);border-radius:999px;
-  padding:6px 16px;font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
-  box-shadow:3px 3px 0 var(--shadow);
-  transform:rotate(-2deg);
+  color:var(--hot);background:none;border:0;padding:0;
+  font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
 }
 .feat-body h2{
-  margin:0;font-size:clamp(25px,4.4vmin,40px);font-weight:900;letter-spacing:-.02em;line-height:1.1;
+  margin:0;font-family:var(--font-hand);font-weight:400;
+  font-size:clamp(30px,5.4vmin,52px);line-height:1;letter-spacing:.01em;
+  text-transform:uppercase;color:var(--paper-ink);
 }
-.feat-body p{margin:0;font-size:clamp(13.5px,1.9vmin,15.5px);line-height:1.5;color:var(--ink-soft);font-weight:600;}
+.feat-body p{margin:0;font-size:clamp(13px,1.8vmin,15px);line-height:1.5;color:var(--paper-ink-soft);font-weight:400;}
 .feat-play{
   margin-top:4px;
-  background:#FFD23D;color:#2A2140;
-  border:3px solid var(--line);border-radius:999px;
-  padding:11px 26px;font-size:15.5px;font-weight:900;letter-spacing:.03em;
-  box-shadow:0 4px 0 var(--shadow);
-  transition:transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+  background:var(--sun);color:#1A1420;
+  border:var(--bw) solid #1A1420;border-radius:var(--r-ctl);
+  padding:10px 24px;font-size:14.5px;font-weight:700;letter-spacing:.02em;
+  box-shadow:3px 3px 0 #1A1420;
+  transition:transform .14s var(--ease), box-shadow .14s var(--ease);
 }
-.feat-card:hover .feat-play{background:#FFE27A;}
-.feat-card:active .feat-play{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow);}
-/* Says out loud that the tile moves on, so nobody reads it as a permanent
-   favourite or wonders why the page looks different tomorrow. */
-.feat-note{font-size:11.5px;font-weight:800;letter-spacing:.03em;color:var(--ink-soft);opacity:.8;}
+.feat-card:hover .feat-play{transform:translate(-1px,-2px);box-shadow:5px 5px 0 #1A1420;}
+.feat-note{font-size:11px;font-weight:500;letter-spacing:.03em;color:var(--paper-ink-soft);opacity:.75;}
 
-/* Below this the two halves cannot both be worth a column: the picture goes
-   on top and the text under it, which is a card again, just a wide one. */
 @media (max-width:720px){
   .feat-card{grid-template-columns:1fr;min-height:0;}
-  .feat-card .top{aspect-ratio:16/10;height:auto;border-right:0;border-bottom:4px solid var(--line);}
+  .feat-card .top{aspect-ratio:16/10;height:auto;}
+  .featured::after{width:96px;height:26px;top:-11px;}
 }
 
-.empty, .error{
-  max-width:520px;margin:12vh auto 0;text-align:center;color:var(--ink-soft);font-weight:700;
-  background:var(--paper);border:3px solid var(--line);border-radius:24px;
-  padding:34px 28px;box-shadow:6px 7px 0 var(--shadow);
+/* ---------------- Empty and error states ----------------
+   Paper, like everything else that carries a message. */
+.empty,.error{
+  max-width:520px;margin:12vh auto 0;text-align:center;
+  background:var(--paper);color:var(--paper-ink-soft);font-weight:500;
+  border-radius:var(--r-paper);
+  padding:32px 28px;box-shadow:var(--sh-card);
+  transform:rotate(-0.5deg);
 }
-.empty .big, .error .big{font-size:56px;margin-bottom:12px;}
-/* The category filter's own empty state. Same panel, but it sits under a
-   grid that is still on the page — the cards are hidden, not gone — so it
-   wants the spacing of the next thing down, not the 12vh drop that suits a
-   message standing alone on an otherwise blank page. Here rather than up
-   with the chips because it has to come after the rule it narrows. */
+.empty .big,.error .big{font-size:50px;margin-bottom:10px;}
 .cat-empty{margin:0 auto 4vmin;}
-.loading{text-align:center;color:var(--ink-soft);margin-top:12vh;font-weight:800;letter-spacing:.05em;}
+.loading{text-align:center;color:var(--ink-soft);margin-top:12vh;font-weight:500;letter-spacing:.05em;}
 footer{
-  text-align:center;margin-top:9vmin;font-size:12.5px;font-weight:800;color:var(--ink-soft);opacity:.75;
+  text-align:center;margin-top:9vmin;font-size:12px;font-weight:500;color:var(--ink-soft);opacity:.7;
 }
-/* Reduced motion, driven purely by the OS setting. `*` alone was leaving
-   ::before/::after untouched (the universal selector does not match them),
-   and covered transitions but not animation or smooth scrolling. Games
-   themselves are iframed from their own origin and set their own policy —
-   this governs the Arcade shell only. */
+
+/* Reduced motion, driven purely by the OS setting. Games are iframed
+   from their own origin and set their own policy — this governs the
+   Arcade shell only. The tilt is left alone on purpose: it is a static
+   position, not an animation, and removing it would change the layout
+   rather than calm it. */
 @media (prefers-reduced-motion:reduce){
   *, *::before, *::after{
     animation-duration:0.01ms !important;
@@ -443,6 +536,7 @@ footer{
   html{scroll-behavior:auto !important;}
 }
 </style>
+
 </head>
 <body>
 
@@ -451,7 +545,7 @@ footer{
 <button id="themeBtn" class="theme-btn" type="button"><span id="themeIcon">🌙</span><span id="themeLabel">Dark</span></button>
 
 <header>
-  <span class="badge">🎈 Free to play</span>
+  <span class="badge">Free to play</span>
   <h1>Arcade</h1>
   <p>Jump straight in — no account needed.</p>
   <p class="note" id="headerNote">These are developmental-stage games, made by MOS employees.</p>

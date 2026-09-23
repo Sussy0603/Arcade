@@ -12,9 +12,10 @@ Open `index.html` and it works.
 
 ## What's in here
 
-    index.html          The Arcade page.
+    index.html          The Arcade page, and the whole design system.
     arcade.js           What the page does — search, sort, filters, picks.
     theme-boot.js       Sets light/dark before the first paint.
+    fonts/              The two typefaces, served from here on purpose.
 
     games.json          The game list. Generated — see below.
     games/              The games, one folder each.
@@ -29,6 +30,29 @@ Open `index.html` and it works.
 About 6 MB all in.
 
 ---
+
+## The look
+
+A wall with paper stuck to it. Games are photographs taped up rather
+than tiles in a UI, headings are hand-lettered, and the only straight
+thing on the page is the grid behind it all.
+
+Two rules hold it together, and breaking either is what makes it stop
+looking like a wall:
+
+- **Paper is always light.** A note pinned to a dark wall doesn't turn
+  black at night — it's still paper. So `--paper` and `--paper-ink` are
+  identical in both themes and only the wall changes, which is why a
+  card needs no theme-specific rules at all.
+- **Shadows are hard.** Zero blur, one offset, solid ink. That's what
+  makes a rectangle read as an object sitting off the surface instead
+  of a div with a glow.
+
+Everything adjustable is a token at the top of `index.html` — colour,
+corner radius, border width, shadow offset, easing, both typefaces. The
+whole look is that one block; nothing below it hardcodes a colour or a
+radius. Retheming the arcade means editing tokens, not hunting the
+stylesheet.
 
 ## Two sections, one page
 
