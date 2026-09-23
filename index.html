@@ -152,6 +152,20 @@
   --shadow:#000000;
 }
 
+/* The colour a note turns over to when you reach for it. Theme-independent
+   for the same reason the paper is: the card does not know what the wall
+   behind it is doing.
+
+   Sampled from the reference at #0A86B3 and darkened by about four per
+   cent. At the sampled value nothing can be written on it — white text
+   lands at 4.14:1 and black at 4.36:1, so BOTH fail AA for a 19px title,
+   which is the one thing a card has to do. This clears it at 4.67:1 with
+   white, and is not a difference you can see side by side.
+
+   Note that in the reference this blue is INK on white paper, never a
+   fill. Using it as a fill is the part that made contrast a question. */
+:root{ --blue:#0A7DA6; }
+
 /* The eight panels behind an emoji, for a game whose screenshot has not
    been taken. They sit INSIDE white paper, so they are mid-tone and
    vivid rather than pastel, and they are the same in both themes for the
@@ -359,21 +373,43 @@ header p.note{
    scans as a grid. */
 .card{
   --tilt:0deg;
-  background:var(--paper);color:var(--paper-ink);
+  /* Everything the card inks itself with goes through these three, so the
+     hover state below flips one set of values and the title, the
+     description, the category pill and the Play button all follow. The
+     alternative is five hover rules that have to be kept in step, and the
+     day one of them is forgotten is the day a card has black text on a
+     blue field. */
+  --note:var(--paper);
+  --note-ink:var(--paper-ink);
+  --note-ink-soft:var(--paper-ink-soft);
+
+  background:var(--note);color:var(--note-ink);
   border-radius:var(--r-paper);
   padding:10px 10px 0;
   display:flex;flex-direction:column;
   text-decoration:none;
   box-shadow:var(--sh-card);
   transform:rotate(var(--tilt));
-  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease),
+             background-color .18s var(--ease), color .18s var(--ease);
 }
 .card:nth-child(4n+1){--tilt:-0.8deg;}
 .card:nth-child(4n+2){--tilt:0.55deg;}
 .card:nth-child(4n+3){--tilt:-0.35deg;}
 .card:nth-child(4n+4){--tilt:0.85deg;}
-/* Hovering straightens it and lifts it — picking a photo off the wall. */
+/* Hovering straightens it, lifts it, and turns the paper over to the
+   blue — picking a photo off the wall and finding it is a different
+   note underneath. Keyboard focus does the same thing, so tabbing
+   through the grid is not a quieter experience than pointing at it. */
 .card:hover,.card:focus-visible{
+  --note:var(--blue);
+  --note-ink:#FFFFFF;
+  /* The description drops its grey and goes white too. A softened white
+     on this blue falls under 4.5:1, and there is nothing to be gained by
+     dimming two lines of text on a state that only exists while you are
+     looking straight at it — the size difference already carries the
+     hierarchy. */
+  --note-ink-soft:#FFFFFF;
   transform:rotate(0deg) translate(-2px,-6px);
   box-shadow:var(--sh-card-hi);
   outline:none;
@@ -410,24 +446,28 @@ header p.note{
 .card h3{
   margin:0;font-family:var(--font-hand);font-weight:400;
   font-size:19px;line-height:1.15;letter-spacing:.01em;
-  color:var(--paper-ink);
+  color:var(--note-ink);
 }
-.card p{margin:0;font-size:12.5px;line-height:1.45;color:var(--paper-ink-soft);font-weight:400;flex:1;}
+.card p{margin:0;font-size:12.5px;line-height:1.45;color:var(--note-ink-soft);font-weight:400;flex:1;}
 .pill{
   align-self:flex-start;
   font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
   padding:3px 9px;border-radius:999px;
-  border:1px solid var(--paper-ink);color:var(--paper-ink);background:none;
+  border:1px solid var(--note-ink,var(--paper-ink));color:var(--note-ink,var(--paper-ink));background:none;
 }
 .play-row{padding:10px 4px 12px;}
 .play-btn{
   display:block;text-align:center;
-  background:none;color:var(--paper-ink);
-  border:var(--bw) solid var(--paper-ink);border-radius:var(--r-ctl);
+  background:none;color:var(--note-ink,var(--paper-ink));
+  border:var(--bw) solid var(--note-ink,var(--paper-ink));border-radius:var(--r-ctl);
   padding:8px 14px;font-size:13px;font-weight:700;letter-spacing:.02em;
   transition:background-color .14s var(--ease), color .14s var(--ease);
 }
-.card:hover .play-btn{background:var(--paper-ink);color:var(--paper);}
+/* The one filled thing on a hovered card, and the page's one yellow.
+   Dark ink on it reads at better than 12:1 in either theme. */
+.card:hover .play-btn,.card:focus-visible .play-btn{
+  background:var(--sun);color:#1A1420;border-color:#1A1420;
+}
 
 /* ---------------- Today's pick ----------------
    The same object as a card, scaled up and turned on its side — same
