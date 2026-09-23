@@ -8,14 +8,6 @@
     "addedAt": 1786628687341.1946
   },
   {
-    "id": "antics",
-    "name": "Antics",
-    "description": "",
-    "url": "games/antics/index.html",
-    "category": "Chill",
-    "addedAt": 1785678760479.9937
-  },
-  {
     "id": "backgammon",
     "name": "Backgammon",
     "description": "",
@@ -368,14 +360,6 @@
     "addedAt": 1787055751547.4631
   },
   {
-    "id": "mossling",
-    "name": "Mossling",
-    "description": "",
-    "url": "games/mossling/index.html",
-    "category": "Chill",
-    "addedAt": 1785678742280.9722
-  },
-  {
     "id": "neuron",
     "name": "Neuron",
     "description": "",
@@ -456,14 +440,6 @@
     "addedAt": 1786465160416.6638
   },
   {
-    "id": "pixling",
-    "name": "Pixling",
-    "description": "",
-    "url": "games/pixling/index.html",
-    "category": "Chill",
-    "addedAt": 1785679102225.3965
-  },
-  {
     "id": "pong-solo",
     "name": "Pong Solo",
     "description": "",
@@ -494,14 +470,6 @@
     "url": "games/procedural-jigsaw/index.html",
     "category": "Puzzle",
     "addedAt": 1786466287462.6057
-  },
-  {
-    "id": "purrista",
-    "name": "Purrista",
-    "description": "",
-    "url": "games/purrista/Purrista.html",
-    "category": "Chill",
-    "addedAt": 1786467363759.736
   },
   {
     "id": "quilt-block-designer",
