@@ -152,19 +152,25 @@
   --shadow:#000000;
 }
 
-/* The colour a note turns over to when you reach for it. Theme-independent
-   for the same reason the paper is: the card does not know what the wall
-   behind it is doing.
+/* What a note turns over to when you reach for it: hot pink paper, the
+   name in aqua, the button in sun.
 
-   Sampled from the reference at #0A86B3 and darkened by about four per
-   cent. At the sampled value nothing can be written on it — white text
-   lands at 4.14:1 and black at 4.36:1, so BOTH fail AA for a 19px title,
-   which is the one thing a card has to do. This clears it at 4.67:1 with
-   white, and is not a difference you can see side by side.
+   These are the --hot / --aqua / --sun values, but written out as fixed
+   colours rather than referred to as tokens, and that is not laziness.
+   Those three tokens DARKEN in daylight, because on a pale wall the night
+   versions are too light to read. Here they are not on the wall, they are
+   on each other — and the daylight pairing is aqua #0E93A6 on hot #E8146E,
+   which is 1.21:1. Invisible. Pinned to the night values it is 2.02:1 in
+   both themes, which is the number the shadow below exists to answer.
 
-   Note that in the reference this blue is INK on white paper, never a
-   fill. Using it as a fill is the part that made contrast a question. */
-:root{ --blue:#0A7DA6; }
+   It is also the same rule the paper already follows: a card does not know
+   what the wall behind it is doing, so nothing on a card may be theme-aware. */
+:root{
+  --lift:#FF2E88;          /* the paper */
+  --lift-name:#34D8E8;     /* the name written on it */
+  --lift-play:#FBD23D;     /* the button */
+  --lift-shadow:#1A1420;   /* what is dropped behind the name */
+}
 
 /* The eight panels behind an emoji, for a game whose screenshot has not
    been taken. They sit INSIDE white paper, so they are mid-tone and
@@ -380,6 +386,8 @@ header p.note{
      day one of them is forgotten is the day a card has black text on a
      blue field. */
   --note:var(--paper);
+  --note-title:var(--paper-ink);
+  --note-title-shadow:none;
   --note-ink:var(--paper-ink);
   --note-ink-soft:var(--paper-ink-soft);
 
@@ -402,14 +410,20 @@ header p.note{
    note underneath. Keyboard focus does the same thing, so tabbing
    through the grid is not a quieter experience than pointing at it. */
 .card:hover,.card:focus-visible{
-  --note:var(--blue);
-  --note-ink:#FFFFFF;
-  /* The description drops its grey and goes white too. A softened white
-     on this blue falls under 4.5:1, and there is nothing to be gained by
-     dimming two lines of text on a state that only exists while you are
-     looking straight at it — the size difference already carries the
-     hierarchy. */
-  --note-ink-soft:#FFFFFF;
+  --note:var(--lift);
+  --note-title:var(--lift-name);
+  /* The shadow the aqua needs. Aqua on hot pink is 2.02:1, which is not a
+     ratio you can write a title at — so every glyph is given a hard dark
+     edge on two sides instead. It does not change the measured contrast,
+     because that measures ink against the field behind it, but it is what
+     makes the letterforms separate from the pink to an eye. Hard and
+     offset, the same treatment the <h1> takes, scaled to 19px. */
+  --note-title-shadow:2px 2px 0 var(--lift-shadow);
+  /* The description cannot keep its grey: #6B6176 on this pink is 1.67:1.
+     Dark ink is 5.15:1 and passes, and it pairs with the dark ink already
+     on the Play button, so the card reads as one thing with the name as
+     its single accent. */
+  --note-ink-soft:var(--paper-ink);
   transform:rotate(0deg) translate(-2px,-6px);
   box-shadow:var(--sh-card-hi);
   outline:none;
@@ -446,7 +460,9 @@ header p.note{
 .card h3{
   margin:0;font-family:var(--font-hand);font-weight:400;
   font-size:19px;line-height:1.15;letter-spacing:.01em;
-  color:var(--note-ink);
+  color:var(--note-title);
+  text-shadow:var(--note-title-shadow);
+  transition:color .18s var(--ease);
 }
 .card p{margin:0;font-size:12.5px;line-height:1.45;color:var(--note-ink-soft);font-weight:400;flex:1;}
 .pill{
@@ -466,7 +482,7 @@ header p.note{
 /* The one filled thing on a hovered card, and the page's one yellow.
    Dark ink on it reads at better than 12:1 in either theme. */
 .card:hover .play-btn,.card:focus-visible .play-btn{
-  background:var(--sun);color:#1A1420;border-color:#1A1420;
+  background:var(--lift-play);color:var(--lift-shadow);border-color:var(--lift-shadow);
 }
 
 /* ---------------- Today's pick ----------------
