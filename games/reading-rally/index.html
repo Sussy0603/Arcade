@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Reading Rally</title>
+<style>
+  :root{
+    --bg1:#EFF7E9; --bg2:#B9DDA0; --card:#FFFFFF; --text:#33502A; --sub:#5C7A52;
+    --accent:#6FA35E; --accent2:#C6A15B; --danger:#E8547E; --radius:22px;
+    --shadow:0 8px 0 rgba(0,0,0,0.08), 0 14px 24px rgba(0,0,0,0.10);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; overflow-x:hidden;}
+  body{
+    font-family:-apple-system,'Segoe UI Rounded','Segoe UI',system-ui,Verdana,sans-serif;
+    background:radial-gradient(1200px 800px at 20% -10%, var(--bg2), var(--bg1) 60%);
+    color:var(--text);
+    min-height:100%;
+    transition:background 0.6s ease, color 0.4s ease;
+    -webkit-user-select:none; user-select:none;
+  }
+  #particles{position:fixed; inset:0; pointer-events:none; z-index:0;}
+  #app{position:relative; z-index:1; max-width:720px; margin:0 auto; padding:14px 16px 40px; min-height:100vh;}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px;}
+  .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:22px; letter-spacing:-0.5px;}
+  .brand .logo{font-size:28px;}
+  .iconbtn{
+    background:var(--card); border:none; border-radius:16px; width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer;
+    box-shadow:var(--shadow); transition:transform .12s ease;
+  }
+  .iconbtn:active{transform:scale(0.9) translateY(2px);}
+  .topbar-right{display:flex; gap:8px;}
+  .streak-pill{
+    display:flex; align-items:center; gap:4px; background:var(--card); border-radius:16px;
+    padding:8px 12px; font-weight:800; box-shadow:var(--shadow); font-size:14px;
+  }
+
+  /* ---------- generic ---------- */
+  .card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:18px; margin-bottom:14px;
+  }
+  h1,h2,h3{margin:0 0 6px; letter-spacing:-0.5px;}
+  .muted{color:var(--sub); font-size:14px; margin:0 0 10px;}
+  .btn{
+    border:none; border-radius:18px; padding:14px 20px; font-weight:800; font-size:16px;
+    cursor:pointer; box-shadow:var(--shadow); transition:transform .12s ease, filter .12s ease;
+    background:var(--accent); color:white;
+  }
+  .btn:active{transform:scale(0.96) translateY(2px);}
+  .btn.secondary{background:var(--card); color:var(--text); border:2px solid var(--accent2);}
+  .btn.block{width:100%; text-align:center;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .row{display:flex; gap:10px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  /* ---------- mascot ---------- */
+  .mascot-wrap{display:flex; justify-content:center; margin:6px 0 14px;}
+  .mascot{width:96px; height:96px; animation:bob 2.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg);} 50%{transform:translateY(-8px) rotate(2deg);}}
+  .mascot.happy{animation:bob 0.5s ease-in-out infinite;}
+  .mascot.sad{animation:sadwob 0.4s ease-in-out;}
+  @keyframes sadwob{0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);}}
+  .speech{
+    text-align:center; font-weight:700; font-size:15px; color:var(--text); margin:-6px 0 12px;
+  }
+
+  /* ---------- home menu ---------- */
+  .game-tile{
+    border-radius:24px; padding:22px 18px; cursor:pointer; color:white; box-shadow:var(--shadow);
+    position:relative; overflow:hidden; transition:transform .12s ease;
+  }
+  .game-tile:active{transform:scale(0.97);}
+  .game-tile.storysort{background:linear-gradient(135deg,#6FA35E,#3E7A44);}
+  .game-tile.swipe{background:linear-gradient(135deg,#FF8FB1,#E8547E);}
+  .game-tile .emoji{font-size:38px; display:block; margin-bottom:6px;}
+  .game-tile h3{color:white; font-size:19px; margin-bottom:2px;}
+  .game-tile p{color:rgba(255,255,255,0.9); font-size:13px; margin:0;}
+  .daily-banner{
+    background:linear-gradient(135deg,var(--accent2),var(--accent)); color:white; border-radius:20px;
+    padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    cursor:pointer; box-shadow:var(--shadow); margin-bottom:14px;
+  }
+  .daily-banner h3{color:white; margin:0;}
+  .daily-banner p{color:rgba(255,255,255,0.9); margin:2px 0 0; font-size:13px;}
+  .navrow{display:flex; gap:10px; margin-top:6px;}
+  .navrow .btn{flex:1; font-size:14px; padding:12px 8px;}
+
+  /* ---------- story picker ---------- */
+  .story-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .story-card{
+    background:var(--card); border-radius:18px; padding:14px; text-align:center; cursor:pointer;
+    box-shadow:var(--shadow); transition:transform .12s ease;
+  }
+  .story-card:active{transform:scale(0.95);}
+  .story-card .thumb{font-size:30px;}
+  .story-card .title{font-weight:800; font-size:13px; margin-top:6px;}
+  .story-card .done{color:var(--accent); font-size:12px; font-weight:700;}
+
+  /* ---------- story sort game ---------- */
+  .slots{display:flex; gap:10px; margin-bottom:16px;}
+  .slot{
+    flex:1; min-height:104px; background:var(--card); border:3px dashed var(--accent2); border-radius:18px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px;
+    cursor:pointer; position:relative; transition:transform .1s ease, border-color .2s ease;
+  }
+  .slot .label{position:absolute; top:6px; left:0; right:0; text-align:center; font-size:10px; font-weight:800; color:var(--sub); letter-spacing:1px; text-transform:uppercase;}
+  .slot.filled{border-style:solid; cursor:pointer;}
+  .slot.wrong{animation:shake .4s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0);} 20%{transform:translateX(-6px);} 40%{transform:translateX(6px);} 60%{transform:translateX(-4px);} 80%{transform:translateX(4px);}}
+  .slot .p-emoji{font-size:26px; margin-top:8px;}
+  .slot .p-text{font-size:10px; text-align:center; margin-top:2px; padding:0 4px; line-height:1.2;}
+
+  .shelf{display:flex; flex-wrap:wrap; gap:10px; justify-content:center;}
+  .panel{
+    width:96px; min-height:96px; background:var(--card); border-radius:16px; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px;
+    cursor:pointer; border:3px solid transparent; transition:transform .12s ease, border-color .15s ease;
+  }
+  .panel:active{transform:scale(0.94);}
+  .panel.selected{border-color:var(--danger); transform:translateY(-4px);}
+  .panel .p-emoji{font-size:26px;}
+  .panel .p-text{font-size:10px; text-align:center; margin-top:4px; line-height:1.2;}
+  .panel.hidden{visibility:hidden; pointer-events:none;}
+
+  /* ---------- sight word swipe ---------- */
+  .level-row{display:flex; gap:10px;}
+  .level-btn{
+    flex:1; background:var(--card); border-radius:16px; padding:16px 8px; text-align:center;
+    box-shadow:var(--shadow); cursor:pointer; transition:transform .12s ease;
+  }
+  .level-btn:active{transform:scale(0.95);}
+  .level-btn .n{font-size:24px; font-weight:900; color:var(--accent);}
+  .level-btn .l{font-size:12px; font-weight:700; color:var(--sub);}
+
+  .hud{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .hearts{font-size:18px;}
+  .scorebox{font-weight:800; font-size:16px;}
+  .timerbar{height:10px; background:rgba(0,0,0,0.08); border-radius:6px; overflow:hidden; margin-bottom:18px;}
+  .timerfill{height:100%; background:var(--accent); width:100%; transition:width .1s linear;}
+  .prompt{text-align:center; margin-bottom:6px;}
+  .prompt .find{font-size:13px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:1px;}
+  .prompt .word{font-size:44px; font-weight:900; color:var(--text); margin:4px 0 18px;}
+  .choices{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .choice{
+    background:var(--card); border-radius:18px; padding:20px 8px; text-align:center; font-size:24px;
+    font-weight:800; cursor:pointer; box-shadow:var(--shadow); transition:transform .12s ease, opacity .3s ease;
+  }
+  .choice:active{transform:scale(0.94);}
+  .choice.correct{background:var(--accent); color:white;}
+  .choice.wrong{background:var(--danger); color:white;}
+  .choice.flyaway{transform:translateX(160%) rotate(20deg); opacity:0;}
+  .combo-pop{
+    position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); font-size:26px; font-weight:900;
+    color:var(--accent); pointer-events:none; z-index:50; animation:popfade .7s ease forwards;
+  }
+  @keyframes popfade{0%{opacity:0; transform:translate(-50%,-40%) scale(0.6);} 30%{opacity:1; transform:translate(-50%,-50%) scale(1.15);} 100%{opacity:0; transform:translate(-50%,-60%) scale(1);}}
+
+  /* ---------- results ---------- */
+  .stars{text-align:center; font-size:40px; margin:8px 0;}
+  .statline{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.06); font-size:14px;}
+  .statline:last-child{border-bottom:none;}
+  .statline b{font-size:16px;}
+
+  /* ---------- profile / settings ---------- */
+  .avatar-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:14px;}
+  .avatar-opt{
+    font-size:24px; text-align:center; padding:8px 0; border-radius:12px; cursor:pointer;
+    border:2px solid transparent; background:var(--bg1);
+  }
+  .avatar-opt.active{border-color:var(--accent); background:var(--card);}
+  .field{
+    width:100%; padding:12px 14px; border-radius:14px; border:2px solid rgba(0,0,0,0.08);
+    font-size:16px; font-weight:700; margin-bottom:12px; background:var(--card); color:var(--text);
+  }
+  .theme-cat{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--sub); margin:12px 0 6px;}
+  .theme-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+  .theme-swatch{
+    border-radius:16px; padding:10px 4px; text-align:center; cursor:pointer; border:3px solid transparent;
+    box-shadow:var(--shadow);
+  }
+  .theme-swatch.active{border-color:var(--text);}
+  .theme-swatch .dot{font-size:20px;}
+  .theme-swatch .name{font-size:9px; font-weight:800; margin-top:4px; line-height:1.1;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0;}
+  .switch{width:50px; height:28px; border-radius:20px; background:rgba(0,0,0,0.15); position:relative; cursor:pointer; transition:background .2s;}
+  .switch.on{background:var(--accent);}
+  .switch .knob{position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:white; transition:left .2s; box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+  .switch.on .knob{left:25px;}
+
+  .ach-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .ach-card{background:var(--card); border-radius:16px; padding:12px; box-shadow:var(--shadow); text-align:center; opacity:1;}
+  .ach-card.locked{opacity:0.4;}
+  .ach-card .e{font-size:26px;}
+  .ach-card .n{font-weight:800; font-size:12px; margin-top:4px;}
+  .ach-card .d{font-size:10px; color:var(--sub); margin-top:2px;}
+
+  .backbtn{margin-bottom:10px;}
+  .center{text-align:center;}
+  .confirm-box{background:var(--card); border-radius:18px; padding:16px; margin-top:10px;}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   READING RALLY — Story Sort + Sight Word Swipe
+   Single-file build. STeamWorkS style: localStorage, Web Audio SFX,
+   no accounts, no external assets.
+========================================================= */
+
+/* ---------------- THEMES ---------------- */
+const THEMES = [
+  {id:'ete', name:'Été', cat:'Seasonal', bg1:'#FFF3B0', bg2:'#FFD166', card:'#FFFFFF', text:'#7A4A00', sub:'#9C6A1F', accent:'#FF6B6B', accent2:'#06AED5', particle:'☀️', wave:'triangle', base:440},
+  {id:'printemps', name:'Printemps', cat:'Seasonal', bg1:'#F3FFE8', bg2:'#C8F5B8', card:'#FFFFFF', text:'#2F5D34', sub:'#5C8A5F', accent:'#FF8FB1', accent2:'#7ED957', particle:'🌸', wave:'sine', base:523},
+  {id:'automne', name:'Automne', cat:'Seasonal', bg1:'#FFEEDB', bg2:'#F4B183', card:'#FFF8F0', text:'#5C3A21', sub:'#8C6644', accent:'#D9622B', accent2:'#8C5E32', particle:'🍁', wave:'sawtooth', base:330},
+  {id:'hiver', name:'Hiver', cat:'Seasonal', bg1:'#EAF6FF', bg2:'#BEE3F8', card:'#FFFFFF', text:'#234E70', sub:'#5A80A0', accent:'#4FA6E8', accent2:'#B399D4', particle:'❄️', wave:'sine', base:660},
+  {id:'nature', name:'Nature', cat:'Mood', bg1:'#EFF7E9', bg2:'#B9DDA0', card:'#FFFFFF', text:'#33502A', sub:'#5C7A52', accent:'#6FA35E', accent2:'#C6A15B', particle:'🍃', wave:'triangle', base:392},
+  {id:'calme', name:'Calme', cat:'Mood', bg1:'#EFF1FA', bg2:'#C9CEEE', card:'#FFFFFF', text:'#3B3F63', sub:'#6A6E96', accent:'#8C93D6', accent2:'#B7A6E0', particle:'☕', wave:'sine', base:349},
+  {id:'creativite', name:'Créativité', cat:'Mood', bg1:'#FBEBFF', bg2:'#E3B8FF', card:'#FFFFFF', text:'#52205C', sub:'#8A5296', accent:'#C24BE0', accent2:'#FFB84D', particle:'🎨', wave:'square', base:415},
+  {id:'energie', name:'Énergie', cat:'Mood', bg1:'#FFF0E0', bg2:'#FFC199', card:'#FFFFFF', text:'#7A2E00', sub:'#A85A26', accent:'#FF5C2B', accent2:'#FFC300', particle:'⚡', wave:'square', base:494},
+  {id:'minimaliste', name:'Minimaliste', cat:'Mood', bg1:'#F7F7F7', bg2:'#E4E4E4', card:'#FFFFFF', text:'#2B2B2B', sub:'#767676', accent:'#4A4A4A', accent2:'#9C9C9C', particle:null, wave:'sine', base:440},
+  {id:'romantique', name:'Romantique', cat:'Mood', bg1:'#FFF0F3', bg2:'#FFC2D1', card:'#FFFFFF', text:'#6B1E33', sub:'#9C4E63', accent:'#E8547E', accent2:'#FFB6C1', particle:'💗', wave:'sine', base:587},
+  {id:'ocean', name:'Océan', cat:'Mood', bg1:'#E6FBFF', bg2:'#9FE0EC', card:'#FFFFFF', text:'#0B4A5C', sub:'#3F7C8C', accent:'#1FA2C9', accent2:'#16C79A', particle:'🐠', wave:'triangle', base:349},
+  {id:'neon', name:'Néon / Nuit Urbaine', cat:'Mood', bg1:'#1A1030', bg2:'#2A1B4D', card:'#251642', text:'#F1E8FF', sub:'#B7A6E0', accent:'#FF2ED1', accent2:'#35F0E0', particle:'✨', wave:'square', base:220},
+  {id:'fancy', name:'Fancy', cat:'Mood', bg1:'#FFF8E7', bg2:'#E9D7A7', card:'#FFFDF6', text:'#4A3A12', sub:'#8A7440', accent:'#C9A227', accent2:'#8A6D3B', particle:'☕', wave:'sine', base:466},
+];
+
+/* ---------------- CONTENT: STORIES ---------------- */
+const STORIES = [
+  {id:'puppy', title:'The Lost Puppy', panels:[
+    {emoji:'🐶🦋', text:'A little puppy chased a butterfly through the park.'},
+    {emoji:'😟🌳', text:'The puppy ran too far and got lost in the trees.'},
+    {emoji:'🥰👨‍👩‍👧', text:'The family found the puppy and gave it a big hug.'}]},
+  {id:'seed', title:'Planting a Seed', panels:[
+    {emoji:'🌱🕳️', text:'Mia planted a tiny seed in the soft brown dirt.'},
+    {emoji:'💧☀️', text:'She watered it every day and watched it sprout.'},
+    {emoji:'🌻', text:'A beautiful flower bloomed in the sunshine.'}]},
+  {id:'test', title:'The Big Test', panels:[
+    {emoji:'😰📚', text:'Sam felt nervous about his math test tomorrow.'},
+    {emoji:'🖊️🌙', text:'He studied every night and practiced his numbers.'},
+    {emoji:'😄💯', text:'Sam got a great grade and felt so proud.'}]},
+  {id:'sandcastle', title:'Building a Sandcastle', panels:[
+    {emoji:'🪣🏖️', text:'Leo brought his bucket and shovel to the beach.'},
+    {emoji:'🏰', text:'He built a tall sandcastle with towers and a moat.'},
+    {emoji:'🌊😆', text:'A wave washed it away, and Leo just laughed.'}]},
+  {id:'birthday', title:'The Birthday Surprise', panels:[
+    {emoji:'🤫🎈', text:'Ana\'s friends quietly planned a surprise party.'},
+    {emoji:'🙈🚪', text:'They hid behind the couch when Ana walked in.'},
+    {emoji:'🎉🎂', text:'Everyone jumped out and yelled, "Surprise!"'}]},
+  {id:'snowday', title:'Snow Day', panels:[
+    {emoji:'😴❄️', text:'Ben woke up to find snow covering the whole yard.'},
+    {emoji:'⛄', text:'He built a snowman with a carrot nose.'},
+    {emoji:'☕🔥', text:'Ben warmed up inside with a mug of hot cocoa.'}]},
+  {id:'sock', title:'The Missing Sock', panels:[
+    {emoji:'🧦❓', text:'Emma could only find one sock this morning.'},
+    {emoji:'🔍🛏️', text:'She searched under the bed and behind the dresser.'},
+    {emoji:'🧦✅', text:'She finally found it stuck inside her blanket.'}]},
+  {id:'bike', title:'Learning to Ride a Bike', panels:[
+    {emoji:'🚲😬', text:'Jack wobbled and fell off his new bike.'},
+    {emoji:'💪🔁', text:'He kept practicing every afternoon after school.'},
+    {emoji:'🚴😁', text:'Jack rode all the way down the street by himself.'}]},
+];
+
+/* ---------------- CONTENT: SIGHT WORDS ---------------- */
+const WORD_LEVELS = {
+  1:{label:'Beginner', words:['the','and','a','to','said','you','I','of','is','in','it','was','for','on','he','she','we','they','my','are']},
+  2:{label:'Growing', words:['what','all','were','when','your','can','there','use','an','each','which','do','how','their','if','will','up','other','about','out']},
+  3:{label:'Advanced', words:['people','water','than','first','been','call','who','its','now','find','long','down','day','did','get','come','made','may','part','after']},
+};
+
+/* ---------------- ACHIEVEMENTS ---------------- */
+const ACHIEVEMENTS = [
+  {id:'first_story', name:'First Chapter', desc:'Finish your first Story Sort', emoji:'📖', check:s=>s.stats.storiesCompleted>=1},
+  {id:'story_master', name:'Story Master', desc:'Finish 20 stories', emoji:'📚', check:s=>s.stats.storiesCompleted>=20},
+  {id:'speedy', name:'Speedy Reader', desc:'Sort a story in under 10 sec', emoji:'⚡', check:s=>s.stats.fastestSort!=null && s.stats.fastestSort<10},
+  {id:'word_starter', name:'Word Starter', desc:'Get 10 sight words correct', emoji:'🔤', check:s=>s.stats.wordsCorrect>=10},
+  {id:'word_whiz', name:'Sight Word Whiz', desc:'Get 100 sight words correct', emoji:'🧠', check:s=>s.stats.wordsCorrect>=100},
+  {id:'streak20', name:'Perfect Streak', desc:'20-in-a-row in Sight Word Swipe', emoji:'🔥', check:s=>s.stats.bestCombo>=20},
+  {id:'daily7', name:'Daily Devotion', desc:'7-day Daily Challenge streak', emoji:'📅', check:s=>s.stats.dailyStreak>=7},
+  {id:'explorer', name:'Theme Explorer', desc:'Try 5 different themes', emoji:'🎨', check:s=>s.stats.themesUsed.length>=5},
+  {id:'bookworm', name:'Bookworm', desc:'Play on 5 different days', emoji:'🐛', check:s=>s.stats.daysPlayed>=5},
+  {id:'century', name:'Century Club', desc:'100 total correct answers', emoji:'💯', check:s=>(s.stats.storiesCompleted+s.stats.wordsCorrect)>=100},
+];
+
+const AVATARS = ['🦊','🐼','🐸','🐵','🦉','🐯','🐶','🐱','🦁','🐻','🐨','🦄'];
+
+/* ---------------- STATE / SAVE ---------------- */
+const SAVE_KEY = 'readingRally_save_v1';
+function defaultState(){
+  return {
+    name:'Reader', avatar:'🦊', theme:'nature', sound:true,
+    stats:{
+      storiesCompleted:0, wordsCorrect:0, bestCombo:0, fastestSort:null,
+      daysPlayed:0, lastPlayedDate:null, dailyStreak:0, lastDailyDate:null,
+      themesUsed:['nature'], totalRounds:0
+    },
+    achievements:{}, // id -> timestamp
+    storyProgress:{}, // storyId -> true
+  };
+}
+let state = loadState();
+function loadState(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const d = defaultState();
+    return Object.assign(d, parsed, {stats:Object.assign(d.stats, parsed.stats||{})});
+  }catch(e){ return defaultState(); }
+}
+function saveState(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function touchDay(){
+  const t = todayStr();
+  if(state.stats.lastPlayedDate !== t){
+    state.stats.lastPlayedDate = t;
+    state.stats.daysPlayed = (state.stats.daysPlayed||0) + 1;
+    saveState();
+  }
+}
+touchDay();
+
+/* ---------------- AUDIO ---------------- */
+let actx = null;
+function ac(){ if(!actx){ actx = new (window.AudioContext||window.webkitAudioContext)(); } return actx; }
+function theme(){ return THEMES.find(t=>t.id===state.theme) || THEMES[0]; }
+function tone(freq, dur, type, gainVal, delay){
+  if(!state.sound) return;
+  try{
+    const ctx = ac();
+    const t0 = ctx.currentTime + (delay||0);
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type || theme().wave;
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gainVal||0.15, t0+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0+dur+0.02);
+  }catch(e){}
+}
+function sfxClick(){ tone(theme().base*0.9, 0.08, 'sine', 0.08); }
+function sfxCorrect(){ const b=theme().base; tone(b,0.1,null,0.14); tone(b*1.5,0.14,null,0.12,0.08); }
+function sfxWrong(){ tone(160,0.25,'sawtooth',0.12); }
+function sfxCelebrate(){ const b=theme().base; [0,0.09,0.18,0.27].forEach((d,i)=>tone(b*(1+i*0.25),0.2,null,0.13,d)); }
+function sfxSwipe(){ tone(theme().base*1.2, 0.12, 'triangle', 0.08); }
+
+/* ---------------- PARTICLES ---------------- */
+const pcanvas = document.getElementById('particles');
+const pctx = pcanvas.getContext('2d');
+let particles = [];
+function resizeCanvas(){ pcanvas.width = window.innerWidth; pcanvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+function initParticles(){
+  particles = [];
+  const emoji = theme().particle;
+  if(!emoji) return;
+  const count = window.innerWidth < 500 ? 10 : 16;
+  for(let i=0;i<count;i++){
+    particles.push({
+      x:Math.random()*pcanvas.width, y:Math.random()*pcanvas.height,
+      s:14+Math.random()*14, vy:0.25+Math.random()*0.5, vx:(Math.random()-0.5)*0.4,
+      r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.02
+    });
+  }
+}
+function animateParticles(){
+  pctx.clearRect(0,0,pcanvas.width,pcanvas.height);
+  const emoji = theme().particle;
+  if(emoji){
+    pctx.font = '20px sans-serif';
+    pctx.textAlign='center'; pctx.textBaseline='middle';
+    particles.forEach(p=>{
+      p.y += p.vy; p.x += p.vx; p.r += p.vr;
+      if(p.y > pcanvas.height+20){ p.y=-20; p.x=Math.random()*pcanvas.width; }
+      if(p.x > pcanvas.width+20) p.x=-20;
+      if(p.x < -20) p.x=pcanvas.width+20;
+      pctx.save();
+      pctx.globalAlpha = 0.55;
+      pctx.font = p.s+'px sans-serif';
+      pctx.translate(p.x,p.y); pctx.rotate(p.r);
+      pctx.fillText(emoji,0,0);
+      pctx.restore();
+    });
+  }
+  requestAnimationFrame(animateParticles);
+}
+requestAnimationFrame(animateParticles);
+
+/* ---------------- THEME APPLY ---------------- */
+function applyTheme(){
+  const t = theme();
+  const r = document.documentElement.style;
+  r.setProperty('--bg1', t.bg1); r.setProperty('--bg2', t.bg2);
+  r.setProperty('--card', t.card); r.setProperty('--text', t.text);
+  r.setProperty('--sub', t.sub); r.setProperty('--accent', t.accent);
+  r.setProperty('--accent2', t.accent2);
+  initParticles();
+}
+
+/* ---------------- SEEDED RANDOM (for Daily Challenge) ---------------- */
+function seedFromStr(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; } return h; }
+function seededRand(seed){ let s = seed; return function(){ s = (s*1103515245+12345)>>>0; return (s>>>8)/16777216; }; }
+function shuffle(arr, rand){
+  const a = arr.slice();
+  const r = rand || Math.random;
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* ---------------- ACHIEVEMENT CHECK ---------------- */
+let pendingAchievementToast = null;
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(a=>{
+    if(!state.achievements[a.id] && a.check(state)){
+      state.achievements[a.id] = Date.now();
+      pendingAchievementToast = a;
+    }
+  });
+  saveState();
+}
+
+/* ---------------- ROUTER ---------------- */
+const app = document.getElementById('app');
+let route = {screen:'home'};
+function go(screen, params){ route = Object.assign({screen}, params||{}); render(); window.scrollTo(0,0); }
+
+/* ---------------- SHARED UI PIECES ---------------- */
+function topbar(title){
+  return `
+  <div class="topbar">
+    <div class="brand"><span class="logo">📖</span> ${title||'Reading Rally'}</div>
+    <div class="topbar-right">
+      <div class="streak-pill">🔥 ${state.stats.dailyStreak||0}</div>
+      <button class="iconbtn" onclick="toggleSound()">${state.sound?'🔊':'🔇'}</button>
+    </div>
+  </div>`;
+}
+function backRow(label){
+  return `<button class="btn secondary backbtn" onclick="go('home')">← ${label||'Home'}</button>`;
+}
+function mascot(mood, msg){
+  const svg = mascotSVG(mood);
+  return `<div class="mascot-wrap"><div class="mascot ${mood==='happy'?'happy':mood==='sad'?'sad':''}">${svg}</div></div>
+  ${msg?`<p class="speech">${msg}</p>`:''}`;
+}
+function mascotSVG(mood){
+  // friendly bookworm mascot, pure inline SVG, no external assets
+  const eyes = mood==='sad'
+    ? `<path d="M35 42 Q40 46 45 42" stroke="#33502A" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M55 42 Q60 46 65 42" stroke="#33502A" stroke-width="3" fill="none" stroke-linecap="round"/>`
+    : `<circle cx="40" cy="42" r="4" fill="#33502A"/><circle cx="60" cy="42" r="4" fill="#33502A"/>`;
+  const mouth = mood==='sad'
+    ? `<path d="M40 58 Q50 50 60 58" stroke="#33502A" stroke-width="3" fill="none" stroke-linecap="round"/>`
+    : `<path d="M38 55 Q50 68 62 55" stroke="#33502A" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+    <ellipse cx="50" cy="60" rx="34" ry="30" fill="var(--accent)"/>
+    <circle cx="50" cy="30" r="26" fill="var(--accent)"/>
+    <circle cx="26" cy="20" r="6" fill="var(--accent2)"/>
+    <circle cx="74" cy="20" r="6" fill="var(--accent2)"/>
+    ${eyes}${mouth}
+    <ellipse cx="50" cy="50" rx="10" ry="5" fill="none" stroke="#33502A" stroke-width="2" opacity="0.5"/>
+  </svg>`;
+}
+
+/* ---------------- SCREEN: HOME ---------------- */
+function screenHome(){
+  const dailyDone = state.stats.lastDailyDate === todayStr();
+  return `
+  ${topbar()}
+  ${mascot('idle', greeting())}
+  <div class="daily-banner" onclick="${dailyDone? '' : "startDaily()"}">
+    <div><h3>${dailyDone? '✅ Daily Done!' : '⭐ Daily Challenge'}</h3>
+    <p>${dailyDone? 'Come back tomorrow for a new one.' : 'One story + 10 sight words. Keep your streak!'}</p></div>
+    <div style="font-size:26px;">${dailyDone?'🎉':'▶️'}</div>
+  </div>
+  <div class="grid2">
+    <div class="game-tile storysort" onclick="go('storyPick')">
+      <span class="emoji">🧩</span><h3>Story Sort</h3><p>Put the panels in order</p>
+    </div>
+    <div class="game-tile swipe" onclick="go('levelPick')">
+      <span class="emoji">🔤</span><h3>Sight Word Swipe</h3><p>Quick-fire word game</p>
+    </div>
+  </div>
+  <div class="navrow">
+    <button class="btn secondary" onclick="go('achievements')">🏆 Badges</button>
+    <button class="btn secondary" onclick="go('profile')">${state.avatar} Profile</button>
+    <button class="btn secondary" onclick="go('settings')">⚙️ Settings</button>
+  </div>`;
+}
+function greeting(){
+  const n = state.name || 'Reader';
+  const opts = [`Ready to read, ${n}?`, `Let's rally, ${n}!`, `Hi ${n}! Pick a game below.`, `Great to see you, ${n}!`];
+  return opts[new Date().getDate() % opts.length];
+}
+function toggleSound(){ state.sound = !state.sound; saveState(); if(state.sound) sfxClick(); render(); }
+
+/* ---------------- SCREEN: STORY PICK ---------------- */
+function screenStoryPick(){
+  return `
+  ${topbar('Story Sort')}
+  ${backRow()}
+  <div class="card">
+    <h2>Pick a Story</h2>
+    <p class="muted">Beginning, middle, end — put the pictures in order.</p>
+  </div>
+  <div class="story-grid">
+    ${STORIES.map(s=>`
+      <div class="story-card" onclick="startStory('${s.id}')">
+        <div class="thumb">${s.panels[0].emoji.slice(0,2)}</div>
+        <div class="title">${s.title}</div>
+        ${state.storyProgress[s.id] ? '<div class="done">✓ Done</div>' : ''}
+      </div>`).join('')}
+  </div>`;
+}
+
+/* ---------------- STORY SORT GAME ---------------- */
+let sortGame = null;
+function startStory(id, isDaily){
+  const story = STORIES.find(s=>s.id===id);
+  const order = shuffle([0,1,2]);
+  sortGame = {
+    story, isDaily:!!isDaily, startTime:Date.now(),
+    shelf: order, // indices into story.panels, in shelf display order
+    slots: [null,null,null], // holds index into story.panels or null
+    selected: null,
+  };
+  go('storySort');
+}
+function screenStorySort(){
+  const g = sortGame;
+  const labels = ['Beginning','Middle','End'];
+  const allFilled = g.slots.every(x=>x!==null);
+  return `
+  ${topbar('Story Sort')}
+  <div class="card">
+    <h2>${g.story.title}</h2>
+    <p class="muted">Tap a picture, then tap where it goes.</p>
+  </div>
+  <div class="slots">
+    ${g.slots.map((idx,i)=>`
+      <div class="slot ${idx!==null?'filled':''}" id="slot-${i}" onclick="tapSlot(${i})">
+        <div class="label">${labels[i]}</div>
+        ${idx!==null? `<div class="p-emoji">${g.story.panels[idx].emoji}</div><div class="p-text">${g.story.panels[idx].text}</div>` : ''}
+      </div>`).join('')}
+  </div>
+  <div class="shelf">
+    ${g.shelf.map(idx=>{
+      const placed = g.slots.includes(idx);
+      const sel = g.selected===idx;
+      return `<div class="panel ${sel?'selected':''} ${placed?'hidden':''}" onclick="tapPanel(${idx})">
+        <div class="p-emoji">${g.story.panels[idx].emoji}</div>
+        <div class="p-text">${g.story.panels[idx].text}</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="margin-top:16px;">
+    <button class="btn block" ${allFilled?'':'disabled'} onclick="checkStorySort()">Check! ✅</button>
+    <button class="btn secondary block" style="margin-top:8px;" onclick="go('storyPick')">← Choose Another Story</button>
+  </div>`;
+}
+function tapPanel(idx){
+  const g = sortGame;
+  if(g.slots.includes(idx)) return;
+  sfxClick();
+  g.selected = (g.selected===idx) ? null : idx;
+  render();
+}
+function tapSlot(i){
+  const g = sortGame;
+  sfxClick();
+  if(g.slots[i]!==null){
+    // pick back up
+    g.slots[i] = null;
+    render();
+    return;
+  }
+  if(g.selected===null) return;
+  g.slots[i] = g.selected;
+  g.selected = null;
+  render();
+}
+function checkStorySort(){
+  const g = sortGame;
+  let allCorrect = true;
+  g.slots.forEach((idx,i)=>{
+    const el = document.getElementById('slot-'+i);
+    if(idx !== i){
+      allCorrect = false;
+      if(el){ el.classList.remove('wrong'); void el.offsetWidth; el.classList.add('wrong'); }
+    }
+  });
+  if(allCorrect){
+    sfxCelebrate();
+    const elapsed = (Date.now()-g.startTime)/1000;
+    state.stats.storiesCompleted++;
+    if(state.stats.fastestSort===null || elapsed < state.stats.fastestSort) state.stats.fastestSort = elapsed;
+    state.storyProgress[g.story.id] = true;
+    saveState();
+    checkAchievements();
+    go('storyResult', {elapsed});
+  } else {
+    sfxWrong();
+  }
+}
+function screenStoryResult(){
+  const elapsed = route.elapsed || 0;
+  return `
+  ${topbar('Story Sort')}
+  ${mascot('happy', 'Great job!')}
+  <div class="card center">
+    <div class="stars">⭐⭐⭐</div>
+    <h2>Story Complete!</h2>
+    <div class="statline"><span>Time</span><b>${elapsed.toFixed(1)}s</b></div>
+    <div class="statline"><span>Stories Completed</span><b>${state.stats.storiesCompleted}</b></div>
+  </div>
+  ${toastIfAny()}
+  <div class="row">
+    <button class="btn block" onclick="go('storyPick')">Next Story</button>
+    <button class="btn secondary block" onclick="go('home')">Home</button>
+  </div>`;
+}
+
+/* ---------------- SCREEN: LEVEL PICK ---------------- */
+function screenLevelPick(){
+  return `
+  ${topbar('Sight Word Swipe')}
+  ${backRow()}
+  <div class="card">
+    <h2>Pick a Level</h2>
+    <p class="muted">All levels are unlocked — jump in anywhere!</p>
+  </div>
+  <div class="level-row">
+    ${[1,2,3].map(l=>`
+      <div class="level-btn" onclick="startSwipe(${l})">
+        <div class="n">${l}</div>
+        <div class="l">${WORD_LEVELS[l].label}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+/* ---------------- SIGHT WORD SWIPE GAME ---------------- */
+let swipeGame = null;
+const ROUND_TIME = 4.5; // seconds per round
+const ROUNDS_PER_GAME = 15;
+function startSwipe(level, isDaily, dailySeed){
+  const list = WORD_LEVELS[level].words;
+  const rand = dailySeed!=null ? seededRand(dailySeed) : Math.random;
+  const wordOrder = shuffle(list, dailySeed!=null?rand:undefined).slice(0, isDaily?10:ROUNDS_PER_GAME);
+  swipeGame = {
+    level, isDaily:!!isDaily, list, wordOrder, round:0,
+    score:0, combo:0, bestComboThisGame:0, lives:3, correctCount:0,
+    timer:null, timeLeft:ROUND_TIME, choices:[], target:null, locked:false,
+  };
+  go('swipePlay');
+  nextSwipeRound();
+}
+function makeChoices(list, target){
+  const pool = list.filter(w=>w!==target);
+  const decoys = shuffle(pool).slice(0,3);
+  return shuffle([target, ...decoys]);
+}
+function nextSwipeRound(){
+  const g = swipeGame;
+  if(g.round >= g.wordOrder.length || g.lives<=0){
+    return endSwipe();
+  }
+  g.target = g.wordOrder[g.round];
+  g.choices = makeChoices(g.list, g.target);
+  g.timeLeft = ROUND_TIME;
+  g.locked = false;
+  render();
+  clearInterval(g.timer);
+  g.timer = setInterval(()=>{
+    g.timeLeft -= 0.1;
+    const bar = document.getElementById('timerfill');
+    if(bar) bar.style.width = Math.max(0,(g.timeLeft/ROUND_TIME*100))+'%';
+    if(g.timeLeft<=0){
+      clearInterval(g.timer);
+      answerSwipe(null); // timeout = miss
+    }
+  }, 100);
+}
+function screenSwipePlay(){
+  const g = swipeGame;
+  const hearts = '❤️'.repeat(g.lives) + '🖤'.repeat(3-g.lives);
+  return `
+  ${topbar('Sight Word Swipe')}
+  <div class="hud">
+    <div class="hearts">${hearts}</div>
+    <div class="scorebox">⭐ ${g.score}</div>
+  </div>
+  <div class="timerbar"><div class="timerfill" id="timerfill" style="width:100%"></div></div>
+  <div class="prompt">
+    <div class="find">Find and tap:</div>
+    <div class="word">${g.target}</div>
+  </div>
+  <div class="choices" id="choicesWrap">
+    ${g.choices.map((w,i)=>`<div class="choice" id="choice-${i}" onclick="answerSwipe('${w}', ${i})">${w}</div>`).join('')}
+  </div>`;
+}
+function answerSwipe(word, idx){
+  const g = swipeGame;
+  if(g.locked) return;
+  g.locked = true;
+  clearInterval(g.timer);
+  const correct = word === g.target;
+  if(correct){
+    sfxCorrect(); sfxSwipe();
+    g.score += 10 + g.combo*2;
+    g.combo++;
+    g.correctCount++;
+    if(g.combo > g.bestComboThisGame) g.bestComboThisGame = g.combo;
+    const el = document.getElementById('choice-'+idx);
+    if(el){ el.classList.add('correct','flyaway'); }
+    if(g.combo>0 && g.combo%5===0) popCombo(g.combo);
+  } else {
+    sfxWrong();
+    g.combo = 0;
+    g.lives--;
+    if(idx!==undefined && idx!==null){
+      const el = document.getElementById('choice-'+idx);
+      if(el) el.classList.add('wrong');
+    }
+    // reveal correct
+    g.choices.forEach((w,i)=>{ if(w===g.target){ const el=document.getElementById('choice-'+i); if(el) el.classList.add('correct'); }});
+  }
+  g.round++;
+  setTimeout(()=>{ nextSwipeRound(); }, correct?280:650);
+}
+function popCombo(n){
+  const d = document.createElement('div');
+  d.className='combo-pop'; d.textContent = n+' in a row! 🔥';
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 750);
+}
+function endSwipe(){
+  const g = swipeGame;
+  clearInterval(g.timer);
+  state.stats.wordsCorrect += g.correctCount;
+  if(g.bestComboThisGame > state.stats.bestCombo) state.stats.bestCombo = g.bestComboThisGame;
+  state.stats.totalRounds += g.round;
+  if(g.isDaily){
+    finishDailyPart('swipe');
+  }
+  saveState();
+  checkAchievements();
+  go('swipeResult');
+}
+function screenSwipeResult(){
+  const g = swipeGame;
+  const pct = g.round? g.correctCount/g.round : 0;
+  const stars = pct>=0.9?'⭐⭐⭐':pct>=0.6?'⭐⭐':'⭐';
+  return `
+  ${topbar('Sight Word Swipe')}
+  ${mascot(pct>=0.6?'happy':'sad', pct>=0.6?'Awesome swiping!':'Nice try, go again!')}
+  <div class="card center">
+    <div class="stars">${stars}</div>
+    <h2>Level ${g.level} Complete</h2>
+    <div class="statline"><span>Score</span><b>${g.score}</b></div>
+    <div class="statline"><span>Correct</span><b>${g.correctCount} / ${g.round}</b></div>
+    <div class="statline"><span>Best Combo</span><b>${g.bestComboThisGame}</b></div>
+  </div>
+  ${toastIfAny()}
+  <div class="row">
+    <button class="btn block" onclick="startSwipe(${g.level})">Play Again</button>
+    <button class="btn secondary block" onclick="go('home')">Home</button>
+  </div>`;
+}
+
+/* ---------------- DAILY CHALLENGE ---------------- */
+let dailyState = null;
+function startDaily(){
+  const t = todayStr();
+  const seed = seedFromStr(t);
+  const rand = seededRand(seed);
+  const storyIdx = Math.floor(rand()*STORIES.length);
+  dailyState = {date:t, stage:'story', storyId: STORIES[storyIdx].id, seed};
+  startStory(dailyState.storyId, true);
+}
+function finishDailyPart(part){
+  if(!dailyState) return;
+  if(part==='story'){
+    dailyState.stage='swipe';
+    setTimeout(()=>{ startSwipe(2, true, dailyState.seed+1); }, 50);
+    return true; // signal caller not to go to normal result screen chain break
+  }
+  if(part==='swipe'){
+    const t = todayStr();
+    if(state.stats.lastDailyDate !== t){
+      const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+      state.stats.dailyStreak = (state.stats.lastDailyDate===yesterday) ? state.stats.dailyStreak+1 : 1;
+      state.stats.lastDailyDate = t;
+      saveState();
+      checkAchievements();
+    }
+    dailyState = null;
+  }
+}
+// Override story result flow when in daily mode
+const _origCheckStorySort = checkStorySort;
+checkStorySort = function(){
+  const g = sortGame;
+  if(g.isDaily){
+    let allCorrect = true;
+    g.slots.forEach((idx,i)=>{
+      const el = document.getElementById('slot-'+i);
+      if(idx !== i){ allCorrect=false; if(el){ el.classList.remove('wrong'); void el.offsetWidth; el.classList.add('wrong'); } }
+    });
+    if(!allCorrect){ sfxWrong(); return; }
+    sfxCelebrate();
+    const elapsed = (Date.now()-g.startTime)/1000;
+    state.stats.storiesCompleted++;
+    if(state.stats.fastestSort===null || elapsed < state.stats.fastestSort) state.stats.fastestSort = elapsed;
+    state.storyProgress[g.story.id] = true;
+    saveState();
+    checkAchievements();
+    finishDailyPart('story');
+    return;
+  }
+  _origCheckStorySort();
+};
+
+/* ---------------- SCREEN: ACHIEVEMENTS ---------------- */
+function screenAchievements(){
+  return `
+  ${topbar('Badges')}
+  ${backRow()}
+  <div class="card"><h2>🏆 Achievements</h2><p class="muted">${Object.keys(state.achievements).length} / ${ACHIEVEMENTS.length} unlocked</p></div>
+  <div class="ach-grid">
+    ${ACHIEVEMENTS.map(a=>{
+      const unlocked = !!state.achievements[a.id];
+      return `<div class="ach-card ${unlocked?'':'locked'}">
+        <div class="e">${a.emoji}</div>
+        <div class="n">${a.name}</div>
+        <div class="d">${unlocked? 'Unlocked!' : a.desc}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ---------------- SCREEN: PROFILE ---------------- */
+function screenProfile(){
+  return `
+  ${topbar('Profile')}
+  ${backRow()}
+  <div class="card center">
+    <div style="font-size:56px;">${state.avatar}</div>
+    <input class="field" style="text-align:center; margin-top:10px;" id="nameInput" value="${state.name}" maxlength="14" oninput="updateName(this.value)">
+  </div>
+  <div class="card">
+    <h3>Choose an Avatar</h3>
+    <div class="avatar-grid">
+      ${AVATARS.map(a=>`<div class="avatar-opt ${state.avatar===a?'active':''}" onclick="setAvatar('${a}')">${a}</div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <h3>Stats</h3>
+    <div class="statline"><span>Stories Completed</span><b>${state.stats.storiesCompleted}</b></div>
+    <div class="statline"><span>Sight Words Correct</span><b>${state.stats.wordsCorrect}</b></div>
+    <div class="statline"><span>Best Combo</span><b>${state.stats.bestCombo}</b></div>
+    <div class="statline"><span>Days Played</span><b>${state.stats.daysPlayed}</b></div>
+    <div class="statline"><span>Daily Streak</span><b>${state.stats.dailyStreak}</b></div>
+    <div class="statline"><span>Badges</span><b>${Object.keys(state.achievements).length} / ${ACHIEVEMENTS.length}</b></div>
+  </div>`;
+}
+function updateName(v){ state.name = v || 'Reader'; saveState(); }
+function setAvatar(a){ state.avatar = a; saveState(); sfxClick(); render(); }
+
+/* ---------------- SCREEN: SETTINGS ---------------- */
+function screenSettings(){
+  const cats = ['Seasonal','Mood'];
+  return `
+  ${topbar('Settings')}
+  ${backRow()}
+  <div class="card">
+    <div class="toggle-row">
+      <span><b>Sound Effects</b></span>
+      <div class="switch ${state.sound?'on':''}" onclick="toggleSound()"><div class="knob"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Theme</h3>
+    ${cats.map(cat=>`
+      <div class="theme-cat">${cat}</div>
+      <div class="theme-grid">
+        ${THEMES.filter(t=>t.cat===cat).map(t=>`
+          <div class="theme-swatch ${state.theme===t.id?'active':''}" style="background:${t.bg1};" onclick="setTheme('${t.id}')">
+            <div class="dot">${t.particle||'⬤'}</div>
+            <div class="name" style="color:${t.text};">${t.name}</div>
+          </div>`).join('')}
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <h3>Reset Progress</h3>
+    <p class="muted">This clears all stats, achievements, and settings.</p>
+    <button class="btn secondary block" onclick="confirmReset()">Reset Everything</button>
+    <div id="resetConfirmArea"></div>
+  </div>`;
+}
+function setTheme(id){
+  state.theme = id;
+  if(!state.stats.themesUsed.includes(id)) state.stats.themesUsed.push(id);
+  saveState();
+  applyTheme();
+  sfxClick();
+  checkAchievements();
+  render();
+}
+function confirmReset(){
+  const area = document.getElementById('resetConfirmArea');
+  area.innerHTML = `
+    <div class="confirm-box">
+      <p><b>Are you sure?</b> This cannot be undone.</p>
+      <div class="row">
+        <button class="btn block" style="background:var(--danger);" onclick="doReset()">Yes, Reset</button>
+        <button class="btn secondary block" onclick="document.getElementById('resetConfirmArea').innerHTML=''">Cancel</button>
+      </div>
+    </div>`;
+}
+function doReset(){
+  state = defaultState();
+  saveState();
+  applyTheme();
+  go('home');
+}
+
+/* ---------------- TOAST for new achievement ---------------- */
+function toastIfAny(){
+  if(!pendingAchievementToast) return '';
+  const a = pendingAchievementToast;
+  pendingAchievementToast = null;
+  return `<div class="card center" style="border:2px solid var(--accent);">
+    <div style="font-size:30px;">${a.emoji}</div>
+    <b>Badge Unlocked: ${a.name}</b>
+    <p class="muted">${a.desc}</p>
+  </div>`;
+}
+
+/* ---------------- MAIN RENDER ---------------- */
+function render(){
+  switch(route.screen){
+    case 'home': app.innerHTML = screenHome(); break;
+    case 'storyPick': app.innerHTML = screenStoryPick(); break;
+    case 'storySort': app.innerHTML = screenStorySort(); break;
+    case 'storyResult': app.innerHTML = screenStoryResult(); break;
+    case 'levelPick': app.innerHTML = screenLevelPick(); break;
+    case 'swipePlay': app.innerHTML = screenSwipePlay(); break;
+    case 'swipeResult': app.innerHTML = screenSwipeResult(); break;
+    case 'achievements': app.innerHTML = screenAchievements(); break;
+    case 'profile': app.innerHTML = screenProfile(); break;
+    case 'settings': app.innerHTML = screenSettings(); break;
+    default: app.innerHTML = screenHome();
+  }
+}
+
+/* ---------------- INIT ---------------- */
+applyTheme();
+render();
+</script>
+</body>
+</html>

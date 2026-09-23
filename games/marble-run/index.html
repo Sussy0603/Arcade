@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Marble Run</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDE6DA; --surface:#FFFDF7; --ink:#2C2721; --muted:#8A8074;
+  --accent:#4E7FA8; --accent2:#D08A4E; --line:rgba(44,39,33,.12);
+  --radius:18px; --shadow:0 10px 30px -12px rgba(0,0,0,.25);
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-body);background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+#app{position:relative;width:100%;height:100%;max-width:520px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.screen{position:relative;z-index:1;flex:1;display:none;flex-direction:column;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.screen.on{display:flex;animation:fade .35s ease}
+.screen.flat{padding:0;overflow:hidden}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.topbar{position:relative;z-index:3;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;min-height:48px}
+.spacer{flex:1}
+.iconbtn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:17px;transition:transform .15s,box-shadow .15s,opacity .2s}
+.iconbtn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn.off{opacity:.42}
+.iconbtn:focus-visible,button:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+h1.logo{font-family:var(--font-display);font-weight:900;font-size:clamp(40px,12vw,56px);letter-spacing:-.035em;line-height:.92;text-align:center}
+h1.logo .dot{color:var(--accent2)}
+.tag{text-align:center;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-top:12px;font-weight:600}
+h2.title{font-family:var(--font-display);font-weight:600;font-size:26px;letter-spacing:-.02em;margin-bottom:3px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.rules li{margin:0 0 9px 18px;font-size:13.5px;line-height:1.55}
+.btn{width:100%;padding:16px 18px;border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:13px;transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s,border-color .16s}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--accent)}
+.btn:active{transform:scale(.975)}
+.btn .ic{font-size:20px;width:26px;text-align:center;flex:none}
+.btn .arw{margin-left:auto;color:var(--muted);font-size:16px}
+.btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn.primary .arw{color:#fff;opacity:.8}
+.btn.ghost{background:transparent}
+.menu{display:flex;flex-direction:column;gap:11px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.stat b{display:block;font-family:var(--font-display);font-size:22px;font-weight:600}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.levels{display:flex;flex-direction:column;gap:10px}
+.lv{display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:13px 15px;cursor:pointer;transition:transform .16s,border-color .16s}
+.lv:hover{transform:translateY(-2px);border-color:var(--accent)}
+.lv .n{width:30px;height:30px;border-radius:10px;background:var(--bg);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.lv .nm{font-family:var(--font-display);font-size:16px;font-weight:600}
+.lv .dt{font-size:11.5px;color:var(--muted)}
+.lv .ok{margin-left:auto;color:var(--accent2);font-size:17px}
+
+.hud{display:flex;align-items:center;gap:7px;padding:8px 12px 4px;flex-wrap:wrap}
+.pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:500;color:var(--muted)}
+.pill b{color:var(--ink);font-weight:700}
+#board{flex:1;width:100%;display:block;touch-action:none}
+.tools{flex:none;display:flex;gap:6px;padding:8px 10px;overflow-x:auto;scrollbar-width:none;background:var(--surface);border-top:1px solid var(--line)}
+.tools::-webkit-scrollbar{display:none}
+.tool{flex:none;width:60px;padding:7px 4px 6px;border-radius:13px;border:2px solid transparent;background:var(--bg);cursor:pointer;text-align:center;transition:transform .15s,border-color .15s}
+.tool:active{transform:scale(.94)}
+.tool.sel{border-color:var(--ink)}
+.tool.out{opacity:.35}
+.tool canvas{width:34px;height:34px;display:block;margin:0 auto}
+.tool .lb{font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.tool .ct{font-size:11px;font-weight:700;color:var(--ink)}
+.runbar{flex:none;display:flex;gap:8px;padding:8px 12px calc(12px + env(safe-area-inset-bottom));background:var(--surface)}
+.rb{flex:1;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--bg);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.rb.go{background:var(--accent);color:#fff;border-color:transparent}
+.overlay{position:absolute;inset:0;z-index:6;background:rgba(44,39,33,.55);display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
+.overlay.on{display:flex;animation:fade .3s ease}
+.panel{background:var(--surface);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.5)}
+.panel h3{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:4px}
+#toast{position:absolute;left:50%;bottom:150px;transform:translate(-50%,14px);z-index:9;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="visibility:hidden" aria-label="Back">←</button>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="sfxBtn" aria-label="Toggle sound">🔔</button>
+  </div>
+
+  <section class="screen on" id="s-main">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <h1 class="logo">Marble<span class="dot">.</span>Run</h1>
+      <p class="tag">build it, then watch</p>
+      <div class="stats">
+        <div class="stat"><b id="mSolved">0</b><span>runs built</span></div>
+        <div class="stat"><b id="mCaught">0</b><span>marbles caught</span></div>
+        <div class="stat"><b id="mTotal">0</b><span>runs in all</span></div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="btn primary" id="playBtn"><span class="ic">⚪</span>Next run<span class="arw">→</span></button>
+      <button class="btn" id="listBtn"><span class="ic">📋</span>All runs<span class="arw">→</span></button>
+      <button class="btn" id="sandBtn"><span class="ic">🧰</span>Sandbox<span class="arw">→</span></button>
+      <button class="btn ghost" id="helpBtn"><span class="ic">?</span>How to play<span class="arw">→</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-levels">
+    <h2 class="title">All runs</h2>
+    <p class="sub">Fill every jar to its line. Nothing can go wrong — only differently.</p>
+    <div class="levels" id="levelList"></div>
+  </section>
+
+  <section class="screen flat" id="s-game">
+    <div class="hud">
+      <span class="pill" id="pName">—</span>
+      <span class="pill" id="pJars">—</span>
+      <span class="pill">Dropped <b id="pDrop">0</b></span>
+    </div>
+    <canvas id="board"></canvas>
+    <div class="tools" id="tools"></div>
+    <div class="runbar">
+      <button class="rb go" id="runBtn">▶ Release marbles</button>
+      <button class="rb" id="clearBtn" style="flex:0 0 auto;padding:12px 15px">↻</button>
+    </div>
+    <div class="overlay" id="endOv">
+      <div class="panel">
+        <h3 id="endTitle">Every jar filled</h3>
+        <p class="sub" style="margin:0 0 16px" id="endSub">—</p>
+        <button class="btn primary" id="nextLv" style="justify-content:center">Next run</button>
+        <button class="btn ghost" id="againLv" style="justify-content:center;margin-top:9px">Rebuild this one</button>
+        <button class="btn ghost" id="endHome" style="justify-content:center;margin-top:9px">Back to menu</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-help">
+    <h2 class="title">How to play</h2>
+    <p class="sub">Build a path out of ramps, then release the marbles and watch what happens.</p>
+    <ul class="rules">
+      <li>Pick a piece from the rack, then <b>tap a square</b> to drop it in.</li>
+      <li>Tap a piece you placed to <b>pick it back up</b> — pieces are never wasted.</li>
+      <li>Press <b>Release marbles</b> to start the flow. Press again to stop it.</li>
+      <li>Fill each jar to the number on it. Marbles that miss simply roll away.</li>
+      <li>You can rebuild while the marbles are running. Nothing is lost.</li>
+    </ul>
+    <button class="btn ghost" id="helpBack" style="justify-content:center;margin-top:24px">Got it</button>
+  </section>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+/* ================= PIECES ================= */
+/* Each piece = list of segments in cell-local space (0..1), or a peg */
+const PIECES={
+  rampL:{lb:'Ramp',segs:[[0.03,0.16,0.97,0.84]],e:.18},
+  rampR:{lb:'Ramp',segs:[[0.03,0.84,0.97,0.16]],e:.18},
+  flatL:{lb:'Slope',segs:[[0.02,0.42,0.98,0.66]],e:.14},
+  flatR:{lb:'Slope',segs:[[0.02,0.66,0.98,0.42]],e:.14},
+  funnel:{lb:'Funnel',segs:[[0.02,0.08,0.38,0.86],[0.98,0.08,0.62,0.86]],e:.16},
+  bowl:{lb:'Bowl',arc:{cx:.5,cy:.30,r:.46,a0:0.15,a1:0.85},e:.22},
+  peg:{lb:'Bumper',peg:{x:.5,y:.5,r:.24},e:.86},
+  wall:{lb:'Block',segs:[[0.02,0.02,0.98,0.02],[0.98,0.02,0.98,0.98],[0.98,0.98,0.02,0.98],[0.02,0.98,0.02,0.02]],e:.12,fixed:true}
+};
+const TOOLS=['rampL','rampR','flatL','flatR','funnel','bowl','peg'];
+
+/* ================= LEVELS ================= */
+const COLS=9, ROWS=14;
+const LEVELS=[
+{name:'First Drop',hint:'Send it left. Marbles carry on sideways — leave room.',spout:6,
+ jars:[{c:1,need:3}],
+ fixed:[],
+ stock:{rampL:4,rampR:12,flatL:4,flatR:8,funnel:1,bowl:1,peg:1}},
+{name:'Split the Stream',hint:'One spout, two jars.',spout:4,
+ jars:[{c:1,need:3},{c:7,need:3}],
+ fixed:[['wall',4,7]],
+ stock:{rampL:10,rampR:10,flatL:6,flatR:6,funnel:2,bowl:1,peg:2}},
+{name:'Around the Block',hint:'The middle is closed.',spout:4,
+ jars:[{c:4,need:4}],
+ fixed:[['wall',3,5],['wall',4,5],['wall',5,5],['wall',3,9],['wall',5,9]],
+ stock:{rampL:10,rampR:10,flatL:6,flatR:6,funnel:2,bowl:2,peg:1}},
+{name:'The Long Slide',hint:'Zig, then zag.',spout:1,
+ jars:[{c:7,need:5}],
+ fixed:[['wall',4,3],['wall',4,4],['wall',2,8],['wall',6,10]],
+ stock:{rampL:12,rampR:12,flatL:8,flatR:8,funnel:2,bowl:2,peg:2}},
+{name:'Bumper Alley',hint:'Bumpers are lively. Aim past them.',spout:4,
+ jars:[{c:0,need:2},{c:4,need:3},{c:8,need:2}],
+ fixed:[['peg',3,6],['peg',5,6],['peg',4,8]],
+ stock:{rampL:12,rampR:12,flatL:8,flatR:8,funnel:2,bowl:2,peg:3}},
+{name:'Funnel Works',hint:'Funnels gather, bowls hold.',spout:7,
+ jars:[{c:2,need:4},{c:6,need:4}],
+ fixed:[['wall',0,6],['wall',8,6],['wall',4,10]],
+ stock:{rampL:12,rampR:12,flatL:8,flatR:8,funnel:3,bowl:3,peg:3}},
+{name:'Sandbox',hint:'No targets. Build whatever you like.',spout:4,
+ jars:[{c:1,need:9},{c:4,need:9},{c:7,need:9}],
+ fixed:[],sandbox:true,
+ stock:{rampL:20,rampR:20,flatL:20,flatR:20,funnel:8,bowl:8,peg:10}}
+];
+
+/* ================= STATE ================= */
+const KEY='marblerun.v1';
+let S={solved:{},caught:0,sfx:true};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const $=id=>document.getElementById(id);
+let cur='s-main';
+function go(id){const f=$(cur);if(f)f.classList.remove('on');cur=id;$(id).classList.add('on');
+  $('backBtn').style.visibility=id==='s-main'?'hidden':'visible';
+  if(id==='s-main')refreshMenu(); if(id==='s-levels')buildList(); if(id==='s-game')setTimeout(resize,40);}
+let tT=null;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),1700);}
+let AC=null;
+function beep(f,d,ty,v){
+  if(!S.sfx)return;
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  if(AC.state==='suspended')AC.resume();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=ty||'sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,AC.currentTime);g.gain.linearRampToValueAtTime(v||.08,AC.currentTime+.005);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(d||.08));
+  o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.08)+.02);
+}
+let lastClink=0;
+function clink(strength){
+  const now=performance.now();
+  if(now-lastClink<45)return;
+  lastClink=now;
+  beep(700+Math.random()*500,.05,'triangle',Math.min(.07,.012+strength*.008));
+}
+const sndPlop=n=>{beep(360+n*30,.12,'sine',.09);setTimeout(()=>beep(540+n*30,.14,'sine',.05),50);};
+const sndPlace=()=>beep(280,.06,'square',.05);
+const sndWin=()=>{[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.32,'triangle',.085),i*130));};
+
+/* ================= GAME ================= */
+const cv=$('board'),ctx=cv.getContext('2d');
+const G={lv:null,idx:0,cells:[],stock:{},tool:'rampR',marbles:[],running:false,
+  dropped:0,jars:[],segs:[],pegs:[],t:0,spawnT:0,done:false,pops:[]};
+let W=0,H=0,DPR=1,CS=0,OX=0,OY=0;
+
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2.5);
+  W=cv.clientWidth;H=cv.clientHeight;
+  if(!W||!H)return;
+  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  CS=Math.min(W/COLS,H/ROWS);
+  OX=(W-CS*COLS)/2;OY=(H-CS*ROWS)/2;
+  rebuildGeometry();
+}
+function cellRect(c,r){return {x:OX+c*CS,y:OY+r*CS,s:CS};}
+
+function loadLevel(i){
+  G.idx=i;G.lv=LEVELS[i];
+  G.cells=Array.from({length:ROWS},()=>new Array(COLS).fill(null));
+  G.stock=Object.assign({},G.lv.stock);
+  G.marbles=[];G.dropped=0;G.running=false;G.done=false;G.pops=[];
+  G.jars=G.lv.jars.map(j=>({c:j.c,need:j.need,got:0}));
+  (G.lv.fixed||[]).forEach(([t,c,r])=>{G.cells[r][c]={t,fixed:true};});
+  G.tool=TOOLS.find(t=>G.stock[t]>0)||'rampR';
+  $('runBtn').textContent='▶ Release marbles';
+  $('runBtn').classList.add('go');
+  $('endOv').classList.remove('on');
+  resize();
+  buildTools();updateHUD();
+}
+function rebuildGeometry(){
+  G.segs=[];G.pegs=[];
+  if(!G.cells.length)return;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cell=G.cells[r][c];
+    if(!cell)continue;
+    const p=PIECES[cell.t];
+    const R=cellRect(c,r);
+    if(p.segs)p.segs.forEach(s=>G.segs.push({
+      x1:R.x+s[0]*CS,y1:R.y+s[1]*CS,x2:R.x+s[2]*CS,y2:R.y+s[3]*CS,e:p.e}));
+    if(p.arc){
+      const a=p.arc, cx=R.x+a.cx*CS, cy=R.y+a.cy*CS, rr=a.r*CS;
+      let prev=null;
+      for(let k=0;k<=8;k++){
+        const t=a.a0+(a.a1-a.a0)*k/8;
+        const ang=Math.PI*t;
+        const px=cx+Math.cos(ang)*rr, py=cy+Math.sin(ang)*rr;
+        if(prev)G.segs.push({x1:prev[0],y1:prev[1],x2:px,y2:py,e:p.e});
+        prev=[px,py];
+      }
+    }
+    if(p.peg)G.pegs.push({x:R.x+p.peg.x*CS,y:R.y+p.peg.y*CS,r:p.peg.r*CS,e:p.e});
+  }
+  // outer side walls
+  G.segs.push({x1:OX-2,y1:OY,x2:OX-2,y2:OY+ROWS*CS,e:.1});
+  G.segs.push({x1:OX+COLS*CS+2,y1:OY,x2:OX+COLS*CS+2,y2:OY+ROWS*CS,e:.1});
+}
+
+function jarRect(j){
+  const R=cellRect(j.c,ROWS-1);
+  return {x:R.x+CS*.03,y:R.y+CS*.06,w:CS*.94,h:CS*.94};
+}
+// a marble counts as caught anywhere in the jar's column — marbles that hug
+// the wall on the way down should still drop in
+function inJar(m,j){
+  const R=jarRect(j);
+  return m.x>R.x-CS*.10 && m.x<R.x+R.w+CS*.10 && m.y>R.y+R.h*.2;
+}
+
+/* --- physics --- */
+const GRAV=1500;
+function spawnMarble(){
+  const R=cellRect(G.lv.spout,0);
+  G.marbles.push({
+    x:R.x+CS/2+(Math.random()-.5)*CS*.10,
+    y:R.y+CS*.42,
+    vx:(Math.random()-.5)*24,vy:40,
+    r:CS*.26,
+    hue:[ '#D8574B','#4E7FA8','#D9A23F','#6E9B5C','#8E6FB5','#D07FA0' ][G.dropped%6]
+  });
+  G.dropped++;
+  updateHUD();
+}
+function step(dt){
+  const sub=3, h=dt/sub;
+  for(let s=0;s<sub;s++){
+    for(const m of G.marbles){
+      m.vy+=GRAV*h;
+      m.vx*=0.9995;
+      m.x+=m.vx*h;m.y+=m.vy*h;
+      for(const sg of G.segs)hitSeg(m,sg);
+      for(const pg of G.pegs)hitPeg(m,pg);
+      const sp=Math.hypot(m.vx,m.vy);
+      if(sp>1600){m.vx*=1600/sp;m.vy*=1600/sp;}
+    }
+  }
+  // collect + cull
+  for(let i=G.marbles.length-1;i>=0;i--){
+    const m=G.marbles[i];
+    let gone=false;
+    for(const j of G.jars){
+      const R=jarRect(j);
+      if(inJar(m,j)){
+        if(j.got<j.need*3)j.got++;
+        S.caught++;save();
+        G.pops.push({x:m.x,y:R.y,t:performance.now(),col:m.hue});
+        sndPlop(j.got);
+        gone=true;updateHUD();checkWin();
+        break;
+      }
+    }
+    if(!gone&&(m.y>H+CS||m.x<-CS||m.x>W+CS))gone=true;
+    if(gone)G.marbles.splice(i,1);
+  }
+}
+function hitSeg(m,sg){
+  const dx=sg.x2-sg.x1, dy=sg.y2-sg.y1;
+  const L2=dx*dx+dy*dy;
+  let t=L2?((m.x-sg.x1)*dx+(m.y-sg.y1)*dy)/L2:0;
+  t=Math.max(0,Math.min(1,t));
+  const px=sg.x1+dx*t, py=sg.y1+dy*t;
+  let nx=m.x-px, ny=m.y-py;
+  let d=Math.hypot(nx,ny);
+  const rad=m.r+CS*.055;
+  if(d>=rad||d===0)return;
+  nx/=d;ny/=d;
+  m.x+=nx*(rad-d);m.y+=ny*(rad-d);
+  const vn=m.vx*nx+m.vy*ny;
+  if(vn<0){
+    const tx=-ny, ty=nx;
+    const vt=(m.vx*tx+m.vy*ty)*0.985;   // roll along the plank
+    const vnOut=-vn*sg.e;                // bounce off it
+    m.vx=vnOut*nx+vt*tx;
+    m.vy=vnOut*ny+vt*ty;
+    if(-vn>90)clink(-vn/300);
+  }
+}
+function hitPeg(m,pg){
+  let nx=m.x-pg.x, ny=m.y-pg.y;
+  let d=Math.hypot(nx,ny);
+  const rad=m.r+pg.r;
+  if(d>=rad||d===0)return;
+  nx/=d;ny/=d;
+  m.x+=nx*(rad-d);m.y+=ny*(rad-d);
+  const vn=m.vx*nx+m.vy*ny;
+  if(vn<0){
+    m.vx-=(1+pg.e)*vn*nx;m.vy-=(1+pg.e)*vn*ny;
+    if(-vn>70)clink(-vn/240);
+  }
+}
+function checkWin(){
+  if(G.done||G.lv.sandbox)return;
+  if(G.jars.every(j=>j.got>=j.need)){
+    G.done=true;G.running=false;
+    $('runBtn').textContent='▶ Release marbles';
+    S.solved[G.lv.name]=true;save();
+    sndWin();
+    setTimeout(()=>{
+      $('endTitle').textContent='Every jar filled';
+      $('endSub').textContent=G.lv.name+' · '+G.dropped+' marbles dropped';
+      $('nextLv').style.display=(G.idx+1<LEVELS.length)?'':'none';
+      $('endOv').classList.add('on');
+    },700);
+  }
+}
+
+/* --- drawing --- */
+function woodLine(c,x1,y1,x2,y2,w){
+  c.lineCap='round';
+  c.strokeStyle='#8E6C46';c.lineWidth=w;
+  c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();
+  c.strokeStyle='#B58B5C';c.lineWidth=w*.55;
+  c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();
+}
+function drawPiece(c,type,x,y,s){
+  const p=PIECES[type];
+  const w=Math.max(3,s*.14);
+  if(type==='wall'){
+    c.fillStyle='#7A6F62';
+    c.beginPath();
+    if(c.roundRect)c.roundRect(x+s*.04,y+s*.04,s*.92,s*.92,s*.14);else c.rect(x+s*.04,y+s*.04,s*.92,s*.92);
+    c.fill();
+    c.fillStyle='rgba(255,255,255,.12)';
+    c.fillRect(x+s*.12,y+s*.12,s*.76,s*.10);
+    return;
+  }
+  if(p.peg){
+    const cx=x+p.peg.x*s, cy=y+p.peg.y*s, r=p.peg.r*s;
+    const g=c.createRadialGradient(cx-r*.3,cy-r*.35,r*.1,cx,cy,r);
+    g.addColorStop(0,'#F2A98E');g.addColorStop(1,'#C9553E');
+    c.fillStyle=g;c.beginPath();c.arc(cx,cy,r,0,7);c.fill();
+    c.strokeStyle='rgba(255,255,255,.5)';c.lineWidth=Math.max(1,s*.03);
+    c.beginPath();c.arc(cx,cy,r*.62,0,7);c.stroke();
+    return;
+  }
+  if(p.arc){
+    const a=p.arc;
+    c.lineCap='round';
+    c.strokeStyle='#8E6C46';c.lineWidth=w;
+    c.beginPath();c.arc(x+a.cx*s,y+a.cy*s,a.r*s,Math.PI*a.a0,Math.PI*a.a1);c.stroke();
+    c.strokeStyle='#B58B5C';c.lineWidth=w*.55;
+    c.beginPath();c.arc(x+a.cx*s,y+a.cy*s,a.r*s,Math.PI*a.a0,Math.PI*a.a1);c.stroke();
+    return;
+  }
+  p.segs.forEach(sg=>woodLine(c,x+sg[0]*s,y+sg[1]*s,x+sg[2]*s,y+sg[3]*s,w));
+}
+function draw(){
+  if(W&&G.lv){
+    ctx.clearRect(0,0,W,H);
+    // board backdrop
+    ctx.fillStyle='#F7F2E7';
+    ctx.fillRect(OX,OY,COLS*CS,ROWS*CS);
+    ctx.strokeStyle='rgba(44,39,33,.05)';ctx.lineWidth=1;
+    for(let c=1;c<COLS;c++){ctx.beginPath();ctx.moveTo(OX+c*CS,OY);ctx.lineTo(OX+c*CS,OY+ROWS*CS);ctx.stroke();}
+    for(let r=1;r<ROWS;r++){ctx.beginPath();ctx.moveTo(OX,OY+r*CS);ctx.lineTo(OX+COLS*CS,OY+r*CS);ctx.stroke();}
+    ctx.strokeStyle='rgba(44,39,33,.18)';ctx.lineWidth=2;
+    ctx.strokeRect(OX,OY,COLS*CS,ROWS*CS);
+
+    // spout
+    const sp=cellRect(G.lv.spout,0);
+    ctx.fillStyle='#5E6670';
+    ctx.beginPath();
+    ctx.moveTo(sp.x+CS*.16,sp.y);ctx.lineTo(sp.x+CS*.84,sp.y);
+    ctx.lineTo(sp.x+CS*.66,sp.y+CS*.34);ctx.lineTo(sp.x+CS*.34,sp.y+CS*.34);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.25)';
+    ctx.fillRect(sp.x+CS*.2,sp.y+CS*.05,CS*.6,CS*.07);
+
+    // jars
+    G.jars.forEach(j=>{
+      const R=jarRect(j);
+      const full=Math.min(1,j.got/j.need);
+      ctx.fillStyle='rgba(120,170,200,.16)';
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(R.x,R.y,R.w,R.h,CS*.14);else ctx.rect(R.x,R.y,R.w,R.h);
+      ctx.fill();
+      ctx.fillStyle=full>=1?'rgba(110,155,92,.55)':'rgba(78,127,168,.42)';
+      const fh=R.h*.86*full;
+      ctx.fillRect(R.x+2,R.y+R.h-fh-2,R.w-4,fh);
+      ctx.strokeStyle=full>=1?'#6E9B5C':'#4E7FA8';ctx.lineWidth=2.2;
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(R.x,R.y,R.w,R.h,CS*.14);else ctx.rect(R.x,R.y,R.w,R.h);
+      ctx.stroke();
+      ctx.fillStyle=full>=1?'#4A6E3C':'#2C2721';
+      ctx.font='700 '+(CS*.30|0)+'px Outfit,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(j.got+'/'+j.need,R.x+R.w/2,R.y+R.h*.5);
+    });
+
+    // pieces
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+      const cell=G.cells[r][c];
+      if(!cell)continue;
+      const R=cellRect(c,r);
+      drawPiece(ctx,cell.t,R.x,R.y,CS);
+      if(cell.fixed){
+        ctx.fillStyle='rgba(44,39,33,.22)';
+        ctx.beginPath();ctx.arc(R.x+CS*.88,R.y+CS*.12,CS*.045,0,7);ctx.fill();
+      }
+    }
+
+    // marbles
+    G.marbles.forEach(m=>{
+      const g=ctx.createRadialGradient(m.x-m.r*.35,m.y-m.r*.4,m.r*.1,m.x,m.y,m.r);
+      g.addColorStop(0,'#FFFFFF');g.addColorStop(.35,m.hue);g.addColorStop(1,'rgba(0,0,0,.55)');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(m.x,m.y,m.r,0,7);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.75)';
+      ctx.beginPath();ctx.arc(m.x-m.r*.32,m.y-m.r*.36,m.r*.2,0,7);ctx.fill();
+    });
+
+    // splash pops
+    const now=performance.now();
+    for(let i=G.pops.length-1;i>=0;i--){
+      const p=G.pops[i];
+      const k=(now-p.t)/450;
+      if(k>=1){G.pops.splice(i,1);continue;}
+      ctx.strokeStyle=p.col;ctx.globalAlpha=(1-k)*.7;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(p.x,p.y,CS*.2+k*CS*.5,0,7);ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+  }
+  requestAnimationFrame(draw);
+}
+let last=performance.now();
+function loop(){
+  const now=performance.now();
+  let dt=Math.min(.033,(now-last)/1000);
+  last=now;
+  if(G.lv&&G.running){
+    G.spawnT+=dt;
+    const gap=G.lv.sandbox?0.55:0.85;
+    if(G.spawnT>gap&&G.marbles.length<14){G.spawnT=0;spawnMarble();}
+  }
+  if(G.lv&&G.marbles.length)step(dt);
+  setTimeout(loop,1000/60);
+}
+
+/* ================= UI ================= */
+function buildTools(){
+  const t=$('tools');t.innerHTML='';
+  TOOLS.forEach(k=>{
+    const d=document.createElement('div');
+    d.className='tool'+(k===G.tool?' sel':'')+((G.stock[k]||0)<=0?' out':'');
+    d.innerHTML='<canvas width="68" height="68"></canvas><div class="lb">'+PIECES[k].lb+'</div><div class="ct">×'+(G.stock[k]||0)+'</div>';
+    t.appendChild(d);
+    const c=d.querySelector('canvas').getContext('2d');
+    c.setTransform(1.7,0,0,1.7,0,0);
+    drawPiece(c,k,2,2,36);
+    d.onclick=()=>{G.tool=k;buildTools();beep(420,.05,'sine',.05);};
+  });
+}
+function updateHUD(){
+  $('pName').textContent=G.lv?G.lv.name:'—';
+  $('pDrop').textContent=G.dropped;
+  $('pJars').textContent=G.lv&&G.lv.sandbox?'free play':G.jars.map(j=>j.got+'/'+j.need).join('  ');
+}
+cv.addEventListener('pointerdown',e=>{
+  if(!G.lv)return;
+  const rect=cv.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const c=Math.floor((x-OX)/CS), r=Math.floor((y-OY)/CS);
+  if(c<0||c>=COLS||r<0||r>=ROWS)return;
+  if(r===0||r===ROWS-1){toast(r===0?'The spout row stays clear':'That row is for the jars');return;}
+  const cell=G.cells[r][c];
+  if(cell){
+    if(cell.fixed){toast('That one is fixed in place');return;}
+    G.stock[cell.t]=(G.stock[cell.t]||0)+1;
+    G.cells[r][c]=null;
+    rebuildGeometry();buildTools();
+    beep(220,.06,'sine',.05);
+    return;
+  }
+  if((G.stock[G.tool]||0)<=0){toast('No '+PIECES[G.tool].lb.toLowerCase()+' left — pick one back up');return;}
+  G.stock[G.tool]--;
+  G.cells[r][c]={t:G.tool};
+  rebuildGeometry();buildTools();sndPlace();
+});
+$('runBtn').onclick=()=>{
+  G.running=!G.running;
+  $('runBtn').textContent=G.running?'⏸ Stop the flow':'▶ Release marbles';
+  $('runBtn').classList.toggle('go',!G.running);
+  if(G.running){G.spawnT=99;if(AC&&AC.state==='suspended')AC.resume();}
+};
+$('clearBtn').onclick=()=>{
+  G.marbles=[];G.dropped=0;G.jars.forEach(j=>j.got=0);G.done=false;
+  updateHUD();toast('Jars emptied');
+};
+function buildList(){
+  const l=$('levelList');l.innerHTML='';
+  LEVELS.forEach((lv,i)=>{
+    const d=document.createElement('div');
+    d.className='lv';
+    d.innerHTML='<div class="n">'+(lv.sandbox?'∞':(i+1))+'</div>'+
+      '<div><div class="nm">'+lv.name+'</div><div class="dt">'+lv.hint+'</div></div>'+
+      '<div class="ok">'+(S.solved[lv.name]?'✓':'')+'</div>';
+    d.onclick=()=>{go('s-game');setTimeout(()=>loadLevel(i),50);};
+    l.appendChild(d);
+  });
+}
+function nextIdx(){
+  for(let i=0;i<LEVELS.length;i++)if(!LEVELS[i].sandbox&&!S.solved[LEVELS[i].name])return i;
+  return LEVELS.length-1;
+}
+function refreshMenu(){
+  $('mSolved').textContent=Object.keys(S.solved).length;
+  $('mCaught').textContent=S.caught;
+  $('mTotal').textContent=LEVELS.length-1;
+}
+$('playBtn').onclick=()=>{go('s-game');setTimeout(()=>loadLevel(nextIdx()),50);};
+$('listBtn').onclick=()=>go('s-levels');
+$('sandBtn').onclick=()=>{go('s-game');setTimeout(()=>loadLevel(LEVELS.length-1),50);};
+$('helpBtn').onclick=()=>go('s-help');
+$('helpBack').onclick=()=>go('s-main');
+$('backBtn').onclick=()=>go(cur==='s-game'?'s-levels':'s-main');
+$('nextLv').onclick=()=>{$('endOv').classList.remove('on');loadLevel(Math.min(G.idx+1,LEVELS.length-1));};
+$('againLv').onclick=()=>{$('endOv').classList.remove('on');loadLevel(G.idx);};
+$('endHome').onclick=()=>{$('endOv').classList.remove('on');go('s-main');};
+$('sfxBtn').onclick=()=>{S.sfx=!S.sfx;save();$('sfxBtn').classList.toggle('off',!S.sfx);beep(600,.08,'sine',.1);};
+$('sfxBtn').classList.toggle('off',!S.sfx);
+window.addEventListener('resize',resize);
+new ResizeObserver(resize).observe(cv);
+refreshMenu();
+requestAnimationFrame(draw);
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Backgammon</title>
+<style>
+:root{
+  --bg1:#4A2C1A; --bg2:#2A180D;
+  --board:#7A4A26; --frame:#5A3418;
+  --tri1:#E8D5B0; --tri2:#8A3B2A;
+  --ink:#F5EDDF;
+  --panel:#5E3A1E;
+  --w:#F2E8D5; --wb:#C9B896;
+  --b:#3A2A20; --bb:#1A100A;
+  --accent:#FFB25C;
+  --shadow:0 6px 0 rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(170deg,var(--bg1),var(--bg2));
+  color:var(--ink);min-height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 8px 24px;user-select:none;-webkit-user-select:none;overflow-x:hidden;
+}
+header{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+h1{font-size:clamp(19px,5vw,27px);}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.4);}
+.btn:disabled{opacity:.35;cursor:default;transform:none;}
+.btn.small{padding:6px 10px;font-size:13px;}
+.btn.primary{background:linear-gradient(145deg,#FFB25C,#E8842B);color:#2A180D;}
+.topbtns{display:flex;gap:6px;}
+.controls{width:100%;max-width:640px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:6px;}
+.seg{display:flex;background:rgba(0,0,0,.25);border-radius:999px;padding:4px;gap:4px;}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 12px;opacity:.6;}
+.seg button.on{background:rgba(255,255,255,.16);opacity:1;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+#status{width:100%;max-width:640px;text-align:center;font-weight:800;font-size:clamp(13px,3.8vw,17px);
+  min-height:30px;margin:2px 0 4px;}
+#hud{width:100%;max-width:640px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:700;font-size:13px;flex-wrap:wrap;gap:6px;}
+.stat{background:var(--panel);border-radius:12px;padding:6px 11px;box-shadow:var(--shadow);}
+#cube{font-size:15px;color:var(--accent);}
+#boardWrap{width:min(97vw,640px);background:var(--frame);border-radius:16px;padding:8px;
+  box-shadow:0 10px 0 rgba(0,0,0,.4);}
+svg{display:block;width:100%;height:auto;}
+.pt{cursor:pointer;}
+.pt.dead{cursor:default;}
+.pt .tri{stroke:rgba(0,0,0,.25);stroke-width:1;}
+.pt.sel .tri{stroke:var(--accent);stroke-width:3.5;}
+.pt.dest .tri{stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;}
+.chk{stroke-width:1.5;}
+#btnRow{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+#thinking{display:inline-block;animation:think 1s infinite;}
+@keyframes think{0%,100%{opacity:.3;}50%{opacity:1;}}
+footer{margin-top:12px;font-size:12px;opacity:.4;font-weight:600;}
+@media (prefers-reduced-motion:reduce){#thinking{animation:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 <span data-i18n="title">Backgammon</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg" id="modeSeg">
+    <button data-mode="1p" class="on">🤖 <span data-i18n="vsBot">vs Bot</span></button>
+    <button data-mode="2p">👥 <span data-i18n="twoP">2 Players</span></button>
+  </div>
+  <div class="seg" id="diffSeg">
+    <button data-diff="easy" class="on" data-i18n="easy">Easy</button>
+    <button data-diff="medium" data-i18n="medium">Medium</button>
+    <button data-diff="hard" data-i18n="hard">Hard</button>
+  </div>
+  <button class="btn primary" id="newBtn" data-i18n="new">New Game</button>
+</div>
+
+<div id="hud">
+  <div class="stat">⚪ <span id="name1"></span>: <b id="sc1">0</b></div>
+  <div class="stat" id="cube">🎲 ×<span id="cubeVal">1</span></div>
+  <div class="stat">⚫ <span id="name2"></span>: <b id="sc2">0</b></div>
+</div>
+<div id="status"></div>
+<div id="boardWrap"><svg id="board" viewBox="0 0 660 440" xmlns="http://www.w3.org/2000/svg"></svg></div>
+<div id="btnRow">
+  <button class="btn primary" id="rollBtn" data-i18n="roll">Roll 🎲</button>
+  <button class="btn" id="doubleBtn">×2</button>
+  <button class="btn" id="undoBtn" data-i18n="undo">↩ Undo</button>
+  <button class="btn" id="doneBtn" data-i18n="done">Done ✔</button>
+</div>
+<footer>STeamWorkS · Backgammon</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Backgammon",vsBot:"vs Bot",twoP:"2 Players",easy:"Easy",medium:"Medium",hard:"Hard",new:"New Game",
+      you:"You",bot:"Bot",p1:"White",p2:"Black",roll:"Roll 🎲",undo:"↩ Undo",done:"Done ✔",
+      turnRoll:"{p} — roll!",turnMove:"{p} — move ({d})",noMoves:"{p} has no legal moves 😔",
+      botThink:"Bot is thinking",bar:"bar",
+      doubleOffer:"{p} offers to double to ×{n}. Accept?",accept:"Accept ✔",decline:"Decline ✖",
+      winS:"{p} wins! (+{n})",winG:"{p} wins a GAMMON! (+{n})",winB:"{p} wins a BACKGAMMON! (+{n})",
+      winDecline:"{p} declines — {q} wins +{n}",pip:"pip"},
+  fr:{title:"Backgammon",vsBot:"vs Robot",twoP:"2 Joueurs",easy:"Facile",medium:"Moyen",hard:"Difficile",new:"Nouvelle partie",
+      you:"Toi",bot:"Robot",p1:"Blancs",p2:"Noirs",roll:"Lancer 🎲",undo:"↩ Annuler",done:"Fini ✔",
+      turnRoll:"{p} — lance !",turnMove:"{p} — joue ({d})",noMoves:"{p} ne peut pas jouer 😔",
+      botThink:"Le robot réfléchit",bar:"barre",
+      doubleOffer:"{p} propose de doubler à ×{n}. Accepter ?",accept:"Accepter ✔",decline:"Refuser ✖",
+      winS:"{p} gagne ! (+{n})",winG:"{p} gagne un GAMMON ! (+{n})",winB:"{p} gagne un BACKGAMMON ! (+{n})",
+      winDecline:"{p} refuse — {q} gagne +{n}",pip:"pip"}
+};
+const SKEY="stws_backgammon_v1";
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let mode=save.mode||"1p";
+let diff=save.diff||"easy";
+let match=save.match||{1:0,2:0};
+
+/* state: pts[24] arrays are counts; pts[i]={p:0|1|2, n} encoded as signed: +n = p1, -n = p2 */
+let st,phase,dice,remaining,seqs,sel,turnSnapshots,busy=false,doublePending=null;
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.mode=mode;save.diff=diff;save.match=match;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,t,dur,type,vol){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime+t);
+  g.gain.setValueAtTime(0,c.currentTime+t);
+  g.gain.linearRampToValueAtTime(vol||.12,c.currentTime+t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(c.currentTime+t);o.stop(c.currentTime+t+dur+.05);
+}
+const sDice=()=>{for(let i=0;i<3;i++)tone(180+Math.random()*260,i*.05,.06,"square",.07);};
+const sMove=()=>tone(500,0,.06,"triangle",.12);
+const sHit=()=>{tone(300,0,.12,"sawtooth",.1);tone(200,.08,.15,"sawtooth",.08);};
+const sOff=()=>{tone(660,0,.08);tone(880,.07,.12);};
+const sWin=()=>{[523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.15,"triangle",.13));};
+
+/* ============ pure engine ============
+   p1 (white) moves 23→0, home 0-5, enters at 24-d.
+   p2 (black) moves 0→23, home 18-23, enters at d-1. */
+function newBoard(){
+  const s={pts:Array(24).fill(0),bar:{1:0,2:0},off:{1:0,2:0}};
+  const put=(i,p,n)=>{s.pts[i]=p===1?n:-n;};
+  put(23,1,2);put(12,1,5);put(7,1,3);put(5,1,5);
+  put(0,2,2);put(11,2,5);put(16,2,3);put(18,2,5);
+  return s;
+}
+function cloneB(s){return {pts:s.pts.slice(),bar:{1:s.bar[1],2:s.bar[2]},off:{1:s.off[1],2:s.off[2]}};}
+function cnt(s,p,i){const v=s.pts[i];return p===1?(v>0?v:0):(v<0?-v:0);}
+function ownerOf(s,i){return s.pts[i]>0?1:s.pts[i]<0?2:0;}
+function pipCount(s,p){
+  let t=s.bar[p]*25;
+  for(let i=0;i<24;i++){const n=cnt(s,p,i);if(n)t+=n*(p===1?i+1:24-i);}
+  return t;
+}
+function allHome(s,p){
+  if(s.bar[p]>0)return false;
+  for(let i=0;i<24;i++)if(cnt(s,p,i)>0){
+    if(p===1&&i>5)return false;
+    if(p===2&&i<18)return false;
+  }
+  return true;
+}
+function openFor(s,p,i){return cnt(s,3-p,i)<=1;}
+function legalSingles(s,p,d){
+  const res=[];
+  if(s.bar[p]>0){
+    const t=p===1?24-d:d-1;
+    if(openFor(s,p,t))res.push({from:"bar",to:t,d});
+    return res;
+  }
+  const dir=p===1?-1:1;
+  for(let i=0;i<24;i++)if(cnt(s,p,i)>0){
+    const t=i+dir*d;
+    if(t>=0&&t<24){
+      if(openFor(s,p,t))res.push({from:i,to:t,d});
+    }else if(allHome(s,p)){
+      const pip=p===1?i+1:24-i;
+      if(d===pip)res.push({from:i,to:"off",d});
+      else if(d>pip){
+        let higher=false;
+        if(p===1){for(let j=i+1;j<=5;j++)if(cnt(s,p,j)>0)higher=true;}
+        else{for(let j=18;j<i;j++)if(cnt(s,p,j)>0)higher=true;}
+        if(!higher)res.push({from:i,to:"off",d});
+      }
+    }
+  }
+  return res;
+}
+function applySingle(s,p,m){
+  if(m.from==="bar")s.bar[p]--;
+  else s.pts[m.from]+=p===1?-1:1;
+  if(m.to==="off"){s.off[p]++;return false;}
+  let hit=false;
+  if(ownerOf(s,m.to)===3-p&&cnt(s,3-p,m.to)===1){
+    s.pts[m.to]=0;s.bar[3-p]++;hit=true;
+  }
+  s.pts[m.to]+=p===1?1:-1;
+  return hit;
+}
+function keyOf(s){return s.pts.join(",")+"|"+s.bar[1]+","+s.bar[2]+"|"+s.off[1]+","+s.off[2];}
+/* all maximal legal sequences for a roll */
+function genSequences(s,p,d1,d2){
+  const diceLists=d1===d2?[[d1,d1,d1,d1]]:[[d1,d2],[d2,d1]];
+  const out=[];const seen=new Set();
+  function dfs(state,left,seq){
+    let any=false;
+    if(left.length){
+      const d=left[0];
+      for(const m of legalSingles(state,p,d)){
+        any=true;
+        const ns=cloneB(state);
+        applySingle(ns,p,m);
+        dfs(ns,left.slice(1),seq.concat([m]));
+      }
+    }
+    if(!any){
+      const k=seq.map(m=>m.from+">"+m.to+":"+m.d).join(";");
+      if(!seen.has(k)){seen.add(k);out.push({seq,state,used:seq.length});}
+    }
+  }
+  for(const dl of diceLists)dfs(cloneB(s),dl,[]);
+  const maxU=Math.max(0,...out.map(o=>o.used));
+  let best=out.filter(o=>o.used===maxU);
+  /* if only one die can be played from a non-double roll, it must be the larger */
+  if(maxU===1&&d1!==d2){
+    const hi=Math.max(d1,d2);
+    const withHi=best.filter(o=>o.seq[0].d===hi);
+    if(withHi.length)best=withHi;
+  }
+  return best;
+}
+/* ============ evaluation ============ */
+const SHOTS={1:11,2:12,3:14,4:15,5:15,6:17};
+function evalBoard(s,p){
+  const o=3-p;
+  let v=(pipCount(s,o)-pipCount(s,p))*1.0;
+  v+=s.off[p]*18-s.off[o]*18;
+  v-=s.bar[p]*14;v+=s.bar[o]*12;
+  for(let i=0;i<24;i++){
+    const mine=cnt(s,p,i),theirs=cnt(s,o,i);
+    if(mine>=2){
+      v+=2;
+      if(p===1&&i<=5)v+=3;
+      if(p===2&&i>=18)v+=3;
+    }
+    if(mine===1){
+      /* blot: direct-shot risk from opponent checkers behind it */
+      let risk=3;
+      for(let d=1;d<=6;d++){
+        const src=p===1?i+d:i-d;   /* square from which opp hits with die d */
+        if(src>=0&&src<24&&cnt(s,o,src)>0)risk+=SHOTS[d]/6;
+      }
+      if(s.bar[o]>0)risk+=2;
+      v-=risk;
+    }
+  }
+  return v;
+}
+function botChoose(s,p,d1,d2,difficulty){
+  const options=genSequences(s,p,d1,d2);
+  if(!options.length)return null;
+  if(difficulty==="easy"){
+    const hits=options.filter(o=>o.seq.some(m=>{
+      if(m.to==="off")return false;
+      return ownerOf(s,m.to)===3-p&&cnt(s,3-p,m.to)===1;
+    }));
+    if(hits.length&&Math.random()<.6)return hits[Math.floor(Math.random()*hits.length)];
+    return options[Math.floor(Math.random()*options.length)];
+  }
+  let best=null,bv=-Infinity;
+  for(const o of options){
+    let v=evalBoard(o.state,p);
+    if(difficulty==="medium")v+=Math.random()*4; /* slight fuzz */
+    if(v>bv){bv=v;best=o;}
+  }
+  return best;
+}
+/* doubling model: win prob from pip lead */
+function winProb(s,p){
+  const me=pipCount(s,p),op=pipCount(s,3-p);
+  return Math.max(.02,Math.min(.98,.5+(op-me)/80));
+}
+
+/* ============ layout ============ */
+const PW=44,TH=170,BARW=36,OFFW=44,TOPY=14,BOTY=426;
+function ptX(i){
+  /* board columns: bottom-right 0..5, bar, 6..11 bottom-left; top-left 12..17, bar, 18..23 top-right */
+  if(i<=5)return 660-OFFW-8-(i+1)*PW+PW/2- - 0 + 0; /* replaced below */
+  return 0;
+}
+const XPOS=(()=>{
+  const xs={};
+  const rightStart=660-OFFW-6-6*PW;   /* right sextant x origin */
+  const leftStart=10;
+  for(let k=0;k<6;k++){
+    xs[5-k]=rightStart+k*PW+PW/2;      /* bottom right: 5..0 left→right */
+    xs[6+k]=leftStart+(5-k)*PW+PW/2;   /* bottom left: 11..6 left→right => index 6+k at (5-k) */
+    xs[12+k]=leftStart+k*PW+PW/2;      /* top left: 12..17 left→right */
+    xs[18+k]=rightStart+k*PW+PW/2;     /* top right: 18..23 left→right */
+  }
+  return xs;
+})();
+function isTop(i){return i>=12;}
+function render(){
+  const svg=document.getElementById("board");
+  let h=`<rect x="0" y="0" width="660" height="440" rx="12" fill="var(--board)"/>`;
+  const barX=10+6*PW+3;
+  h+=`<rect x="${barX}" y="0" width="${BARW}" height="440" fill="var(--frame)"/>`;
+  h+=`<rect x="${660-OFFW}" y="0" width="${OFFW}" height="440" fill="var(--frame)"/>`;
+  const dests=destsNow();
+  const selPt=sel;
+  for(let i=0;i<24;i++){
+    const x=XPOS[i],top=isTop(i);
+    const y0=top?TOPY:BOTY,y1=top?TOPY+TH:BOTY-TH;
+    const col=i%2===0?"var(--tri1)":"var(--tri2)";
+    const canSel=canSelect(i),isDest=dests.some(d=>d.to===i);
+    let cls="pt"+(canSel||isDest?"":" dead")+(selPt===i?" sel":"")+(isDest?" dest":"");
+    h+=`<g class="${cls}" data-i="${i}">`;
+    h+=`<path class="tri" d="M${x-PW/2+2} ${y0} L${x+PW/2-2} ${y0} L${x} ${y1} Z" fill="${col}"/>`;
+    /* checkers */
+    const p=ownerOf(st,i),n=Math.abs(st.pts[i]);
+    for(let k=0;k<Math.min(n,5);k++){
+      const cy=top?TOPY+16+k*30:BOTY-16-k*30;
+      h+=chk(x,cy,p);
+    }
+    if(n>5)h+=`<text x="${x}" y="${top?TOPY+16+4*30+5:BOTY-16-4*30+5}" text-anchor="middle" font-size="15" font-weight="800" fill="${p===1?"#2A180D":"#F5EDDF"}">${n}</text>`;
+    h+=`</g>`;
+  }
+  /* bar checkers */
+  const bx=barX+BARW/2;
+  for(const p of [1,2]){
+    const n=st.bar[p];
+    for(let k=0;k<Math.min(n,4);k++){
+      const cy=p===1?250+k*26:190-k*26;
+      h+=chk(bx,cy,p);
+    }
+    if(n>0)h+=`<text x="${bx}" y="${p===1?250+Math.min(n,4)*26+8:190-Math.min(n,4)*26-14}" text-anchor="middle" font-size="13" font-weight="800" fill="var(--ink)">${n}</text>`;
+  }
+  const barSelectable=canSelect("bar");
+  if(barSelectable)h+=`<rect x="${barX}" y="150" width="${BARW}" height="140" fill="rgba(255,178,92,.25)" rx="8" data-bar="1" class="barhit" style="cursor:pointer"/>`;
+  if(sel==="bar")h+=`<rect x="${barX}" y="150" width="${BARW}" height="140" fill="none" stroke="var(--accent)" stroke-width="3" rx="8"/>`;
+  /* off trays */
+  const offDest=dests.some(d=>d.to==="off");
+  h+=`<g data-off="1" class="${offDest?"pt dest":"pt dead"}"><rect class="tri" x="${660-OFFW+4}" y="${offDest?4:4}" width="${OFFW-8}" height="432" rx="8" fill="rgba(0,0,0,.25)"/>`;
+  h+=`<text x="${660-OFFW/2}" y="230" text-anchor="middle" font-size="13" font-weight="800" fill="var(--ink)" opacity=".8">⚪${st.off[1]} ⚫${st.off[2]}</text></g>`;
+  /* dice */
+  if(dice&&phase==="move"){
+    dice.forEach((d,i)=>{
+      const used=usedCount(d)>countIn(remaining,d)?true:false;
+      h+=`<g opacity="${remaining.includes(d)?1:.35}"><rect x="${290+i*46}" y="200" width="38" height="38" rx="9" fill="#FDF8EC"/>`;
+      h+=`<text x="${309+i*46}" y="227" text-anchor="middle" font-size="22" font-weight="800" fill="#2B2B2B">${d}</text></g>`;
+    });
+  }
+  svg.innerHTML=h;
+  svg.querySelectorAll(".pt:not(.dead)").forEach(g=>{
+    if(g.dataset.i!==undefined)g.addEventListener("click",()=>tapPoint(+g.dataset.i));
+    if(g.dataset.off!==undefined)g.addEventListener("click",()=>tapOff());
+  });
+  const bh=svg.querySelector(".barhit");
+  if(bh)bh.addEventListener("click",()=>{sel="bar";render();});
+  updateHud();
+}
+function chk(x,y,p){
+  return `<circle class="chk" cx="${x}" cy="${y}" r="14" fill="${p===1?"var(--w)":"var(--b)"}" stroke="${p===1?"var(--wb)":"var(--bb)"}"/>`;
+}
+function countIn(arr,v){return arr.filter(x=>x===v).length;}
+function usedCount(d){return (dice?countIn(dice,d):0);}
+
+/* ============ interaction ============ */
+function nameOf(p){return mode==="1p"?(p===1?STR[lang].you:STR[lang].bot):(p===1?STR[lang].p1:STR[lang].p2);}
+function humanTurn(){return !busy&&phase==="move"&&(mode==="2p"||st.turn===1);}
+function canSelect(i){
+  if(!humanTurn())return false;
+  return seqs.some(o=>o.seq.length&&sameFrom(o.seq[0],i));
+}
+function sameFrom(m,i){return m.from===i;}
+function destsNow(){
+  if(!humanTurn()||sel===null)return [];
+  const out=[];const seen=new Set();
+  for(const o of seqs){
+    if(o.seq.length&&o.seq[0].from===sel){
+      const k=String(o.seq[0].to)+":"+o.seq[0].d;
+      if(!seen.has(k)){seen.add(k);out.push(o.seq[0]);}
+    }
+  }
+  return out;
+}
+function tapPoint(i){
+  if(!humanTurn())return;
+  const dests=destsNow();
+  const d=dests.find(x=>x.to===i);
+  if(d){playSub(d);return;}
+  if(canSelect(i)){sel=sel===i?null:i;render();}
+}
+function tapOff(){
+  const d=destsNow().find(x=>x.to==="off");
+  if(d)playSub(d);
+}
+function playSub(m){
+  turnSnapshots.push({st:cloneB(st),remaining:remaining.slice(),seqs,sel});
+  const hit=applySingle(st,st.turn,m);
+  if(m.to==="off")sOff();else if(hit)sHit();else sMove();
+  remaining.splice(remaining.indexOf(m.d),1);
+  /* filter sequences to those consistent with the chosen prefix */
+  seqs=seqs.filter(o=>o.seq.length&&o.seq[0].from===m.from&&String(o.seq[0].to)===String(m.to)&&o.seq[0].d===m.d)
+           .map(o=>({seq:o.seq.slice(1),state:o.state,used:o.used-1}));
+  sel=null;
+  if(checkWin())return;
+  if(!seqs.some(o=>o.seq.length)){endTurn();return;}
+  render();setStatus(STR[lang].turnMove.replace("{p}",nameOf(st.turn)).replace("{d}",remaining.join(" ")));
+}
+function undoSub(){
+  if(!turnSnapshots.length||busy)return;
+  const s=turnSnapshots.pop();
+  st=s.st;remaining=s.remaining;seqs=s.seqs;sel=null;
+  render();setStatus(STR[lang].turnMove.replace("{p}",nameOf(st.turn)).replace("{d}",remaining.join(" ")));
+}
+/* ============ turns ============ */
+function newGame(){
+  st=newBoard();st.turn=1;st.cube=1;st.cubeOwner=0;
+  phase="roll";dice=null;remaining=[];seqs=[];sel=null;turnSnapshots=[];busy=false;doublePending=null;
+  render();setStatus(STR[lang].turnRoll.replace("{p}",nameOf(1)));
+  updateButtons();
+}
+function rollDice(){
+  if(phase!=="roll"||busy)return;
+  sDice();
+  const d1=1+Math.floor(Math.random()*6),d2=1+Math.floor(Math.random()*6);
+  dice=[d1,d2];remaining=d1===d2?[d1,d1,d1,d1]:[d1,d2];
+  seqs=genSequences(st,st.turn,d1,d2);
+  turnSnapshots=[];sel=null;phase="move";
+  if(!seqs.length||seqs[0].used===0){
+    render();setStatus(STR[lang].noMoves.replace("{p}",nameOf(st.turn)));
+    setTimeout(endTurn,1100);
+  }else{
+    /* trim remaining to actually-usable dice count */
+    render();setStatus(STR[lang].turnMove.replace("{p}",nameOf(st.turn)).replace("{d}",remaining.join(" ")));
+    if(mode==="1p"&&st.turn===2)queueBot(d1,d2);
+  }
+  updateButtons();
+}
+function endTurn(){
+  if(checkWin())return;
+  st.turn=3-st.turn;phase="roll";dice=null;seqs=[];sel=null;turnSnapshots=[];
+  render();setStatus(STR[lang].turnRoll.replace("{p}",nameOf(st.turn)));
+  updateButtons();
+  if(mode==="1p"&&st.turn===2)setTimeout(botPreRoll,600);
+}
+function botPreRoll(){
+  /* bot may double before rolling */
+  if(st.cube<64&&(st.cubeOwner===0||st.cubeOwner===2)&&winProb(st,2)>=.72&&st.off[1]<10){
+    offerDouble(2);
+    return;
+  }
+  rollDice();
+}
+function queueBot(d1,d2){
+  busy=true;updateButtons();
+  setStatus(STR[lang].botThink+' <span id="thinking">…</span>');
+  setTimeout(()=>{
+    const pick=botChoose(st,2,d1,d2,diff);
+    busy=false;
+    if(!pick){endTurn();return;}
+    /* animate the sequence submove by submove */
+    let k=0;
+    const step=()=>{
+      if(k<pick.seq.length){
+        const m=pick.seq[k++];
+        const hit=applySingle(st,2,m);
+        if(m.to==="off")sOff();else if(hit)sHit();else sMove();
+        remaining.splice(remaining.indexOf(m.d),1);
+        render();
+        if(checkWin())return;
+        setTimeout(step,460);
+      }else endTurn();
+    };
+    step();
+  },500);
+}
+/* ============ doubling cube ============ */
+function offerDouble(p){
+  doublePending=p;
+  const n=st.cube*2;
+  const S=STR[lang];
+  const other=3-p;
+  setStatus(S.doubleOffer.replace("{p}",nameOf(p)).replace("{n}",n)+
+    ` <button class="btn small primary" id="accBtn">${S.accept}</button> <button class="btn small" id="decBtn">${S.decline}</button>`);
+  document.getElementById("accBtn").addEventListener("click",()=>respondDouble(true));
+  document.getElementById("decBtn").addEventListener("click",()=>respondDouble(false));
+  if(mode==="1p"&&other===2){
+    /* bot responds itself */
+    setTimeout(()=>respondDouble(winProb(st,2)>=.25),800);
+  }
+}
+function respondDouble(accept){
+  const p=doublePending,other=3-p;
+  doublePending=null;
+  if(accept){
+    st.cube*=2;st.cubeOwner=other;
+    updateHud();
+    if(p===st.turn)rollDice();
+    else{phase="roll";render();setStatus(STR[lang].turnRoll.replace("{p}",nameOf(st.turn)));if(mode==="1p"&&st.turn===2)setTimeout(rollDice,500);}
+  }else{
+    match[p]+=st.cube;persist();sWin();
+    setStatus(STR[lang].winDecline.replace("{p}",nameOf(other)).replace("{q}",nameOf(p)).replace("{n}",st.cube));
+    phase="over";updateHud();updateButtons();
+  }
+}
+function humanDouble(){
+  if(phase!=="roll"||busy||doublePending)return;
+  const p=st.turn;
+  if(mode==="1p"&&p!==1)return;
+  if(st.cube>=64||(st.cubeOwner!==0&&st.cubeOwner!==p))return;
+  offerDouble(p);
+}
+/* ============ win ============ */
+function checkWin(){
+  for(const p of [1,2]){
+    if(st.off[p]===15){
+      const o=3-p;
+      let mult=1,key="winS";
+      if(st.off[o]===0){
+        mult=2;key="winG";
+        /* backgammon: loser still on bar or in winner's home */
+        let inHome=st.bar[o]>0;
+        for(let i=0;i<24;i++)if(cnt(st,o,i)>0){
+          if(p===1&&i<=5)inHome=true;
+          if(p===2&&i>=18)inHome=true;
+        }
+        if(inHome){mult=3;key="winB";}
+      }
+      const pts=st.cube*mult;
+      match[p]+=pts;persist();
+      phase="over";sWin();
+      render();setStatus(STR[lang][key].replace("{p}",nameOf(p)).replace("{n}",pts));
+      updateButtons();updateHud();
+      return true;
+    }
+  }
+  return false;
+}
+/* ============ hud/buttons ============ */
+function updateHud(){
+  document.getElementById("name1").textContent=nameOf(1);
+  document.getElementById("name2").textContent=nameOf(2);
+  document.getElementById("sc1").textContent=match[1];
+  document.getElementById("sc2").textContent=match[2];
+  document.getElementById("cubeVal").textContent=st?st.cube:1;
+}
+function updateButtons(){
+  const rb=document.getElementById("rollBtn");
+  rb.disabled=!(phase==="roll"&&!busy&&!doublePending&&(mode==="2p"||st.turn===1));
+  const db=document.getElementById("doubleBtn");
+  db.disabled=!(phase==="roll"&&!busy&&!doublePending&&(mode==="2p"||st.turn===1)&&st&&st.cube<64&&(st.cubeOwner===0||st.cubeOwner===st.turn));
+  document.getElementById("undoBtn").disabled=!(humanTurn()&&turnSnapshots.length);
+  document.getElementById("doneBtn").disabled=true; /* turns auto-complete; kept for layout familiarity */
+}
+function setStatus(t){document.getElementById("status").innerHTML=t;updateButtons();}
+
+/* ============ ui ============ */
+document.getElementById("rollBtn").addEventListener("click",rollDice);
+document.getElementById("undoBtn").addEventListener("click",undoSub);
+document.getElementById("doubleBtn").addEventListener("click",humanDouble);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");mode=b.dataset.mode;persist();
+  document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+  newGame();
+});
+document.getElementById("diffSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");diff=b.dataset.diff;persist();newGame();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();render();
+  if(phase==="roll")setStatus(STR[lang].turnRoll.replace("{p}",nameOf(st.turn)));});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{if(STR[lang][el.dataset.i18n])el.textContent=STR[lang][el.dataset.i18n];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+document.querySelectorAll("#diffSeg button").forEach(b=>b.classList.toggle("on",b.dataset.diff===diff));
+document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+applyLang();newGame();
+
+window.__test={newBoard,cloneB,cnt,ownerOf,pipCount,allHome,legalSingles,applySingle,genSequences,
+  evalBoard,botChoose,winProb,
+  getState:()=>st,setState:(s)=>{st=s;},rollDice,newGame,
+  _internals:()=>({phase,dice,remaining,seqs:seqs?seqs.length:0})};
+</script>
+</body>
+</html>

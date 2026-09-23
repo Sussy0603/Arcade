@@ -1,0 +1,2785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#f4efe6">
+<title>Numbrush — Colour by Numbers</title>
+<style>
+:root{
+  --bg1:#f6efe2; --bg2:#e9dcc6; --surface:#fffdf8; --surface2:#f3ecdd; --line:#ddd0b8;
+  --ink:#3b3229; --ink2:#8a7c68; --accent:#c85a3c; --accent2:#3f7f7a; --good:#4e9a63;
+  --r:16px; --pad:14px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI","Nunito","Avenir Next",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  font-family:var(--font); color:var(--ink); overscroll-behavior:none;
+  background:var(--bg1);
+  -webkit-user-select:none;user-select:none; touch-action:manipulation;
+}
+#particles{position:fixed;inset:0;z-index:0;pointer-events:none}
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;
+  max-width:600px;margin:0 auto;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.screen{display:none;flex:1;min-height:0;flex-direction:column}
+.screen.on{display:flex}
+
+/* ---- bars ---- */
+.bar{display:flex;align-items:center;gap:10px;padding:10px 12px;flex:0 0 auto}
+.bar h1{font-size:19px;margin:0;letter-spacing:.13em;text-transform:uppercase;font-weight:800}
+.bar .grow{flex:1;min-width:0}
+.ico{width:40px;height:40px;flex:0 0 auto;border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);border-radius:12px;font-size:17px;line-height:1;display:grid;place-items:center;cursor:pointer}
+.ico:active{transform:scale(.94)}
+.ico.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ---- wordmark ---- */
+.brand{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 0 10px}
+.brand .w{display:flex;align-items:baseline;gap:2px}
+.brand .w span{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.brand .w i{width:13px;height:13px;display:inline-block;margin-left:5px;background:var(--accent);
+  border-radius:62% 38% 45% 55%/55% 45% 60% 40%}
+.brand small{color:var(--ink2);letter-spacing:.22em;text-transform:uppercase;font-size:10px}
+
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 12px 24px}
+
+/* ---- category / picture cards ---- */
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 12px;
+  text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;color:var(--ink);font-family:inherit}
+.cat:active{transform:scale(.98)}
+.cat .em{font-size:24px}
+.cat b{font-size:15px}
+.cat small{color:var(--ink2);font-size:11px}
+
+.pics{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pic{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  cursor:pointer;display:flex;flex-direction:column;padding:0;font-family:inherit;color:var(--ink)}
+.pic:active{transform:scale(.98)}
+.pic canvas{width:100%;aspect-ratio:1;display:block;background:var(--surface2)}
+.pic .meta{padding:8px 10px 10px;text-align:left}
+.pic b{font-size:13px;display:block}
+.pic .dots{display:flex;gap:4px;margin-top:6px}
+.pic .dots i{width:100%;height:4px;border-radius:2px;background:var(--line)}
+.pic .dots i.part{background:var(--accent2)}
+.pic .dots i.done{background:var(--good)}
+
+/* ---- difficulty sheet ---- */
+.sheet{position:fixed;inset:0;z-index:20;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(30,24,18,.42);backdrop-filter:blur(2px)}
+.sheet.on{display:flex}
+.sheet .card{background:var(--surface);width:100%;max-width:600px;border-radius:22px 22px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom));animation:up .22s ease}
+@keyframes up{from{transform:translateY(18px);opacity:.4}}
+.sheet h3{margin:0 0 2px;font-size:18px}
+.sheet p{margin:0 0 14px;color:var(--ink2);font-size:12px}
+.dlist{display:flex;flex-direction:column;gap:8px}
+.dbtn{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--line);
+  border-radius:14px;padding:12px 14px;cursor:pointer;font-family:inherit;color:var(--ink);text-align:left}
+.dbtn:active{transform:scale(.985)}
+.dbtn .chip{width:34px;height:34px;border-radius:60% 40% 52% 48%/48% 56% 44% 52%;flex:0 0 auto;
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px}
+.dbtn .t{flex:1}
+.dbtn b{display:block;font-size:14px}
+.dbtn small{color:var(--ink2);font-size:11px}
+.dbtn .st{font-size:11px;color:var(--ink2);text-align:right}
+.dbtn .st.done{color:var(--good);font-weight:700}
+
+/* ---- play ---- */
+.ptitle{flex:1;min-width:0;text-align:center;line-height:1.15}
+.ptitle b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptitle span{font-size:10px;color:var(--ink2);letter-spacing:.14em;text-transform:uppercase}
+.stage{flex:1;min-height:0;position:relative;margin:0 8px;border-radius:var(--r);overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);touch-action:none}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.zoomb{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
+.zoomb button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.85);color:var(--ink);font-size:16px;cursor:pointer;font-family:inherit}
+.progwrap{display:flex;align-items:center;gap:10px;padding:8px 14px 4px}
+.prog{flex:1;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden;border:1px solid var(--line)}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s ease}
+.progwrap span{font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums;min-width:64px;text-align:right}
+
+.palette{display:flex;gap:8px;overflow-x:auto;padding:8px 12px;scrollbar-width:none;flex:0 0 auto}
+.palette::-webkit-scrollbar{display:none}
+.sw{flex:0 0 auto;width:48px;height:52px;border:none;background:none;padding:0;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;position:relative}
+.sw .blob{width:40px;height:40px;border-radius:58% 42% 50% 50%/50% 55% 45% 50%;
+  display:grid;place-items:center;font-weight:800;font-size:15px;border:2px solid transparent;
+  transition:transform .12s ease}
+.sw.sel .blob{transform:scale(1.14);border-color:var(--ink)}
+.sw small{font-size:9.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.sw.done{opacity:.32}
+.sw.done .blob::after{content:"\2713";position:absolute;font-size:16px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.tools{display:flex;gap:8px;padding:2px 12px 12px}
+.tools button{flex:1;padding:11px 6px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  color:var(--ink);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.tools button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tools button:active{transform:scale(.97)}
+
+/* ---- misc ---- */
+.load{position:absolute;inset:0;display:grid;place-items:center;background:var(--surface);z-index:5;
+  font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
+.load.off{display:none}
+.hint{position:absolute;font-weight:800;font-size:15px;pointer-events:none;z-index:4;
+  animation:pop .7s ease forwards;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+@keyframes pop{0%{transform:translate(-50%,-50%) scale(.6);opacity:1}
+100%{transform:translate(-50%,-160%) scale(1.1);opacity:0}}
+.empty{text-align:center;color:var(--ink2);font-size:13px;padding:40px 20px;line-height:1.6}
+.gal{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gal .g{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  cursor:pointer;padding:0;font-family:inherit;color:var(--ink)}
+.gal canvas{width:100%;aspect-ratio:1;display:block}
+.gal .meta{padding:7px 9px 9px;text-align:left}
+.gal b{font-size:12px;display:block}
+.gal small{font-size:10px;color:var(--ink2);text-transform:uppercase;letter-spacing:.1em}
+
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.th{border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;background:var(--surface);
+  display:flex;flex-direction:column;gap:7px;font-family:inherit;color:var(--ink);text-align:left}
+.th.sel{outline:2px solid var(--accent);outline-offset:1px}
+.th .sws{display:flex;gap:4px}
+.th .sws i{width:100%;height:18px;border-radius:6px}
+.th b{font-size:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;font-size:13px}
+.sec{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);margin:18px 0 8px}
+.toggle{width:48px;height:28px;border-radius:16px;background:var(--line);position:relative;
+  border:none;cursor:pointer;flex:0 0 auto;transition:background .18s}
+.toggle i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;
+  transition:transform .18s}
+.toggle.on{background:var(--good)}
+.toggle.on i{transform:translateX(20px)}
+.btn{display:block;width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:#b3402c}
+.btn+.btn{margin-top:8px}
+
+/* ---- finish modal ---- */
+.modal{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:20px;
+  background:rgba(30,24,18,.5)}
+.modal.on{display:flex}
+.modal .card{background:var(--surface);border-radius:22px;padding:20px;width:100%;max-width:360px;text-align:center;
+  animation:up .25s ease}
+.modal canvas{width:180px;height:180px;border-radius:14px;border:1px solid var(--line);margin:6px auto 12px;display:block}
+.modal h3{margin:0;font-size:20px}
+.modal p{margin:4px 0 12px;color:var(--ink2);font-size:12px}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<div id="app">
+
+  <!-- HOME -->
+  <section class="screen on" id="scr-home">
+    <div class="brand"><div class="w"><span>Numbrush</span><i></i></div><small>Colour by numbers</small></div>
+    <div class="scroll">
+      <div class="sec">Pick a set</div>
+      <div class="cats" id="catList"></div>
+      <div class="sec">More</div>
+      <button class="btn" id="goGallery">Gallery</button>
+      <button class="btn" id="goSettings">Themes &amp; sound</button>
+    </div>
+  </section>
+
+  <!-- CATEGORY -->
+  <section class="screen" id="scr-cat">
+    <div class="bar"><button class="ico" data-back="home">&#8249;</button><h1 class="grow" id="catTitle"></h1></div>
+    <div class="scroll"><div class="pics" id="picList"></div></div>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="scr-play">
+    <div class="bar">
+      <button class="ico" id="playBack">&#8249;</button>
+      <div class="ptitle"><b id="playName"></b><span id="playSub"></span></div>
+      <button class="ico" id="btnPeek">&#9673;</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+      <div class="zoomb"><button id="zIn">+</button><button id="zOut">&minus;</button></div>
+      <div class="load off" id="loader">Preparing canvas</div>
+    </div>
+    <div class="progwrap"><div class="prog"><i id="progFill"></i></div><span id="progTxt"></span></div>
+    <div class="palette" id="palette"></div>
+    <div class="tools">
+      <button id="btnHint">Find one</button>
+      <button id="btnPan">Move</button>
+      <button id="btnFit">Fit</button>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section class="screen" id="scr-gallery">
+    <div class="bar"><button class="ico" data-back="home">&#8249;</button><h1 class="grow">Gallery</h1></div>
+    <div class="scroll"><div class="gal" id="galList"></div><div class="empty" id="galEmpty">
+      Finished pictures land here.<br>Paint one to start the collection.</div></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="scr-settings">
+    <div class="bar"><button class="ico" data-back="home">&#8249;</button><h1 class="grow">Themes &amp; sound</h1></div>
+    <div class="scroll">
+      <div class="sec">Sound</div>
+      <div class="row"><span>Sound effects</span><button class="toggle" id="tgSfx"><i></i></button></div>
+      <div class="row"><span>Music</span><button class="toggle" id="tgMusic"><i></i></button></div>
+      <div class="sec">Theme</div>
+      <div class="themes" id="themeList"></div>
+      <div class="sec">Data</div>
+      <div class="row" id="statRow"><span>Progress</span><b id="statTxt"></b></div>
+      <button class="btn danger" id="btnReset">Erase all progress</button>
+    </div>
+  </section>
+</div>
+
+<!-- difficulty sheet -->
+<div class="sheet" id="sheet"><div class="card">
+  <h3 id="sheetName"></h3><p id="sheetSub">Choose how detailed you want it.</p>
+  <div class="dlist" id="dlist"></div>
+</div></div>
+
+<!-- finish modal -->
+<div class="modal" id="finish"><div class="card">
+  <h3>Finished</h3><p id="finTxt"></p>
+  <canvas id="finCv" width="360" height="360"></canvas>
+  <button class="btn primary" id="finNext">Paint the next one</button>
+  <button class="btn" id="finSave">Save picture</button>
+  <button class="btn" id="finClose">Back to the set</button>
+</div></div>
+<script>
+// ==ENGINE_START==
+var ENGINE = (function () {
+  'use strict';
+
+  /* ---------------- colour ---------------- */
+  function hex2rgb(h) {
+    h = h.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgb2hex(r, g, b) {
+    return '#' + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1);
+  }
+  function luma(c) { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function shift(c, d) {
+    // d>0 -> toward white, d<0 -> toward black
+    var t = clamp(Math.abs(d), 0, 1), o = d > 0 ? 255 : 0;
+    return [c[0] + (o - c[0]) * t, c[1] + (o - c[1]) * t, c[2] + (o - c[2]) * t];
+  }
+
+  /* ---------------- geometry ---------------- */
+  function circlePts(cx, cy, r, n) {
+    var p = [];
+    for (var i = 0; i < n; i++) { var a = i / n * Math.PI * 2; p.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    return p;
+  }
+  function ellipsePts(cx, cy, rx, ry, rot, n) {
+    var p = [], co = Math.cos(rot), si = Math.sin(rot);
+    for (var i = 0; i < n; i++) {
+      var a = i / n * Math.PI * 2, x = Math.cos(a) * rx, y = Math.sin(a) * ry;
+      p.push(cx + x * co - y * si, cy + x * si + y * co);
+    }
+    return p;
+  }
+  function crSpline(pts, closed, seg) {
+    var n = pts.length / 2, out = [];
+    if (n < 3) return pts.slice();
+    var last = closed ? n : n - 1;
+    for (var i = 0; i < last; i++) {
+      var i0, i1 = i, i2, i3;
+      if (closed) { i0 = (i - 1 + n) % n; i2 = (i + 1) % n; i3 = (i + 2) % n; }
+      else { i0 = Math.max(0, i - 1); i2 = Math.min(n - 1, i + 1); i3 = Math.min(n - 1, i + 2); }
+      var x0 = pts[i0 * 2], y0 = pts[i0 * 2 + 1], x1 = pts[i1 * 2], y1 = pts[i1 * 2 + 1],
+        x2 = pts[i2 * 2], y2 = pts[i2 * 2 + 1], x3 = pts[i3 * 2], y3 = pts[i3 * 2 + 1];
+      for (var s = 0; s < seg; s++) {
+        var t = s / seg, t2 = t * t, t3 = t2 * t;
+        out.push(
+          0.5 * (2 * x1 + (-x0 + x2) * t + (2 * x0 - 5 * x1 + 4 * x2 - x3) * t2 + (-x0 + 3 * x1 - 3 * x2 + x3) * t3),
+          0.5 * (2 * y1 + (-y0 + y2) * t + (2 * y0 - 5 * y1 + 4 * y2 - y3) * t2 + (-y0 + 3 * y1 - 3 * y2 + y3) * t3)
+        );
+      }
+    }
+    if (!closed) out.push(pts[(n - 1) * 2], pts[(n - 1) * 2 + 1]);
+    return out;
+  }
+  function strokeContours(path, w) {
+    var out = [], h = w / 2;
+    for (var i = 0; i + 3 < path.length; i += 2) {
+      var x1 = path[i], y1 = path[i + 1], x2 = path[i + 2], y2 = path[i + 3];
+      var dx = x2 - x1, dy = y2 - y1, L = Math.sqrt(dx * dx + dy * dy);
+      if (L < 1e-6) continue;
+      var nx = -dy / L * h, ny = dx / L * h;
+      out.push([x1 + nx, y1 + ny, x2 + nx, y2 + ny, x2 - nx, y2 - ny, x1 - nx, y1 - ny]);
+    }
+    for (var j = 0; j < path.length; j += 2) out.push(circlePts(path[j], path[j + 1], h, 12));
+    return out;
+  }
+  // shape -> array of contours (flat [x,y,...]); union semantics
+  function shapeContours(a) {
+    switch (a[0]) {
+      case 'R': return [[a[2], a[3], a[2] + a[4], a[3], a[2] + a[4], a[3] + a[5], a[2], a[3] + a[5]]];
+      case 'C': return [circlePts(a[2], a[3], a[4], 56)];
+      case 'E': return [ellipsePts(a[2], a[3], a[4], a[5], (a[6] || 0) * Math.PI / 180, 64)];
+      case 'P': return [a.slice(2)];
+      case 'B': return [crSpline(a.slice(2), true, 12)];
+      case 'L': return strokeContours(crSpline(a.slice(3), false, 10), a[2]);
+    }
+    return [];
+  }
+
+  /* ---------------- rasterizer (even-odd scanline) ---------------- */
+  function fillContour(map, res, p, id) {
+    var n = p.length / 2;
+    if (n < 3) return;
+    var ymin = 1e9, ymax = -1e9, i;
+    for (i = 0; i < n; i++) { var yy = p[i * 2 + 1]; if (yy < ymin) ymin = yy; if (yy > ymax) ymax = yy; }
+    var y0 = Math.max(0, Math.ceil(ymin - 0.5)), y1 = Math.min(res - 1, Math.floor(ymax - 0.5));
+    var xs = [];
+    for (var y = y0; y <= y1; y++) {
+      var sy = y + 0.5; xs.length = 0;
+      for (i = 0; i < n; i++) {
+        var j = (i + 1) % n, ay = p[i * 2 + 1], by = p[j * 2 + 1];
+        if ((ay <= sy && by > sy) || (by <= sy && ay > sy)) {
+          var t = (sy - ay) / (by - ay);
+          xs.push(p[i * 2] + t * (p[j * 2] - p[i * 2]));
+        }
+      }
+      if (xs.length < 2) continue;
+      xs.sort(function (a, b) { return a - b; });
+      var row = y * res;
+      for (var k = 0; k + 1 < xs.length; k += 2) {
+        var xa = Math.max(0, Math.ceil(xs[k] - 0.5)), xb = Math.min(res - 1, Math.floor(xs[k + 1] - 0.5));
+        for (var x = xa; x <= xb; x++) map[row + x] = id;
+      }
+    }
+  }
+  function rasterize(pic, res) {
+    var S = res / 100, map = new Int16Array(res * res), cols = [];
+    map.fill(-1);
+    for (var i = 0; i < pic.s.length; i++) {
+      var sh = pic.s[i];
+      cols.push(hex2rgb(sh[1]));
+      var cs = shapeContours(sh);
+      for (var c = 0; c < cs.length; c++) {
+        var p = cs[c], q = new Array(p.length);
+        for (var k = 0; k < p.length; k++) q[k] = p[k] * S;
+        fillContour(map, res, q, i);
+      }
+    }
+    return { map: map, cols: cols, res: res };
+  }
+
+  /* ---------------- distance to nearest different shape ---------------- */
+  function edgeDT(map, res) {
+    var d = new Float32Array(res * res), INF = 1e9, x, y, i;
+    for (y = 0; y < res; y++) for (x = 0; x < res; x++) {
+      i = y * res + x;
+      var v = map[i], b = (x === 0 || y === 0 || x === res - 1 || y === res - 1);
+      if (!b) b = (map[i - 1] !== v || map[i + 1] !== v || map[i - res] !== v || map[i + res] !== v);
+      d[i] = b ? 0 : INF;
+    }
+    chamfer(d, res);
+    return d;
+  }
+  function chamfer(d, res) {
+    var A = 1, B = 1.41421356, x, y, i, v;
+    for (y = 0; y < res; y++) for (x = 0; x < res; x++) {
+      i = y * res + x; v = d[i];
+      if (y > 0) {
+        if (d[i - res] + A < v) v = d[i - res] + A;
+        if (x > 0 && d[i - res - 1] + B < v) v = d[i - res - 1] + B;
+        if (x < res - 1 && d[i - res + 1] + B < v) v = d[i - res + 1] + B;
+      }
+      if (x > 0 && d[i - 1] + A < v) v = d[i - 1] + A;
+      d[i] = v;
+    }
+    for (y = res - 1; y >= 0; y--) for (x = res - 1; x >= 0; x--) {
+      i = y * res + x; v = d[i];
+      if (y < res - 1) {
+        if (d[i + res] + A < v) v = d[i + res] + A;
+        if (x > 0 && d[i + res - 1] + B < v) v = d[i + res - 1] + B;
+        if (x < res - 1 && d[i + res + 1] + B < v) v = d[i + res + 1] + B;
+      }
+      if (x < res - 1 && d[i + 1] + A < v) v = d[i + 1] + A;
+      d[i] = v;
+    }
+  }
+
+  /* ---------------- shading ---------------- */
+  // returns lightness delta in [-amp, +amp]-ish; 0 when amp = 0
+  function delta(x, y, res, dtv, amp) {
+    if (!amp) return 0;
+    var t = clamp(dtv / (res * 0.05), 0, 1);          // 0 = near an edge, 1 = deep inside
+    var g = clamp(1 - (x / res) * 0.5 - (y / res) * 0.5, 0, 1); // light from top-left
+    return amp * ((t - 0.6) * 0.85 + (g - 0.5) * 1.1);
+  }
+
+  /* ---------------- median cut ---------------- */
+  function quantize(items, maxColors) {
+    // items: [{c:[r,g,b], w:weight, idx:n}]
+    var boxes = [items.slice()];
+    function boxScore(bx) {
+      var lo = [255, 255, 255], hi = [0, 0, 0], w = 0;
+      for (var i = 0; i < bx.length; i++) {
+        var c = bx[i].c; w += bx[i].w;
+        for (var k = 0; k < 3; k++) { if (c[k] < lo[k]) lo[k] = c[k]; if (c[k] > hi[k]) hi[k] = c[k]; }
+      }
+      var ch = 0, ext = -1;
+      var wr = 1.0, wg = 1.2, wb = 0.9, ww = [wr, wg, wb];
+      for (var k2 = 0; k2 < 3; k2++) { var e = (hi[k2] - lo[k2]) * ww[k2]; if (e > ext) { ext = e; ch = k2; } }
+      return { ext: ext, ch: ch, w: w, score: ext * Math.sqrt(w) };
+    }
+    while (boxes.length < maxColors) {
+      var best = -1, bs = 0, bi = null;
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].length < 2) continue;
+        var s = boxScore(boxes[i]);
+        if (s.ext <= 0.5) continue;
+        if (s.score > bs) { bs = s.score; best = i; bi = s; }
+      }
+      if (best < 0) break;
+      var bx = boxes[best], ch = bi.ch;
+      bx.sort(function (a, b) { return a.c[ch] - b.c[ch]; });
+      var half = bi.w / 2, acc = 0, cut = 0;
+      for (var j = 0; j < bx.length - 1; j++) { acc += bx[j].w; if (acc >= half) { cut = j + 1; break; } }
+      if (cut <= 0 || cut >= bx.length) cut = Math.floor(bx.length / 2);
+      // Snap the cut away from a run of equal values on the split channel so
+      // pixels of the exact same colour (repeated petals, spots, highlights)
+      // never get sliced into two different palette buckets - that produced
+      // paintings where identically-coloured shapes came out as visibly
+      // different colours, most noticeable with small palettes.
+      if (bx[cut - 1].c[ch] === bx[cut].c[ch]) {
+        var vEq = bx[cut].c[ch];
+        var runLo = cut - 1; while (runLo > 0 && bx[runLo - 1].c[ch] === vEq) runLo--;
+        var runHi = cut; while (runHi < bx.length - 1 && bx[runHi + 1].c[ch] === vEq) runHi++;
+        var cutBefore = runLo >= 1 ? runLo : -1;
+        var cutAfter = runHi + 1 <= bx.length - 1 ? runHi + 1 : -1;
+        if (cutBefore < 0) cut = cutAfter < 0 ? cut : cutAfter;
+        else if (cutAfter < 0) cut = cutBefore;
+        else cut = (cut - cutBefore <= cutAfter - cut) ? cutBefore : cutAfter;
+      }
+      boxes.splice(best, 1, bx.slice(0, cut), bx.slice(cut));
+    }
+    var pal = [], assign = {};
+    for (var b = 0; b < boxes.length; b++) {
+      var bx2 = boxes[b], sr = 0, sg = 0, sb = 0, sw = 0;
+      for (var q = 0; q < bx2.length; q++) {
+        var it = bx2[q]; sr += it.c[0] * it.w; sg += it.c[1] * it.w; sb += it.c[2] * it.w; sw += it.w;
+        assign[it.idx] = b;
+      }
+      pal.push([sr / sw, sg / sw, sb / sw]);
+    }
+    return { pal: pal, assign: assign };
+  }
+
+  /* ---------------- union find ---------------- */
+  function UF(n) {
+    var p = new Int32Array(n);
+    for (var i = 0; i < n; i++) p[i] = i;
+    return {
+      find: function (a) { while (p[a] !== a) { p[a] = p[p[a]]; a = p[a]; } return a; },
+      union: function (a, b) { a = this.find(a); b = this.find(b); if (a === b) return false; p[b] = a; return true; }
+    };
+  }
+
+  /* ---------------- difficulty ---------------- */
+  var DIFF = {
+    easy: { key: 'easy', label: 'Easy', target: 60, pal: 10, amp: 0.05, minA: 0.0020, fx: 0 },
+    medium: { key: 'medium', label: 'Medium', target: 130, pal: 16, amp: 0.09, minA: 0.00085, fx: 1 },
+    hard: { key: 'hard', label: 'Hard', target: 260, pal: 24, amp: 0.13, minA: 0.00042, fx: 1 },
+    hardcore: { key: 'hardcore', label: 'Hardcore', target: 460, pal: 32, amp: 0.18, minA: 0.00022, fx: 2 }
+  };
+  var DIFF_ORDER = ['easy', 'medium', 'hard', 'hardcore'];
+
+  /* ---------------- region construction ---------------- */
+  function makeRegions(base, dt, cellV, cfg, full) {
+    var res = base.res, map = base.map, n = res * res;
+    var S = res / 100, cell = Math.max(2, Math.round(cellV * S));
+    var ncx = Math.ceil(res / cell), ncy = Math.ceil(res / cell), NC = ncx * ncy;
+    var lab = new Int32Array(n); lab.fill(-1);
+    var stack = new Int32Array(n);
+    var nl = 0, i, x, y;
+
+    function keyOf(idx) {
+      var xx = idx % res, yy = (idx / res) | 0;
+      return map[idx] * NC + ((yy / cell) | 0) * ncx + ((xx / cell) | 0);
+    }
+
+    var labShape = [], labArea = [], labDelta = [];
+    for (i = 0; i < n; i++) {
+      if (lab[i] !== -1 || map[i] < 0) continue;
+      var k = keyOf(i), id = nl++, sp = 0, area = 0, dsum = 0;
+      stack[sp++] = i; lab[i] = id;
+      while (sp > 0) {
+        var p = stack[--sp];
+        var px = p % res, py = (p / res) | 0;
+        area++; dsum += delta(px, py, res, dt[p], cfg.amp);
+        if (px > 0 && lab[p - 1] === -1 && map[p - 1] >= 0 && keyOf(p - 1) === k) { lab[p - 1] = id; stack[sp++] = p - 1; }
+        if (px < res - 1 && lab[p + 1] === -1 && map[p + 1] >= 0 && keyOf(p + 1) === k) { lab[p + 1] = id; stack[sp++] = p + 1; }
+        if (py > 0 && lab[p - res] === -1 && map[p - res] >= 0 && keyOf(p - res) === k) { lab[p - res] = id; stack[sp++] = p - res; }
+        if (py < res - 1 && lab[p + res] === -1 && map[p + res] >= 0 && keyOf(p + res) === k) { lab[p + res] = id; stack[sp++] = p + res; }
+      }
+      labShape.push(map[i]); labArea.push(area); labDelta.push(dsum / area);
+    }
+
+    // adjacency
+    var adj = new Map();
+    function bump(a, b) {
+      if (a === b) return;
+      var k2 = a < b ? a * 1048576 + b : b * 1048576 + a;
+      adj.set(k2, (adj.get(k2) || 0) + 1);
+    }
+    for (y = 0; y < res; y++) for (x = 0; x < res; x++) {
+      i = y * res + x; var l = lab[i]; if (l < 0) continue;
+      if (x < res - 1 && lab[i + 1] >= 0) bump(l, lab[i + 1]);
+      if (y < res - 1 && lab[i + res] >= 0) bump(l, lab[i + res]);
+    }
+    var nbr = [];
+    for (i = 0; i < nl; i++) nbr.push([]);
+    adj.forEach(function (v, k2) {
+      var a = Math.floor(k2 / 1048576), b = k2 % 1048576;
+      nbr[a].push([b, v]); nbr[b].push([a, v]);
+    });
+
+    // absorb tiny labels into strongest neighbour
+    var uf = UF(nl), area2 = Int32Array.from(labArea);
+    var minA = Math.max(12, Math.round(cfg.minA * n));
+    var order = [];
+    for (i = 0; i < nl; i++) order.push(i);
+    order.sort(function (a, b) { return labArea[a] - labArea[b]; });
+    for (var oi = 0; oi < order.length; oi++) {
+      var L = order[oi], r = uf.find(L);
+      if (area2[r] >= minA) continue;
+      // Prefer a same-shape neighbour so a tiny sliver (eye, highlight, etc.)
+      // never gets absorbed into an adjacent shape of a different colour —
+      // that produced regions that were painted one flat colour while
+      // roughly half their pixels visually belonged to a different shape.
+      // Only fall back to the strongest neighbour of any shape when the
+      // tiny region has no same-shape neighbour to merge into.
+      var bestR = -1, bestW = -1, bestRAny = -1, bestWAny = -1;
+      for (var q = 0; q < nbr[L].length; q++) {
+        var rr = uf.find(nbr[L][q][0]);
+        if (rr === r) continue;
+        var wq = nbr[L][q][1];
+        if (wq > bestWAny) { bestWAny = wq; bestRAny = rr; }
+        if (labShape[rr] === labShape[r] && wq > bestW) { bestW = wq; bestR = rr; }
+      }
+      if (bestR < 0) bestR = bestRAny;
+      if (bestR < 0) continue;
+      var keep = area2[bestR] >= area2[r] ? bestR : r, drop = keep === bestR ? r : bestR;
+      var a1 = area2[keep] + area2[drop];
+      var d1 = (labDelta[keep] * area2[keep] + labDelta[drop] * area2[drop]) / a1;
+      uf.union(keep, drop);
+      var nr = uf.find(keep);
+      area2[nr] = a1; labDelta[nr] = d1; labShape[nr] = labShape[keep];
+    }
+
+    // roots
+    var roots = [], rootIdx = {};
+    for (i = 0; i < nl; i++) { var rt = uf.find(i); if (rootIdx[rt] === undefined) { rootIdx[rt] = roots.length; roots.push(rt); } }
+
+    // colours + quantize
+    var items = [];
+    for (i = 0; i < roots.length; i++) {
+      var rt2 = roots[i], bc = base.cols[labShape[rt2]] || [200, 200, 200];
+      items.push({ c: shift(bc, labDelta[rt2]), w: area2[rt2], idx: i });
+    }
+    var qz = quantize(items, cfg.pal);
+    var palIdx = new Int32Array(roots.length);
+    for (i = 0; i < roots.length; i++) palIdx[i] = qz.assign[i];
+
+    // merge adjacent roots with same shape + same palette index
+    for (var pass = 0; pass < 3; pass++) {
+      var merged = false;
+      adj.forEach(function (v, k2) {
+        var a = uf.find(Math.floor(k2 / 1048576)), b = uf.find(k2 % 1048576);
+        if (a === b) return;
+        var ia = rootIdx[a], ib = rootIdx[b];
+        if (ia === undefined || ib === undefined) return;
+        if (labShape[a] !== labShape[b]) return;
+        if (palIdx[ia] !== palIdx[ib]) return;
+        var keepR = area2[a] >= area2[b] ? a : b, dropR = keepR === a ? b : a;
+        var na = area2[keepR] + area2[dropR];
+        var nd = (labDelta[keepR] * area2[keepR] + labDelta[dropR] * area2[dropR]) / na;
+        var kp = palIdx[rootIdx[keepR]], sh2 = labShape[keepR];
+        uf.union(keepR, dropR);
+        var nr2 = uf.find(keepR);
+        area2[nr2] = na; labDelta[nr2] = nd; labShape[nr2] = sh2;
+        if (rootIdx[nr2] === undefined) rootIdx[nr2] = rootIdx[keepR];
+        palIdx[rootIdx[nr2]] = kp;
+        merged = true;
+      });
+      if (!merged) break;
+    }
+
+    // final root set
+    var finalRoots = [], fmap = {};
+    for (i = 0; i < nl; i++) {
+      var fr = uf.find(i);
+      if (fmap[fr] === undefined) { fmap[fr] = finalRoots.length; finalRoots.push(fr); }
+    }
+    if (!full) return { count: finalRoots.length };
+
+    // palette ordering (light -> dark), drop unused entries
+    var used = {};
+    for (i = 0; i < finalRoots.length; i++) used[palIdx[rootIdx[finalRoots[i]]]] = true;
+    var palList = [];
+    for (i = 0; i < qz.pal.length; i++) if (used[i]) palList.push({ old: i, c: qz.pal[i] });
+    palList.sort(function (a, b) { return luma(b.c) - luma(a.c); });
+    var remap = {};
+    for (i = 0; i < palList.length; i++) remap[palList[i].old] = i;
+
+    // per-pixel region ids
+    var regionMap = new Int32Array(n); regionMap.fill(-1);
+    var counts = new Int32Array(finalRoots.length);
+    for (i = 0; i < n; i++) {
+      var l2 = lab[i];
+      if (l2 < 0) continue;
+      var ri = fmap[uf.find(l2)];
+      regionMap[i] = ri; counts[ri]++;
+    }
+    // pixel index storage
+    var offs = new Int32Array(finalRoots.length + 1);
+    for (i = 0; i < finalRoots.length; i++) offs[i + 1] = offs[i] + counts[i];
+    var cursor = Int32Array.from(offs.subarray(0, finalRoots.length));
+    var pix = new Int32Array(n);
+    var bbox = [];
+    for (i = 0; i < finalRoots.length; i++) bbox.push([res, res, -1, -1]);
+    for (i = 0; i < n; i++) {
+      var ri2 = regionMap[i]; if (ri2 < 0) continue;
+      pix[cursor[ri2]++] = i;
+      var bx3 = bbox[ri2], px3 = i % res, py3 = (i / res) | 0;
+      if (px3 < bx3[0]) bx3[0] = px3; if (py3 < bx3[1]) bx3[1] = py3;
+      if (px3 > bx3[2]) bx3[2] = px3; if (py3 > bx3[3]) bx3[3] = py3;
+    }
+
+    // regions with label anchor (pole of inaccessibility inside bbox)
+    var regions = [];
+    for (i = 0; i < finalRoots.length; i++) {
+      var root = finalRoots[i], b2 = bbox[i];
+      var bw = b2[2] - b2[0] + 1, bh = b2[3] - b2[1] + 1;
+      var loc = new Float32Array(bw * bh);
+      for (var yy2 = 0; yy2 < bh; yy2++) for (var xx2 = 0; xx2 < bw; xx2++) {
+        var gi = (b2[1] + yy2) * res + (b2[0] + xx2);
+        loc[yy2 * bw + xx2] = regionMap[gi] === i ? 1e9 : 0;
+      }
+      // treat outside-bbox as boundary
+      chamferLocal(loc, bw, bh);
+      var bestV = -1, bx4 = b2[0], by4 = b2[1];
+      for (var yy3 = 0; yy3 < bh; yy3++) for (var xx3 = 0; xx3 < bw; xx3++) {
+        var v2 = loc[yy3 * bw + xx3];
+        if (v2 > bestV) { bestV = v2; bx4 = b2[0] + xx3; by4 = b2[1] + yy3; }
+      }
+      regions.push({
+        id: i, num: remap[palIdx[rootIdx[root]]] + 1, area: counts[i],
+        x: bx4, y: by4, r: bestV, bbox: b2, off: offs[i], len: counts[i]
+      });
+    }
+
+    // residual shading per pixel (keeps region average equal to its palette colour)
+    var shade = new Uint8Array(n);
+    for (i = 0; i < finalRoots.length; i++) {
+      var root2 = finalRoots[i], dAvg = labDelta[root2];
+      for (var pi = offs[i]; pi < offs[i] + counts[i]; pi++) {
+        var idx = pix[pi], dxp = idx % res, dyp = (idx / res) | 0;
+        var rsd = delta(dxp, dyp, res, dt[idx], cfg.amp) - dAvg;
+        shade[idx] = clamp(Math.round(128 + rsd * 420), 0, 255);
+      }
+    }
+
+    // outline mask
+    var outline = new Uint8Array(n);
+    for (y = 0; y < res; y++) for (x = 0; x < res; x++) {
+      i = y * res + x; var rv = regionMap[i];
+      var edge = (x === 0 || y === 0 || x === res - 1 || y === res - 1) ? false :
+        (regionMap[i - 1] !== rv || regionMap[i + 1] !== rv || regionMap[i - res] !== rv || regionMap[i + res] !== rv);
+      if (edge) outline[i] = 255;
+    }
+
+    var palette = palList.map(function (p, k) {
+      return { num: k + 1, rgb: [Math.round(p.c[0]), Math.round(p.c[1]), Math.round(p.c[2])], hex: rgb2hex(p.c[0], p.c[1], p.c[2]) };
+    });
+
+    return {
+      res: res, regions: regions, regionMap: regionMap, pix: pix, shade: shade,
+      outline: outline, palette: palette, count: regions.length, cell: cellV
+    };
+  }
+
+  function chamferLocal(d, w, h) {
+    var A = 1, B = 1.41421356, x, y, i, v;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      i = y * w + x; v = d[i];
+      if (v === 0) continue;
+      if (y === 0 || x === 0 || y === h - 1 || x === w - 1) { if (1 < v) v = 1; }
+      if (y > 0) {
+        if (d[i - w] + A < v) v = d[i - w] + A;
+        if (x > 0 && d[i - w - 1] + B < v) v = d[i - w - 1] + B;
+        if (x < w - 1 && d[i - w + 1] + B < v) v = d[i - w + 1] + B;
+      }
+      if (x > 0 && d[i - 1] + A < v) v = d[i - 1] + A;
+      d[i] = v;
+    }
+    for (y = h - 1; y >= 0; y--) for (x = w - 1; x >= 0; x--) {
+      i = y * w + x; v = d[i];
+      if (v === 0) continue;
+      if (y < h - 1) {
+        if (d[i + w] + A < v) v = d[i + w] + A;
+        if (x > 0 && d[i + w - 1] + B < v) v = d[i + w - 1] + B;
+        if (x < w - 1 && d[i + w + 1] + B < v) v = d[i + w + 1] + B;
+      }
+      if (x < w - 1 && d[i + 1] + A < v) v = d[i + 1] + A;
+      d[i] = v;
+    }
+  }
+
+  /* ---------------- puzzle build (auto-tuned cell size) ---------------- */
+  var CELLS = [60, 46, 36, 28, 22, 18, 15, 12.5, 10.5, 9, 7.8, 6.8, 6, 5.3, 4.7, 4.2, 3.8, 3.4, 3.1, 2.8];
+
+  function buildPuzzle(pic, diffKey, opts) {
+    opts = opts || {};
+    var cfg = DIFF[diffKey];
+    var res = opts.res || 512, sres = opts.searchRes || 256;
+    var sbase = rasterize(pic, sres), sdt = edgeDT(sbase.map, sres);
+    // binary search for the cell size whose region count is nearest the target
+    var lo = 0, hi = CELLS.length - 1, bestI = 0, bestD = 1e9;
+    var seen = {};
+    while (lo <= hi) {
+      var mid = (lo + hi) >> 1;
+      var c = seen[mid];
+      if (c === undefined) { c = makeRegions(sbase, sdt, CELLS[mid], cfg, false).count; seen[mid] = c; }
+      var dd = Math.abs(c - cfg.target);
+      if (dd < bestD) { bestD = dd; bestI = mid; }
+      if (c < cfg.target) lo = mid + 1; else hi = mid - 1;
+    }
+    var fbase = rasterize(pic, res), fdt = edgeDT(fbase.map, res);
+    var out = makeRegions(fbase, fdt, CELLS[bestI], cfg, true);
+    out.pic = pic.id; out.diff = diffKey; out.cfg = cfg;
+    return out;
+  }
+
+  /* ---------------- view transform + hit test ---------------- */
+  // view: {zoom, panX, panY, size} — size = on-screen square edge in CSS px
+  function screenToImage(view, sx, sy) {
+    var s = view.size * view.zoom;
+    return { x: (sx - view.panX) / s * view.res, y: (sy - view.panY) / s * view.res };
+  }
+  function imageToScreen(view, ix, iy) {
+    var s = view.size * view.zoom;
+    return { x: ix / view.res * s + view.panX, y: iy / view.res * s + view.panY };
+  }
+  function hitTest(pz, ix, iy, radius) {
+    var res = pz.res, x = Math.round(ix), y = Math.round(iy);
+    if (x < 0 || y < 0 || x >= res || y >= res) return -1;
+    var r = pz.regionMap[y * res + x];
+    if (r >= 0) return r;
+    var R = radius || 3;
+    for (var d = 1; d <= R; d++) {
+      for (var a = 0; a < 12; a++) {
+        var t = a / 12 * Math.PI * 2;
+        var nx = Math.round(x + Math.cos(t) * d), ny = Math.round(y + Math.sin(t) * d);
+        if (nx < 0 || ny < 0 || nx >= res || ny >= res) continue;
+        var rr = pz.regionMap[ny * res + nx];
+        if (rr >= 0) return rr;
+      }
+    }
+    return -1;
+  }
+  // full screen->region path, exactly as the player experiences it
+  function pickAt(pz, view, sx, sy) {
+    var p = screenToImage(view, sx, sy);
+    return hitTest(pz, p.x, p.y, 4);
+  }
+
+  /* ---------------- thumbnail (finished art, small) ---------------- */
+  function thumbPixels(pic, size) {
+    var b = rasterize(pic, size), dt = edgeDT(b.map, size);
+    var out = new Uint8ClampedArray(size * size * 4);
+    for (var i = 0; i < size * size; i++) {
+      var s = b.map[i], c = s >= 0 ? b.cols[s] : [255, 255, 255];
+      var d2 = delta(i % size, (i / size) | 0, size, dt[i], 0.10);
+      var cc = shift(c, d2);
+      out[i * 4] = cc[0]; out[i * 4 + 1] = cc[1]; out[i * 4 + 2] = cc[2]; out[i * 4 + 3] = 255;
+    }
+    return out;
+  }
+
+  return {
+    DIFF: DIFF, DIFF_ORDER: DIFF_ORDER,
+    hex2rgb: hex2rgb, rgb2hex: rgb2hex, luma: luma, shift: shift, clamp: clamp,
+    rasterize: rasterize, edgeDT: edgeDT, buildPuzzle: buildPuzzle, makeRegions: makeRegions,
+    screenToImage: screenToImage, imageToScreen: imageToScreen, hitTest: hitTest, pickAt: pickAt,
+    thumbPixels: thumbPixels, quantize: quantize
+  };
+})();
+// ==ENGINE_END==
+</script>
+<script>
+// ==ART_START==
+/* Pictures live in a 100x100 space. Shapes paint back-to-front.
+   R rect x y w h | C circle cx cy r | E ellipse cx cy rx ry rotDeg
+   P polygon x y ... | B closed smooth blob x y ... | L stroked smooth path width x y ... */
+var CATS = [
+  { id: 'animals', name: 'Animals', icon: '\uD83D\uDC3E' },
+  { id: 'flowers', name: 'Flowers', icon: '\uD83C\uDF3C' },
+  { id: 'scenery', name: 'Scenery', icon: '\uD83C\uDFDE\uFE0F' },
+  { id: 'wilderness', name: 'Wilderness', icon: '\uD83C\uDF32' },
+  { id: 'space', name: 'Space', icon: '\uD83D\uDE80' },
+  { id: 'underwater', name: 'Underwater', icon: '\uD83D\uDC1F' },
+  { id: 'food', name: 'Food', icon: '\uD83C\uDF53' }
+];
+
+var PICTURES = [
+  /* ---------------- ANIMALS ---------------- */
+  {
+    id: 'cat', cat: 'animals', name: 'Tabby Cat', s: [
+      ['R', '#d9ecf5', 0, 0, 100, 100],
+      ['R', '#bfe0cf', 0, 72, 100, 28],
+      ['E', '#a3d3b6', 18, 74, 24, 7, 0],
+      ['E', '#a3d3b6', 84, 76, 26, 8, 0],
+      ['L', '#e8a05a', 7, 68, 84, 84, 80, 90, 64, 80, 56],
+      ['B', '#f0a95e', 50, 92, 30, 88, 24, 72, 30, 56, 50, 50, 70, 56, 76, 72, 70, 88],
+      ['P', '#f0a95e', 31, 44, 27, 21, 45, 32],
+      ['P', '#f0a95e', 69, 44, 73, 21, 55, 32],
+      ['P', '#f7c4b0', 33, 42, 30, 27, 42, 34],
+      ['P', '#f7c4b0', 67, 42, 70, 27, 58, 34],
+      ['E', '#f5b672', 50, 42, 25, 21, 0],
+      ['E', '#e08c46', 50, 25, 10, 3.5, 0],
+      ['E', '#fff0dd', 50, 52, 16, 10, 0],
+      ['C', '#3a3a46', 40, 38, 4.8],
+      ['C', '#3a3a46', 60, 38, 4.8],
+      ['C', '#ffffff', 41.6, 36.4, 1.9],
+      ['C', '#ffffff', 61.6, 36.4, 1.9],
+      ['P', '#e0768a', 50, 47, 46, 43.5, 54, 43.5],
+      ['L', '#4a4a58', 0.9, 22, 47, 34, 50],
+      ['L', '#4a4a58', 0.9, 22, 55, 34, 53],
+      ['L', '#4a4a58', 0.9, 78, 47, 66, 50],
+      ['L', '#4a4a58', 0.9, 78, 55, 66, 53],
+      ['E', '#e08c46', 36, 68, 8, 4, 12],
+      ['E', '#e08c46', 64, 68, 8, 4, -12],
+      ['E', '#fff0dd', 50, 82, 13, 9, 0]
+    ]
+  },
+  {
+    id: 'fox', cat: 'animals', name: 'Little Fox', s: [
+      ['R', '#eaf2f7', 0, 0, 100, 100],
+      ['R', '#e6efe0', 0, 70, 100, 30],
+      ['E', '#d5e6cd', 50, 72, 62, 9, 0],
+      ['P', '#e07a3c', 20, 88, 3, 60, 32, 72],
+      ['P', '#fff6ec', 21, 82, 9, 63, 26, 71],
+      ['B', '#e07a3c', 50, 92, 32, 90, 27, 74, 33, 61, 50, 55, 67, 61, 73, 74, 68, 90],
+      ['E', '#fff6ec', 50, 84, 13, 10, 0],
+      ['P', '#e07a3c', 31, 46, 23, 19, 45, 34],
+      ['P', '#e07a3c', 69, 46, 77, 19, 55, 34],
+      ['P', '#3b3540', 32, 43, 26, 25, 41, 35],
+      ['P', '#3b3540', 68, 43, 74, 25, 59, 35],
+      ['P', '#eb8a48', 50, 20, 27, 41, 73, 41],
+      ['P', '#e07a3c', 27, 41, 50, 66, 73, 41],
+      ['P', '#fff6ec', 50, 66, 36, 45, 64, 45],
+      ['C', '#2f2b35', 39, 42, 3.6],
+      ['C', '#2f2b35', 61, 42, 3.6],
+      ['C', '#ffffff', 40, 41, 1.3],
+      ['C', '#ffffff', 62, 41, 1.3],
+      ['P', '#2f2b35', 50, 60, 45.5, 54, 54.5, 54],
+      ['P', '#3b3540', 34, 90, 30, 96, 40, 96],
+      ['P', '#3b3540', 66, 90, 60, 96, 70, 96]
+    ]
+  },
+  {
+    id: 'owl', cat: 'animals', name: 'Night Owl', s: [
+      ['R', '#26314f', 0, 0, 100, 100],
+      ['R', '#1c2540', 0, 62, 100, 38],
+      ['C', '#f6e7a6', 78, 18, 12],
+      ['C', '#e8d68c', 82, 15, 3],
+      ['C', '#dfe8ff', 14, 12, 1.4],
+      ['C', '#dfe8ff', 28, 24, 1.1],
+      ['C', '#dfe8ff', 46, 10, 1.3],
+      ['C', '#dfe8ff', 62, 28, 1],
+      ['C', '#dfe8ff', 8, 40, 1.2],
+      ['L', '#6b4a34', 8, 4, 90, 38, 85, 72, 87, 98, 82],
+      ['B', '#8a6a4e', 50, 88, 30, 84, 24, 66, 31, 44, 50, 33, 69, 44, 76, 66, 70, 84],
+      ['B', '#c9a97e', 50, 85, 37, 78, 33, 63, 41, 51, 59, 51, 67, 63, 63, 78],
+      ['P', '#8a6a4e', 32, 42, 25, 24, 43, 34],
+      ['P', '#8a6a4e', 68, 42, 75, 24, 57, 34],
+      ['C', '#f2e7d5', 39, 50, 11],
+      ['C', '#f2e7d5', 61, 50, 11],
+      ['C', '#3a3340', 39, 50, 6.2],
+      ['C', '#3a3340', 61, 50, 6.2],
+      ['C', '#ffffff', 41, 48, 2.1],
+      ['C', '#ffffff', 63, 48, 2.1],
+      ['P', '#e8a83c', 50, 64, 45.5, 56, 54.5, 56],
+      ['P', '#6b5240', 27, 70, 21, 84, 33, 84],
+      ['P', '#6b5240', 73, 70, 79, 84, 67, 84],
+      ['P', '#e8a83c', 43, 88, 38, 95, 48, 95],
+      ['P', '#e8a83c', 57, 88, 52, 95, 62, 95]
+    ]
+  },
+  {
+    id: 'panda', cat: 'animals', name: 'Bamboo Panda', s: [
+      ['R', '#dcefe0', 0, 0, 100, 100],
+      ['R', '#c2e2c8', 0, 74, 100, 26],
+      ['L', '#7fae5c', 6, 13, 76, 11, 50, 19, 30],
+      ['L', '#7fae5c', 6, 89, 76, 93, 52, 87, 32],
+      ['P', '#8fc06a', 19, 31, 4, 24, 16, 20],
+      ['P', '#8fc06a', 87, 33, 99, 25, 89, 21],
+      ['C', '#2e2b32', 28, 22, 8.5],
+      ['C', '#2e2b32', 72, 22, 8.5],
+      ['B', '#ffffff', 50, 93, 32, 90, 26, 75, 32, 60, 50, 54, 68, 60, 74, 75, 68, 90],
+      ['E', '#2e2b32', 28, 66, 8, 11, 12],
+      ['E', '#2e2b32', 72, 66, 8, 11, -12],
+      ['E', '#2e2b32', 37, 90, 9, 6, 0],
+      ['E', '#2e2b32', 63, 90, 9, 6, 0],
+      ['E', '#ffffff', 50, 41, 24, 21, 0],
+      ['E', '#2e2b32', 39, 38, 7, 8.5, -15],
+      ['E', '#2e2b32', 61, 38, 7, 8.5, 15],
+      ['C', '#ffffff', 39, 38, 3.4],
+      ['C', '#ffffff', 61, 38, 3.4],
+      ['C', '#2e2b32', 40, 38.5, 1.7],
+      ['C', '#2e2b32', 62, 38.5, 1.7],
+      ['E', '#2e2b32', 50, 51, 4.6, 3.2, 0],
+      ['L', '#2e2b32', 1.2, 44, 57, 50, 54, 56, 57]
+    ]
+  },
+  {
+    id: 'bunny', cat: 'animals', name: 'Garden Bunny', s: [
+      ['R', '#dcefe0', 0, 0, 100, 100],
+      ['R', '#c9e8c0', 0, 74, 100, 26],
+      ['E', '#b8dcae', 50, 76, 60, 8, 0],
+      ['E', '#f4e8d8', 32, 26, 9, 20, -18],
+      ['E', '#f9d3d9', 32, 28, 5, 15, -18],
+      ['E', '#f4e8d8', 68, 26, 9, 20, 18],
+      ['E', '#f9d3d9', 68, 28, 5, 15, 18],
+      ['B', '#faf3e6', 50, 92, 28, 88, 22, 68, 30, 50, 50, 44, 70, 50, 78, 68, 72, 88],
+      ['E', '#ffffff', 50, 66, 15, 12, 0],
+      ['C', '#3a3a46', 40, 56, 4],
+      ['C', '#3a3a46', 60, 56, 4],
+      ['C', '#ffffff', 41.4, 54.8, 1.5],
+      ['C', '#ffffff', 61.4, 54.8, 1.5],
+      ['P', '#e792a0', 50, 63, 46.5, 60, 53.5, 60],
+      ['L', '#c9a8a8', 0.8, 40, 66, 22, 62],
+      ['L', '#c9a8a8', 0.8, 40, 70, 22, 72],
+      ['L', '#c9a8a8', 0.8, 60, 66, 78, 62],
+      ['L', '#c9a8a8', 0.8, 60, 70, 78, 72],
+      ['E', '#f4c9d0', 34, 66, 6, 4, 8],
+      ['E', '#f4c9d0', 66, 66, 6, 4, -8],
+      ['E', '#faf3e6', 50, 96, 20, 8, 0],
+      ['C', '#ffffff', 50, 98, 8],
+      ['C', '#f5c531', 16, 86, 3.6],
+      ['C', '#f5c531', 84, 90, 3]
+    ]
+  },
+  {
+    id: 'hedgehog', cat: 'animals', name: 'Little Hedgehog', s: [
+      ['R', '#eef2df', 0, 0, 100, 100],
+      ['R', '#cfe6b0', 0, 78, 100, 22],
+      ['E', '#bcdb9c', 50, 80, 66, 7, 0],
+      ['B', '#8a6a4a', 50, 34, 20, 40, 16, 58, 26, 70, 50, 76, 74, 70, 84, 58, 80, 40],
+      ['P', '#6b4e34', 50, 22, 30, 40, 70, 40],
+      ['P', '#6b4e34', 26, 34, 12, 48, 34, 52],
+      ['P', '#6b4e34', 74, 34, 88, 48, 66, 52],
+      ['P', '#7a5a3c', 34, 26, 22, 42, 44, 44],
+      ['P', '#7a5a3c', 66, 26, 78, 42, 56, 44],
+      ['E', '#e8d3b0', 50, 62, 20, 16, 0],
+      ['P', '#e8d3b0', 50, 58, 44, 66, 56, 66],
+      ['C', '#2f2b32', 50, 58, 3.4],
+      ['C', '#3a3a46', 40, 54, 3],
+      ['C', '#3a3a46', 60, 54, 3],
+      ['C', '#ffffff', 41, 53, 1.1],
+      ['C', '#ffffff', 61, 53, 1.1],
+      ['C', '#d9642e', 20, 20, 3],
+      ['L', '#4f8a44', 1.2, 20, 17, 22, 13],
+      ['C', '#f5c531', 82, 84, 3],
+      ['C', '#f5c531', 88, 90, 2.4]
+    ]
+  },
+
+  /* ---------------- FLOWERS ---------------- */
+  {
+    id: 'sunflower', cat: 'flowers', name: 'Sunflower', s: [
+      ['R', '#a8d8ef', 0, 0, 100, 100],
+      ['R', '#8bc98a', 0, 78, 100, 22],
+      ['E', '#79bb79', 50, 80, 70, 8, 0],
+      ['L', '#4e8f3f', 5, 50, 100, 52, 74, 49, 58],
+      ['P', '#6aa84f', 49, 72, 24, 60, 30, 80],
+      ['P', '#6aa84f', 52, 66, 76, 54, 73, 74],
+      ['E', '#f5c145', 70, 42, 11, 5, 0],
+      ['E', '#eab029', 67.3, 52, 11, 5, 30],
+      ['E', '#f5c145', 60, 59.3, 11, 5, 60],
+      ['E', '#eab029', 50, 62, 11, 5, 90],
+      ['E', '#f5c145', 40, 59.3, 11, 5, 120],
+      ['E', '#eab029', 32.7, 52, 11, 5, 150],
+      ['E', '#f5c145', 30, 42, 11, 5, 180],
+      ['E', '#eab029', 32.7, 32, 11, 5, 210],
+      ['E', '#f5c145', 40, 24.7, 11, 5, 240],
+      ['E', '#eab029', 50, 22, 11, 5, 270],
+      ['E', '#f5c145', 60, 24.7, 11, 5, 300],
+      ['E', '#eab029', 67.3, 32, 11, 5, 330],
+      ['C', '#8a5220', 50, 42, 15],
+      ['C', '#5e3618', 50, 42, 10.5],
+      ['C', '#7a4622', 50, 42, 5],
+      ['C', '#f7f0c0', 22, 22, 5],
+      ['C', '#f7f0c0', 82, 66, 4]
+    ]
+  },
+  {
+    id: 'tulips', cat: 'flowers', name: 'Tulip Trio', s: [
+      ['R', '#eaf4fb', 0, 0, 100, 100],
+      ['R', '#9fd0a0', 0, 80, 100, 20],
+      ['E', '#8cc48f', 50, 82, 74, 8, 0],
+      ['L', '#4f9145', 3.5, 30, 96, 28, 62, 30, 48],
+      ['L', '#4f9145', 3.5, 50, 98, 50, 56, 50, 40],
+      ['L', '#4f9145', 3.5, 70, 96, 72, 64, 70, 50],
+      ['P', '#5aa04f', 29, 82, 12, 70, 20, 88],
+      ['P', '#5aa04f', 50, 86, 66, 72, 62, 90],
+      ['P', '#5aa04f', 71, 84, 88, 74, 82, 90],
+      ['B', '#e4557a', 30, 54, 21, 45, 22, 34, 26, 40, 30, 30, 34, 40, 38, 34, 39, 45],
+      ['B', '#f0a23c', 50, 46, 41, 37, 42, 26, 46, 32, 50, 22, 54, 32, 58, 26, 59, 37],
+      ['B', '#b06ad0', 70, 56, 61, 47, 62, 36, 66, 42, 70, 32, 74, 42, 78, 36, 79, 47],
+      ['E', '#c8446a', 30, 44, 4, 8, 0],
+      ['E', '#d8892c', 50, 36, 4, 8, 0],
+      ['E', '#9855b8', 70, 46, 4, 8, 0],
+      ['C', '#f7d6e0', 12, 30, 3],
+      ['C', '#f7d6e0', 88, 24, 4],
+      ['C', '#f7d6e0', 20, 16, 2.4]
+    ]
+  },
+  {
+    id: 'rose', cat: 'flowers', name: 'Single Rose', s: [
+      ['R', '#f6ecf2', 0, 0, 100, 100],
+      ['E', '#ecdce6', 50, 78, 66, 24, 0],
+      ['L', '#4a8a44', 4.5, 50, 100, 53, 72, 50, 56],
+      ['P', '#5aa04f', 52, 82, 80, 70, 74, 88],
+      ['P', '#5aa04f', 49, 72, 20, 62, 26, 80],
+      ['P', '#3f7a3a', 51, 62, 62, 58, 58, 66],
+      ['B', '#b8294a', 50, 66, 26, 54, 28, 32, 50, 22, 72, 32, 74, 54],
+      ['E', '#cf3a5c', 36, 36, 12, 10, -25],
+      ['E', '#cf3a5c', 64, 36, 12, 10, 25],
+      ['E', '#cf3a5c', 50, 58, 14, 9, 0],
+      ['C', '#dd536f', 50, 42, 15],
+      ['E', '#e8788c', 44, 38, 9, 7, -20],
+      ['E', '#e8788c', 57, 45, 8, 6, 30],
+      ['C', '#c22f52', 50, 42, 7],
+      ['E', '#f0a0ae', 50, 39, 4.5, 3, 0],
+      ['C', '#f4dbe4', 18, 24, 4],
+      ['C', '#f4dbe4', 84, 34, 3]
+    ]
+  },
+  {
+    id: 'daisies', cat: 'flowers', name: 'Daisy Meadow', s: [
+      ['R', '#bfe6f5', 0, 0, 100, 100],
+      ['C', '#fff3c4', 82, 16, 11],
+      ['R', '#93cf82', 0, 62, 100, 38],
+      ['E', '#7fc06e', 26, 64, 44, 10, 0],
+      ['E', '#7fc06e', 80, 68, 44, 10, 0],
+      ['L', '#4e9142', 3, 30, 96, 29, 66, 31, 54],
+      ['L', '#4e9142', 3, 58, 98, 60, 74, 58, 62],
+      ['L', '#4e9142', 3, 78, 96, 79, 78, 77, 70],
+      ['E', '#ffffff', 31, 44, 5, 11, 0],
+      ['E', '#ffffff', 31, 44, 11, 5, 0],
+      ['E', '#f2f2f2', 31, 44, 8, 8, 45],
+      ['C', '#f5c531', 31, 44, 4.6],
+      ['E', '#ffffff', 58, 54, 4, 9, 0],
+      ['E', '#ffffff', 58, 54, 9, 4, 0],
+      ['E', '#f2f2f2', 58, 54, 6.5, 6.5, 45],
+      ['C', '#f5c531', 58, 54, 3.8],
+      ['E', '#ffffff', 77, 62, 3.4, 7.5, 0],
+      ['E', '#ffffff', 77, 62, 7.5, 3.4, 0],
+      ['C', '#f5c531', 77, 62, 3.2],
+      ['C', '#ffffff', 12, 76, 3],
+      ['C', '#ffffff', 46, 84, 3.4],
+      ['C', '#ffffff', 90, 88, 3]
+    ]
+  },
+  {
+    id: 'poppy', cat: 'flowers', name: 'Red Poppy', s: [
+      ['R', '#cdeaf5', 0, 0, 100, 100],
+      ['R', '#9ed08a', 0, 76, 100, 24],
+      ['E', '#8cc478', 50, 78, 70, 8, 0],
+      ['L', '#4f8f3f', 4, 50, 96, 52, 66, 50, 46],
+      ['L', '#4f8f3f', 4, 30, 94, 32, 62, 30, 42],
+      ['L', '#4f8f3f', 4, 70, 98, 68, 70, 70, 50],
+      ['P', '#3f7a3a', 50, 60, 40, 50, 44, 44],
+      ['P', '#3f7a3a', 50, 64, 60, 54, 56, 48],
+      ['B', '#e0362e', 50, 56, 30, 48, 26, 30, 40, 20, 50, 24, 60, 20, 74, 30, 70, 48],
+      ['E', '#c8241e', 36, 40, 12, 16, -20],
+      ['E', '#c8241e', 64, 40, 12, 16, 20],
+      ['C', '#2f2b32', 50, 40, 10],
+      ['C', '#4a4038', 50, 40, 6],
+      ['C', '#8a7a20', 50, 40, 3],
+      ['C', '#f2e8b0', 20, 20, 4],
+      ['C', '#f2e8b0', 82, 16, 3],
+      ['C', '#f2e8b0', 88, 40, 2.4]
+    ]
+  },
+  {
+    id: 'cherryblossom', cat: 'flowers', name: 'Cherry Blossom', s: [
+      ['R', '#fbe9ee', 0, 0, 100, 100],
+      ['R', '#f6d3dd', 0, 70, 100, 30],
+      ['L', '#6b4a34', 5, 6, 70, 26, 50, 48, 40, 70, 30],
+      ['L', '#6b4a34', 3, 48, 40, 66, 30, 84, 18],
+      ['L', '#6b4a34', 3, 40, 46, 30, 30, 22, 18],
+      ['C', '#f9c9d6', 20, 26, 10],
+      ['C', '#fbb8ca', 30, 18, 8],
+      ['C', '#f9c9d6', 40, 30, 9],
+      ['C', '#fbb8ca', 66, 20, 9],
+      ['C', '#f9c9d6', 78, 14, 7],
+      ['C', '#fbb8ca', 84, 26, 8],
+      ['C', '#f9c9d6', 56, 12, 6],
+      ['C', '#ffe3ea', 24, 24, 3],
+      ['C', '#ffe3ea', 68, 18, 2.6],
+      ['C', '#e88aa0', 20, 26, 2],
+      ['C', '#e88aa0', 66, 20, 1.8],
+      ['E', '#f6d3dd', 50, 86, 40, 6, 0],
+      ['C', '#fbc7d3', 30, 90, 2.4],
+      ['C', '#fbc7d3', 60, 88, 2],
+      ['C', '#fbc7d3', 74, 92, 2.2]
+    ]
+  },
+
+  /* ---------------- SCENERY ---------------- */
+  {
+    id: 'sunset', cat: 'scenery', name: 'Sunset Beach', s: [
+      ['R', '#3f3d6e', 0, 0, 100, 16],
+      ['R', '#8a5a86', 0, 16, 100, 12],
+      ['R', '#e0736b', 0, 28, 100, 12],
+      ['R', '#f6a663', 0, 40, 100, 10],
+      ['R', '#ffd18a', 0, 50, 100, 8],
+      ['C', '#fff3b8', 52, 58, 11],
+      ['R', '#5a4a86', 0, 58, 100, 16],
+      ['R', '#6f5b9c', 0, 64, 100, 6],
+      ['R', '#ffc98a', 47, 58, 10, 16],
+      ['R', '#f0d9a8', 0, 74, 100, 26],
+      ['E', '#dcc190', 50, 75, 76, 5, 0],
+      ['E', '#e8cf9e', 20, 90, 26, 6, 0],
+      ['L', '#6b4a30', 4, 16, 100, 13, 76, 18, 54],
+      ['P', '#2f7a5c', 18, 54, 2, 44, 10, 58],
+      ['P', '#2f7a5c', 18, 54, 34, 42, 30, 58],
+      ['P', '#3c8f68', 18, 54, 6, 62, 16, 62],
+      ['P', '#3c8f68', 18, 54, 32, 62, 20, 64],
+      ['C', '#8a6a3c', 20, 58, 2.2],
+      ['L', '#3f3d6e', 1.2, 66, 22, 70, 19, 74, 22],
+      ['L', '#3f3d6e', 1.2, 78, 15, 81, 12.5, 84, 15],
+      ['E', '#c9a878', 68, 92, 9, 4, 0],
+      ['C', '#b8946a', 74, 88, 2.4]
+    ]
+  },
+  {
+    id: 'lake', cat: 'scenery', name: 'Mountain Lake', s: [
+      ['R', '#bfe2f2', 0, 0, 100, 100],
+      ['R', '#a8d6ee', 0, 0, 100, 22],
+      ['C', '#fdf3c8', 76, 18, 8],
+      ['P', '#7d8fa8', 0, 60, 24, 20, 48, 60],
+      ['P', '#f4f7fb', 24, 20, 15, 35, 24, 31, 33, 35],
+      ['P', '#6b7d96', 34, 60, 62, 14, 92, 60],
+      ['P', '#eef3f9', 62, 14, 51, 32, 62, 27, 73, 32],
+      ['P', '#8b9cb4', 70, 60, 96, 30, 100, 60],
+      ['R', '#3f6b4e', 0, 54, 100, 10],
+      ['P', '#2f5a41', 8, 56, 14, 40, 20, 56],
+      ['P', '#2f5a41', 30, 57, 36, 42, 42, 57],
+      ['P', '#2f5a41', 62, 57, 68, 41, 74, 57],
+      ['P', '#2f5a41', 84, 56, 90, 42, 96, 56],
+      ['R', '#4a86ac', 0, 62, 100, 38],
+      ['R', '#3d7398', 0, 74, 100, 26],
+      ['P', '#5a94b8', 0, 62, 24, 84, 48, 62],
+      ['P', '#5a94b8', 34, 62, 62, 90, 92, 62],
+      ['E', '#7fb4d2', 30, 70, 22, 2, 0],
+      ['E', '#7fb4d2', 70, 80, 26, 2.4, 0],
+      ['E', '#7fb4d2', 46, 92, 30, 2.6, 0],
+      ['E', '#8a7a5c', 10, 96, 14, 4, 0],
+      ['C', '#6f6046', 88, 94, 4]
+    ]
+  },
+  {
+    id: 'cottage', cat: 'scenery', name: 'Country Cottage', s: [
+      ['R', '#c6e6f5', 0, 0, 100, 100],
+      ['C', '#ffffff', 20, 16, 7],
+      ['C', '#ffffff', 28, 15, 5.5],
+      ['C', '#ffffff', 74, 12, 6],
+      ['R', '#9ed08a', 0, 58, 100, 42],
+      ['E', '#8ac077', 22, 60, 56, 12, 0],
+      ['E', '#8ac077', 84, 62, 50, 12, 0],
+      ['R', '#e8d9c0', 32, 48, 40, 28],
+      ['P', '#b0533f', 28, 48, 52, 26, 76, 48],
+      ['R', '#8a4132', 60, 30, 7, 12],
+      ['C', '#dfe6ec', 64, 26, 4],
+      ['C', '#dfe6ec', 68, 21, 3],
+      ['R', '#6b4a32', 46, 60, 12, 16],
+      ['C', '#e8c85a', 55, 68, 1.4],
+      ['R', '#8fc4dd', 36, 54, 8, 8],
+      ['R', '#8fc4dd', 62, 54, 8, 8],
+      ['L', '#e8d9c0', 1.2, 40, 54, 40, 62],
+      ['L', '#e8d9c0', 1.2, 66, 54, 66, 62],
+      ['P', '#d8c9a8', 46, 76, 34, 100, 70, 100, 58, 76],
+      ['L', '#5c4028', 3, 12, 92, 14, 74, 18, 66],
+      ['C', '#4a8a52', 18, 60, 11],
+      ['C', '#4a8a52', 10, 66, 8],
+      ['L', '#5c4028', 3, 88, 90, 87, 74, 88, 68],
+      ['C', '#4a8a52', 88, 62, 10]
+    ]
+  },
+  {
+    id: 'skyline', cat: 'scenery', name: 'City Skyline', s: [
+      ['R', '#1f2a4a', 0, 0, 100, 100],
+      ['R', '#2b3a62', 0, 30, 100, 30],
+      ['C', '#f6efc8', 76, 16, 9],
+      ['C', '#e6dfb8', 79, 13, 3],
+      ['C', '#e8eeff', 12, 10, 1.3],
+      ['C', '#e8eeff', 30, 18, 1],
+      ['C', '#e8eeff', 50, 8, 1.2],
+      ['C', '#e8eeff', 62, 24, 0.9],
+      ['R', '#3c4f7a', 4, 44, 14, 34],
+      ['R', '#32456e', 20, 34, 12, 44],
+      ['R', '#46598a', 34, 50, 10, 28],
+      ['R', '#2e4068', 46, 26, 14, 52],
+      ['P', '#2e4068', 46, 26, 53, 16, 60, 26],
+      ['R', '#3c4f7a', 62, 42, 12, 36],
+      ['R', '#32456e', 76, 52, 10, 26],
+      ['R', '#46598a', 88, 38, 10, 40],
+      ['R', '#f5d97a', 7, 48, 3, 3],
+      ['R', '#f5d97a', 13, 56, 3, 3],
+      ['R', '#f5d97a', 23, 40, 3, 3],
+      ['R', '#f5d97a', 27, 52, 3, 3],
+      ['R', '#f5d97a', 37, 56, 3, 3],
+      ['R', '#f5d97a', 50, 32, 3, 3],
+      ['R', '#f5d97a', 55, 44, 3, 3],
+      ['R', '#f5d97a', 65, 48, 3, 3],
+      ['R', '#f5d97a', 70, 60, 3, 3],
+      ['R', '#f5d97a', 79, 58, 3, 3],
+      ['R', '#f5d97a', 91, 44, 3, 3],
+      ['R', '#24406b', 0, 78, 100, 22],
+      ['E', '#3a5c8c', 50, 84, 60, 3, 0],
+      ['E', '#3a5c8c', 30, 92, 46, 3, 0],
+      ['R', '#c9b268', 74, 78, 5, 18]
+    ]
+  },
+  {
+    id: 'lighthouse', cat: 'scenery', name: 'Lighthouse Bay', s: [
+      ['R', '#bfe0f0', 0, 0, 100, 100],
+      ['C', '#fff3b8', 78, 16, 10],
+      ['R', '#3f6b8a', 0, 66, 100, 12],
+      ['R', '#4f86ac', 0, 70, 100, 30],
+      ['E', '#6fa4c8', 30, 76, 26, 3, 0],
+      ['E', '#6fa4c8', 70, 84, 30, 3, 0],
+      ['P', '#7a8a94', 30, 100, 24, 78, 46, 74, 54, 100],
+      ['R', '#f4ede0', 42, 34, 14, 40],
+      ['P', '#e8dcc8', 42, 34, 49, 20, 56, 34],
+      ['R', '#d9432e', 42, 34, 14, 6],
+      ['R', '#d9432e', 42, 50, 14, 6],
+      ['R', '#2f2b32', 47, 42, 4, 6],
+      ['C', '#f5d24c', 49, 24, 5],
+      ['E', '#fdf0b0', 49, 24, 14, 5, 0],
+      ['R', '#8a4132', 46, 74, 8, 20],
+      ['C', '#dfe6ec', 48, 78, 1.2],
+      ['E', '#8a7a5c', 12, 92, 16, 4, 0],
+      ['C', '#6f6046', 14, 90, 3],
+      ['C', '#f7fbff', 20, 30, 3],
+      ['C', '#f7fbff', 26, 24, 2.2]
+    ]
+  },
+  {
+    id: 'windmill', cat: 'scenery', name: 'Windmill Field', s: [
+      ['R', '#dcefe0', 0, 0, 100, 100],
+      ['C', '#fff3b8', 20, 14, 9],
+      ['R', '#a8d888', 0, 68, 100, 32],
+      ['E', '#96cc74', 50, 70, 70, 6, 0],
+      ['P', '#d8c060', 20, 90, 10, 60, 30, 60, 30, 90],
+      ['P', '#d8c060', 50, 92, 40, 62, 60, 62, 60, 92],
+      ['P', '#d8c060', 78, 90, 70, 64, 88, 64, 88, 90],
+      ['P', '#e8dcc0', 62, 40, 78, 40, 74, 70, 66, 70],
+      ['P', '#d8c9a8', 66, 20, 74, 20, 78, 40, 62, 40],
+      ['C', '#4a3524', 70, 22, 2.4],
+      ['L', '#f4ede0', 4, 70, 22, 70, 4],
+      ['L', '#f4ede0', 4, 70, 22, 88, 22],
+      ['L', '#f4ede0', 4, 70, 22, 52, 22],
+      ['L', '#f4ede0', 4, 70, 22, 70, 40],
+      ['R', '#8a4132', 66, 60, 8, 10],
+      ['R', '#dfe6ec', 68, 34, 4, 4],
+      ['C', '#6fae66', 18, 74, 8],
+      ['C', '#5aa04f', 10, 78, 6]
+    ]
+  },
+
+  /* ---------------- WILDERNESS ---------------- */
+  {
+    id: 'forestpath', cat: 'wilderness', name: 'Forest Path', s: [
+      ['R', '#cfe8ef', 0, 0, 100, 100],
+      ['R', '#8fbf84', 0, 40, 100, 60],
+      ['P', '#d8c49a', 44, 44, 30, 100, 74, 100, 56, 44],
+      ['E', '#c8b287', 50, 72, 22, 4, 0],
+      ['E', '#c8b287', 50, 90, 32, 5, 0],
+      ['P', '#3f7a4e', 12, 46, 20, 16, 28, 46],
+      ['P', '#356b44', 14, 54, 20, 28, 26, 54],
+      ['P', '#3f7a4e', 74, 44, 82, 14, 90, 44],
+      ['P', '#356b44', 76, 54, 82, 26, 88, 54],
+      ['L', '#6b4a30', 5, 20, 66, 20, 46],
+      ['L', '#6b4a30', 5, 82, 64, 82, 44],
+      ['L', '#5c3f28', 7, 40, 92, 41, 54, 40, 40],
+      ['C', '#4f9159', 40, 30, 15],
+      ['C', '#45824e', 30, 38, 10],
+      ['C', '#5aa066', 50, 38, 11],
+      ['L', '#5c3f28', 6, 66, 92, 64, 58, 66, 44],
+      ['C', '#4f9159', 66, 34, 13],
+      ['C', '#45824e', 76, 42, 9],
+      ['C', '#5aa066', 58, 42, 9],
+      ['E', '#6fae66', 14, 84, 16, 8, 0],
+      ['E', '#6fae66', 88, 82, 16, 8, 0],
+      ['C', '#e8dc8a', 24, 82, 2],
+      ['C', '#e8a0b0', 84, 78, 2.2],
+      ['E', '#8a7048', 54, 96, 8, 3, 0]
+    ]
+  },
+  {
+    id: 'waterfall', cat: 'wilderness', name: 'Hidden Waterfall', s: [
+      ['R', '#bfe0ea', 0, 0, 100, 100],
+      ['R', '#6f9c74', 0, 0, 100, 30],
+      ['P', '#5e6f6a', 0, 8, 34, 4, 40, 62, 0, 70],
+      ['P', '#4e5f5c', 0, 22, 22, 20, 26, 64, 0, 66],
+      ['P', '#5e6f6a', 66, 4, 100, 10, 100, 70, 60, 62],
+      ['P', '#4e5f5c', 78, 20, 100, 24, 100, 66, 76, 64],
+      ['R', '#dff0f7', 40, 14, 20, 56],
+      ['R', '#c2e2f0', 43, 14, 6, 56],
+      ['R', '#c2e2f0', 54, 16, 5, 54],
+      ['E', '#eaf6fb', 50, 16, 12, 4, 0],
+      ['E', '#4f93b0', 50, 78, 40, 14, 0],
+      ['E', '#6fb0c8', 50, 74, 28, 8, 0],
+      ['E', '#eaf6fb', 50, 70, 16, 5, 0],
+      ['C', '#ffffff', 40, 72, 3.4],
+      ['C', '#ffffff', 60, 74, 3],
+      ['C', '#ffffff', 50, 66, 2.6],
+      ['R', '#4e7f52', 0, 84, 100, 16],
+      ['E', '#3f6b46', 14, 86, 32, 8, 0],
+      ['E', '#3f6b46', 88, 88, 30, 8, 0],
+      ['C', '#7a8a84', 22, 90, 6],
+      ['C', '#8a9a92', 78, 92, 5],
+      ['L', '#4a3524', 4, 12, 84, 12, 62, 16, 50],
+      ['C', '#3f7a4e', 14, 44, 11],
+      ['C', '#4a8a58', 6, 52, 8],
+      ['C', '#3f7a4e', 90, 40, 10]
+    ]
+  },
+  {
+    id: 'autumn', cat: 'wilderness', name: 'Autumn Woods', s: [
+      ['R', '#f4e0bc', 0, 0, 100, 100],
+      ['R', '#e0c898', 0, 68, 100, 32],
+      ['E', '#d4b884', 50, 70, 80, 8, 0],
+      ['L', '#6b4832', 6, 18, 76, 17, 46, 20, 32],
+      ['L', '#6b4832', 5, 50, 74, 51, 44, 49, 30],
+      ['L', '#6b4832', 5, 82, 76, 83, 48, 81, 34],
+      ['C', '#d9642e', 18, 28, 16],
+      ['C', '#e8873c', 10, 38, 10],
+      ['C', '#c74f24', 28, 38, 11],
+      ['C', '#e8a63c', 50, 26, 15],
+      ['C', '#d9642e', 42, 36, 10],
+      ['C', '#f0bf4c', 60, 36, 10],
+      ['C', '#c74f24', 82, 30, 14],
+      ['C', '#d9642e', 92, 40, 9],
+      ['C', '#e8873c', 72, 40, 9],
+      ['E', '#c9782e', 26, 82, 5, 2.4, 20],
+      ['E', '#d99a3c', 44, 88, 5, 2.4, -20],
+      ['E', '#b8532a', 64, 80, 5, 2.4, 35],
+      ['E', '#c9782e', 80, 90, 5, 2.4, -10],
+      ['E', '#d99a3c', 10, 90, 5, 2.4, 15],
+      ['C', '#8a6a4a', 34, 94, 3],
+      ['E', '#f2d9a8', 66, 94, 10, 3.4, 0]
+    ]
+  },
+  {
+    id: 'desert', cat: 'wilderness', name: 'Desert Cactus', s: [
+      ['R', '#f7c98a', 0, 0, 100, 46],
+      ['R', '#f0a86a', 0, 0, 100, 22],
+      ['C', '#fff0b8', 74, 20, 10],
+      ['R', '#e8b878', 0, 46, 100, 54],
+      ['E', '#dda766', 22, 48, 56, 10, 0],
+      ['E', '#dda766', 84, 52, 50, 10, 0],
+      ['E', '#d19a5c', 50, 76, 90, 16, 0],
+      ['L', '#3f8a52', 12, 46, 92, 46, 34],
+      ['L', '#3f8a52', 8, 30, 74, 30, 58, 40, 52],
+      ['L', '#3f8a52', 8, 64, 80, 64, 66, 54, 60],
+      ['E', '#4e9c60', 46, 46, 5, 12, 0],
+      ['L', '#347044', 1.4, 46, 40, 46, 84],
+      ['L', '#347044', 1.4, 30, 62, 30, 74],
+      ['C', '#e05a72', 46, 32, 3.4],
+      ['C', '#e05a72', 30, 56, 2.6],
+      ['L', '#3f8a52', 6, 84, 92, 84, 74],
+      ['L', '#3f8a52', 4, 78, 84, 74, 76],
+      ['C', '#8a7a5c', 14, 88, 5],
+      ['C', '#9a8a68', 20, 92, 3.4],
+      ['E', '#c98f52', 66, 92, 12, 4, 0],
+      ['P', '#c0d8e8', 6, 30, 12, 26, 18, 30, 12, 32],
+      ['E', '#dda766', 92, 88, 14, 5, 0]
+    ]
+  },
+  {
+    id: 'campfire', cat: 'wilderness', name: 'Campfire Night', s: [
+      ['R', '#1c2440', 0, 0, 100, 100],
+      ['C', '#f6efc8', 78, 16, 10],
+      ['C', '#e8eeff', 12, 10, 1.3],
+      ['C', '#e8eeff', 30, 20, 1],
+      ['C', '#e8eeff', 50, 10, 1.2],
+      ['C', '#e8eeff', 62, 28, 1],
+      ['R', '#2b3a2e', 0, 70, 100, 30],
+      ['E', '#233024', 50, 72, 60, 6, 0],
+      ['P', '#3a5c40', 10, 40, 4, 70, 22, 70],
+      ['P', '#3a5c40', 90, 36, 96, 70, 78, 70],
+      ['C', '#5c4a34', 50, 84, 12],
+      ['C', '#3a2e22', 50, 84, 8],
+      ['P', '#8a6a48', 40, 84, 46, 68, 52, 84],
+      ['P', '#8a6a48', 60, 84, 54, 68, 48, 84],
+      ['B', '#f5a63c', 50, 82, 44, 74, 46, 64, 50, 56, 54, 64, 56, 74],
+      ['B', '#f5d24c', 50, 80, 46, 74, 48, 66, 50, 60, 52, 66, 54, 74],
+      ['E', '#fff0b0', 50, 74, 4, 6, 0],
+      ['C', '#e8873c', 30, 88, 4],
+      ['C', '#e8873c', 70, 88, 4],
+      ['C', '#c9782e', 20, 92, 3],
+      ['C', '#c9782e', 80, 92, 3]
+    ]
+  },
+  {
+    id: 'birchgrove', cat: 'wilderness', name: 'Birch Grove', s: [
+      ['R', '#e6f2ea', 0, 0, 100, 100],
+      ['R', '#c8e6c0', 0, 70, 100, 30],
+      ['E', '#b8dcae', 50, 72, 66, 6, 0],
+      ['R', '#f4f0e4', 14, 20, 8, 60],
+      ['R', '#f4f0e4', 42, 10, 9, 70],
+      ['R', '#f4f0e4', 72, 24, 8, 56],
+      ['R', '#2f2b28', 14, 30, 8, 3],
+      ['R', '#2f2b28', 14, 46, 8, 3],
+      ['R', '#2f2b28', 42, 26, 9, 3],
+      ['R', '#2f2b28', 42, 46, 9, 3],
+      ['R', '#2f2b28', 72, 36, 8, 3],
+      ['R', '#2f2b28', 72, 54, 8, 3],
+      ['C', '#6fae66', 18, 18, 14],
+      ['C', '#5aa04f', 46, 10, 17],
+      ['C', '#7fbf72', 76, 22, 13],
+      ['C', '#5aa04f', 30, 16, 10],
+      ['C', '#6fae66', 60, 12, 11],
+      ['C', '#8a7048', 40, 90, 3],
+      ['E', '#c9782e', 40, 86, 5, 3, 0],
+      ['C', '#f5e8a8', 20, 82, 2],
+      ['C', '#f5e8a8', 60, 88, 2.4]
+    ]
+  },
+
+  /* ---------------- SPACE ---------------- */
+  {
+    id: 'rocket', cat: 'space', name: 'Rocket Launch', s: [
+      ['R', '#1b1f3a', 0, 0, 100, 100],
+      ['R', '#2a2050', 0, 46, 100, 54],
+      ['C', '#f2e6ff', 10, 12, 1.3],
+      ['C', '#f2e6ff', 24, 26, 1],
+      ['C', '#f2e6ff', 82, 14, 1.4],
+      ['C', '#f2e6ff', 90, 34, 1],
+      ['C', '#f2e6ff', 34, 8, 1.1],
+      ['C', '#f2e6ff', 66, 30, 0.9],
+      ['C', '#8a6ad0', 18, 74, 13],
+      ['E', '#6f4ab0', 18, 74, 20, 4, -20],
+      ['P', '#c8ced8', 50, 8, 38, 40, 62, 40],
+      ['R', '#e8edf4', 38, 40, 24, 34],
+      ['R', '#d0d8e2', 38, 40, 7, 34],
+      ['P', '#d94a4a', 50, 8, 44, 24, 56, 24],
+      ['C', '#5aa8d8', 50, 46, 8],
+      ['C', '#bfe4f5', 50, 46, 5.2],
+      ['C', '#8fcbe8', 48, 44, 2],
+      ['R', '#d94a4a', 38, 62, 24, 6],
+      ['P', '#c23c3c', 38, 62, 26, 84, 38, 78],
+      ['P', '#c23c3c', 62, 62, 74, 84, 62, 78],
+      ['R', '#8a94a4', 44, 74, 12, 6],
+      ['P', '#f5a63c', 44, 80, 50, 100, 56, 80],
+      ['P', '#f5d24c', 46, 80, 50, 94, 54, 80],
+      ['C', '#f5a63c', 34, 90, 3.4],
+      ['C', '#f5d24c', 66, 92, 2.6]
+    ]
+  },
+  {
+    id: 'saturn', cat: 'space', name: 'Ringed Planet', s: [
+      ['R', '#141a34', 0, 0, 100, 100],
+      ['R', '#1e2648', 0, 0, 100, 40],
+      ['C', '#e8ecff', 8, 14, 1.4],
+      ['C', '#e8ecff', 22, 30, 1],
+      ['C', '#e8ecff', 40, 12, 1.2],
+      ['C', '#e8ecff', 86, 22, 1.5],
+      ['C', '#e8ecff', 70, 8, 1],
+      ['C', '#e8ecff', 92, 62, 1.2],
+      ['C', '#e8ecff', 14, 78, 1.1],
+      ['E', '#c9a45c', 50, 52, 44, 13, -16],
+      ['E', '#141a34', 50, 52, 33, 8.5, -16],
+      ['C', '#e8b45c', 50, 48, 24],
+      ['E', '#d99c46', 50, 40, 22, 5, 0],
+      ['E', '#f0c878', 50, 50, 23, 5, 0],
+      ['E', '#c98a3c', 50, 60, 18, 4, 0],
+      ['E', '#f0c878', 50, 66, 12, 3, 0],
+      ['C', '#b87a34', 40, 44, 4],
+      ['E', '#d8a05c', 50, 52, 44, 13, -16],
+      ['E', '#e8b45c', 50, 48, 24, 24, 0],
+      ['C', '#9aa8c8', 84, 76, 5],
+      ['C', '#7f8ca8', 82, 74, 1.8],
+      ['C', '#9aa8c8', 20, 82, 3]
+    ]
+  },
+  {
+    id: 'astronaut', cat: 'space', name: 'Spacewalk', s: [
+      ['R', '#101836', 0, 0, 100, 100],
+      ['C', '#e8ecff', 10, 20, 1.3],
+      ['C', '#e8ecff', 26, 8, 1],
+      ['C', '#e8ecff', 88, 12, 1.4],
+      ['C', '#e8ecff', 76, 34, 1],
+      ['C', '#e8ecff', 16, 62, 1.2],
+      ['C', '#e8ecff', 92, 84, 1.1],
+      ['C', '#4f7ac8', 82, 82, 22],
+      ['E', '#6f9ad8', 82, 74, 18, 5, 0],
+      ['E', '#3f68b0', 84, 90, 16, 5, 0],
+      ['R', '#8a94a8', 30, 40, 14, 18],
+      ['B', '#eef2f7', 46, 78, 32, 72, 30, 56, 38, 44, 56, 42, 66, 52, 66, 70, 58, 80],
+      ['L', '#dde3ec', 9, 32, 52, 20, 62, 18, 74],
+      ['L', '#dde3ec', 9, 64, 50, 78, 56, 84, 66],
+      ['L', '#dde3ec', 10, 40, 78, 38, 92],
+      ['L', '#dde3ec', 10, 58, 78, 62, 92],
+      ['C', '#f4f7fb', 50, 34, 19],
+      ['C', '#2a3550', 50, 34, 14],
+      ['E', '#5f86c0', 45, 30, 8, 5, -25],
+      ['E', '#8fb4e0', 43, 28, 3.4, 2, -25],
+      ['R', '#e8a63c', 44, 56, 12, 5],
+      ['C', '#d94a4a', 47, 58.5, 1.6],
+      ['C', '#4fb06a', 53, 58.5, 1.6],
+      ['C', '#c8ccd8', 22, 76, 3]
+    ]
+  },
+  {
+    id: 'moonrise', cat: 'space', name: 'Moonrise', s: [
+      ['R', '#182444', 0, 0, 100, 100],
+      ['R', '#22305a', 0, 30, 100, 40],
+      ['C', '#e8ecff', 12, 10, 1.4],
+      ['C', '#e8ecff', 30, 20, 1],
+      ['C', '#e8ecff', 88, 10, 1.2],
+      ['C', '#e8ecff', 20, 40, 1],
+      ['C', '#e8ecff', 92, 44, 1.3],
+      ['C', '#f2ecd8', 56, 38, 26],
+      ['C', '#e0d8bc', 46, 30, 6],
+      ['C', '#e0d8bc', 64, 46, 7],
+      ['C', '#e0d8bc', 68, 26, 4],
+      ['C', '#d8cfae', 50, 48, 4.4],
+      ['C', '#d8cfae', 42, 42, 2.6],
+      ['C', '#e0d8bc', 60, 18, 2.4],
+      ['P', '#2e3f6a', 0, 72, 26, 56, 52, 74, 78, 58, 100, 74, 100, 100, 0, 100],
+      ['P', '#1e2b4e', 0, 84, 22, 72, 46, 86, 70, 74, 100, 88, 100, 100, 0, 100],
+      ['L', '#121a30', 3, 22, 100, 22, 82, 20, 74],
+      ['C', '#161f38', 22, 70, 8],
+      ['L', '#121a30', 3, 78, 100, 78, 86, 80, 78],
+      ['C', '#161f38', 79, 74, 7],
+      ['C', '#f5e8a8', 34, 62, 1.4],
+      ['C', '#f5e8a8', 88, 66, 1.2]
+    ]
+  },
+  {
+    id: 'comet', cat: 'space', name: 'Comet Trail', s: [
+      ['R', '#0e1330', 0, 0, 100, 100],
+      ['C', '#e8ecff', 10, 60, 1.2],
+      ['C', '#e8ecff', 24, 80, 1],
+      ['C', '#e8ecff', 60, 90, 1.1],
+      ['C', '#e8ecff', 80, 70, 1],
+      ['C', '#e8ecff', 90, 40, 1.3],
+      ['C', '#e8ecff', 40, 20, 1],
+      ['C', '#e8ecff', 66, 10, 1.2],
+      ['E', '#3a4a8a', 30, 60, 60, 20, -30],
+      ['P', '#9ab0e8', 66, 30, 20, 74, 32, 82, 78, 38],
+      ['P', '#c8d4f5', 66, 30, 34, 68, 40, 74, 70, 38],
+      ['C', '#dfe6ff', 70, 26, 9],
+      ['C', '#f4f7ff', 70, 26, 5.5],
+      ['C', '#7fa0e0', 66, 22, 2],
+      ['C', '#7fa0e0', 74, 30, 1.6],
+      ['C', '#e8ecff', 50, 50, 0.9],
+      ['C', '#e8ecff', 44, 66, 0.8],
+      ['C', '#e8ecff', 56, 78, 0.9]
+    ]
+  },
+  {
+    id: 'satellite', cat: 'space', name: 'Space Satellite', s: [
+      ['R', '#141a34', 0, 0, 100, 100],
+      ['C', '#e8ecff', 14, 14, 1.3],
+      ['C', '#e8ecff', 30, 8, 1],
+      ['C', '#e8ecff', 70, 10, 1.2],
+      ['C', '#e8ecff', 86, 20, 1],
+      ['C', '#e8ecff', 90, 50, 1.1],
+      ['C', '#e8ecff', 8, 60, 1],
+      ['E', '#1e5a8a', 50, 118, 90, 55, 0],
+      ['E', '#2f7a4e', 30, 116, 26, 16, -10],
+      ['E', '#2f7a4e', 72, 120, 22, 14, 12],
+      ['E', '#3f9ac8', 50, 100, 90, 10, 0],
+      ['P', '#b0b8c4', 44, 42, 56, 42, 50, 32],
+      ['R', '#c8ced8', 44, 42, 12, 18],
+      ['R', '#5a86c0', 18, 40, 22, 10],
+      ['R', '#5a86c0', 60, 40, 22, 10],
+      ['L', '#8a94a4', 1.4, 40, 45, 18, 45],
+      ['L', '#8a94a4', 1.4, 60, 45, 82, 45],
+      ['L', '#c8d0da', 2, 24, 40, 24, 50],
+      ['L', '#c8d0da', 2, 32, 40, 32, 50],
+      ['L', '#c8d0da', 2, 68, 40, 68, 50],
+      ['L', '#c8d0da', 2, 76, 40, 76, 50],
+      ['C', '#dfe6ec', 50, 30, 3.4],
+      ['L', '#8a94a4', 1, 50, 30, 50, 22],
+      ['C', '#f5a63c', 50, 20, 1.6]
+    ]
+  },
+
+  /* ---------------- UNDERWATER ---------------- */
+  {
+    id: 'reef', cat: 'underwater', name: 'Coral Reef', s: [
+      ['R', '#2f86b8', 0, 0, 100, 100],
+      ['R', '#4fa6d0', 0, 0, 100, 34],
+      ['P', '#6fc0e0', 10, 0, 22, 0, 40, 56, 26, 56],
+      ['P', '#6fc0e0', 56, 0, 64, 0, 76, 48, 66, 48],
+      ['R', '#e8d9a8', 0, 80, 100, 20],
+      ['E', '#d8c894', 30, 82, 56, 10, 0],
+      ['E', '#d8c894', 86, 84, 44, 10, 0],
+      ['L', '#e07a5c', 6, 16, 86, 16, 62, 10, 52],
+      ['L', '#e07a5c', 5, 16, 70, 24, 60, 26, 48],
+      ['C', '#f09a7c', 10, 48, 5],
+      ['C', '#f09a7c', 26, 44, 4.4],
+      ['B', '#c85a8a', 74, 86, 62, 78, 66, 62, 78, 58, 88, 66, 88, 80],
+      ['C', '#e07aa8', 68, 66, 5],
+      ['C', '#e07aa8', 82, 70, 4.4],
+      ['L', '#7fc06a', 4, 44, 88, 42, 68, 46, 56],
+      ['L', '#7fc06a', 4, 52, 88, 54, 70, 50, 60],
+      ['E', '#f5c24c', 46, 38, 11, 7, -8],
+      ['P', '#f5c24c', 35, 38, 27, 32, 27, 44],
+      ['C', '#2f3540', 52, 36, 1.8],
+      ['E', '#5fc0a8', 74, 26, 8, 5, 10],
+      ['P', '#5fc0a8', 82, 26, 90, 21, 90, 31],
+      ['C', '#2f3540', 70, 25, 1.4],
+      ['C', '#bfe4f5', 30, 22, 2.4],
+      ['C', '#bfe4f5', 36, 14, 1.6],
+      ['C', '#bfe4f5', 88, 44, 2]
+    ]
+  },
+  {
+    id: 'jelly', cat: 'underwater', name: 'Jellyfish', s: [
+      ['R', '#123a5e', 0, 0, 100, 100],
+      ['R', '#1a4e78', 0, 0, 100, 40],
+      ['R', '#0d2c4a', 0, 76, 100, 24],
+      ['C', '#2f6d9c', 50, 40, 34],
+      ['L', '#c86ac0', 3, 38, 52, 34, 68, 40, 84, 34, 96],
+      ['L', '#c86ac0', 3, 46, 54, 44, 72, 50, 88, 46, 98],
+      ['L', '#c86ac0', 3, 54, 54, 58, 70, 52, 86, 58, 98],
+      ['L', '#c86ac0', 3, 62, 52, 66, 68, 60, 84, 66, 96],
+      ['L', '#e094d8', 1.6, 42, 52, 38, 74, 44, 92],
+      ['L', '#e094d8', 1.6, 58, 52, 62, 74, 56, 92],
+      ['B', '#e07ad0', 50, 56, 28, 50, 26, 36, 38, 26, 50, 24, 62, 26, 74, 36, 72, 50],
+      ['B', '#f0a8e0', 50, 46, 34, 42, 33, 33, 42, 27, 50, 26, 58, 27, 67, 33, 66, 42],
+      ['E', '#f7cdf0', 44, 34, 8, 4, -20],
+      ['C', '#ffffff', 40, 32, 2.4],
+      ['E', '#c86ac0', 50, 54, 22, 4, 0],
+      ['C', '#7fd0e8', 22, 26, 2.6],
+      ['C', '#7fd0e8', 28, 16, 1.8],
+      ['C', '#7fd0e8', 80, 34, 2.2],
+      ['C', '#7fd0e8', 86, 22, 1.4],
+      ['C', '#a8e0f0', 14, 60, 2],
+      ['E', '#0a2540', 50, 92, 40, 8, 0]
+    ]
+  },
+  {
+    id: 'clownfish', cat: 'underwater', name: 'Clownfish', s: [
+      ['R', '#2a7fb0', 0, 0, 100, 100],
+      ['R', '#3f97c8', 0, 0, 100, 30],
+      ['R', '#1f6690', 0, 78, 100, 22],
+      ['E', '#b06ac0', 22, 82, 30, 16, 0],
+      ['L', '#c87ad0', 5, 14, 84, 10, 66, 16, 56],
+      ['L', '#c87ad0', 5, 24, 84, 26, 64, 20, 54],
+      ['L', '#c87ad0', 5, 34, 86, 40, 70, 36, 60],
+      ['E', '#8a5aa0', 78, 88, 34, 14, 0],
+      ['L', '#a06ab8', 4, 78, 88, 82, 72, 76, 62],
+      ['L', '#a06ab8', 4, 88, 88, 92, 74, 88, 64],
+      ['E', '#f0812c', 50, 44, 27, 17, 0],
+      ['P', '#f0812c', 24, 44, 8, 32, 12, 44, 8, 56],
+      ['P', '#e8721c', 50, 28, 42, 18, 58, 24],
+      ['P', '#e8721c', 50, 60, 42, 70, 58, 64],
+      ['P', '#fbf7f0', 38, 30, 46, 30, 42, 58, 32, 56],
+      ['P', '#fbf7f0', 62, 32, 70, 38, 66, 54, 58, 56],
+      ['P', '#fbf7f0', 16, 36, 20, 40, 20, 48, 15, 52],
+      ['E', '#f0812c', 62, 48, 8, 6, 20],
+      ['P', '#2f2b35', 34, 38, 40, 36, 40, 44, 34, 46],
+      ['C', '#ffffff', 36, 40, 3.6],
+      ['C', '#2f2b35', 36, 40, 2],
+      ['C', '#bfe4f5', 72, 20, 2.6],
+      ['C', '#bfe4f5', 78, 12, 1.7],
+      ['C', '#bfe4f5', 84, 26, 1.4]
+    ]
+  },
+  {
+    id: 'whale', cat: 'underwater', name: 'Blue Whale', s: [
+      ['R', '#2e7fae', 0, 0, 100, 100],
+      ['R', '#4a9cc8', 0, 0, 100, 26],
+      ['P', '#6fbfe0', 14, 0, 24, 0, 44, 40, 32, 40],
+      ['P', '#6fbfe0', 60, 0, 68, 0, 82, 34, 72, 34],
+      ['R', '#1f6690', 0, 82, 100, 18],
+      ['E', '#dfeef7', 52, 12, 5, 8, 0],
+      ['C', '#dfeef7', 48, 8, 3],
+      ['C', '#dfeef7', 57, 7, 2.4],
+      ['B', '#3f5a96', 62, 72, 30, 70, 16, 58, 26, 44, 52, 40, 74, 46, 84, 56, 76, 68],
+      ['P', '#3f5a96', 82, 52, 98, 34, 96, 62, 84, 66],
+      ['B', '#7f96c8', 56, 72, 30, 68, 20, 58, 30, 50, 54, 50, 68, 56, 66, 66],
+      ['L', '#5f76a8', 1.6, 26, 62, 34, 66],
+      ['L', '#5f76a8', 1.6, 34, 64, 42, 68],
+      ['L', '#5f76a8', 1.6, 42, 65, 50, 69],
+      ['P', '#334a80', 48, 66, 58, 84, 40, 80],
+      ['C', '#f7fbff', 27, 52, 3],
+      ['C', '#2f3540', 27, 52, 1.6],
+      ['E', '#334a80', 22, 46, 6, 3, -30],
+      ['C', '#bfe4f5', 40, 24, 2.4],
+      ['C', '#bfe4f5', 46, 16, 1.6],
+      ['E', '#8fbf6a', 84, 88, 16, 6, 0],
+      ['E', '#8fbf6a', 16, 90, 14, 5, 0]
+    ]
+  },
+  {
+    id: 'octopus', cat: 'underwater', name: 'Purple Octopus', s: [
+      ['R', '#1f5f8a', 0, 0, 100, 100],
+      ['R', '#2f7aa8', 0, 0, 100, 30],
+      ['R', '#123a5e', 0, 78, 100, 22],
+      ['E', '#18466e', 50, 80, 60, 6, 0],
+      ['B', '#9a4fc0', 50, 52, 30, 46, 26, 30, 38, 20, 50, 18, 62, 20, 74, 30, 70, 46],
+      ['E', '#b06ad0', 40, 30, 10, 8, -10],
+      ['P', '#9a4fc0', 30, 50, 18, 68, 26, 76, 32, 62],
+      ['P', '#8a3fb0', 38, 54, 30, 74, 38, 82, 42, 64],
+      ['P', '#9a4fc0', 50, 56, 48, 78, 56, 84, 54, 64],
+      ['P', '#8a3fb0', 62, 54, 66, 76, 74, 80, 60, 62],
+      ['P', '#9a4fc0', 70, 50, 82, 66, 76, 76, 62, 58],
+      ['C', '#e8c8f0', 22, 70, 2],
+      ['C', '#e8c8f0', 34, 76, 2],
+      ['C', '#e8c8f0', 68, 74, 2],
+      ['C', '#e8c8f0', 78, 66, 2],
+      ['C', '#ffffff', 42, 42, 6],
+      ['C', '#ffffff', 58, 42, 6],
+      ['C', '#2f2b32', 42, 42, 3.4],
+      ['C', '#2f2b32', 58, 42, 3.4],
+      ['C', '#ffffff', 43.4, 40.6, 1.2],
+      ['C', '#ffffff', 59.4, 40.6, 1.2],
+      ['C', '#bfe4f5', 14, 18, 2.4],
+      ['C', '#bfe4f5', 20, 10, 1.6],
+      ['C', '#bfe4f5', 84, 16, 2]
+    ]
+  },
+  {
+    id: 'seahorse', cat: 'underwater', name: 'Coral Seahorse', s: [
+      ['R', '#2a7fb0', 0, 0, 100, 100],
+      ['R', '#3f97c8', 0, 0, 100, 26],
+      ['R', '#1f6690', 0, 80, 100, 20],
+      ['L', '#3f8a52', 4, 14, 100, 12, 70, 16, 50],
+      ['L', '#3f8a52', 3, 84, 100, 86, 68, 82, 52],
+      ['B', '#f0a23c', 50, 20, 42, 26, 40, 36, 44, 44, 40, 52, 44, 60, 52, 64, 60, 58, 62, 48, 58, 40, 62, 32, 56, 24],
+      ['E', '#f0a23c', 50, 74, 10, 14, 8],
+      ['P', '#e8873c', 40, 32, 24, 30, 40, 40],
+      ['C', '#2f2b32', 50, 28, 2.6],
+      ['C', '#ffffff', 51, 27, 1],
+      ['E', '#e8873c', 56, 40, 6, 3, 20],
+      ['E', '#e8873c', 58, 50, 6, 3, 20],
+      ['E', '#e8873c', 56, 60, 5, 2.6, 20],
+      ['C', '#f5c96a', 48, 44, 1.6],
+      ['C', '#f5c96a', 50, 52, 1.6],
+      ['C', '#f5c96a', 48, 60, 1.6],
+      ['C', '#bfe4f5', 20, 60, 2.4],
+      ['C', '#bfe4f5', 16, 50, 1.6],
+      ['C', '#f5c531', 78, 20, 3],
+      ['C', '#e8a83c', 84, 24, 2]
+    ]
+  },
+
+  /* ---------------- FOOD ---------------- */
+  {
+    id: 'cupcake', cat: 'food', name: 'Cupcake', s: [
+      ['R', '#fbeef2', 0, 0, 100, 100],
+      ['R', '#f4dde6', 0, 62, 100, 38],
+      ['E', '#e8cdd8', 50, 84, 64, 12, 0],
+      ['P', '#e8b45c', 30, 60, 70, 60, 64, 92, 36, 92],
+      ['R', '#d99c46', 36, 60, 5, 32],
+      ['R', '#d99c46', 48, 60, 5, 32],
+      ['R', '#d99c46', 60, 60, 4, 32],
+      ['E', '#c98a3c', 50, 60, 20, 4, 0],
+      ['B', '#f2a0bc', 50, 62, 26, 56, 28, 44, 40, 40, 44, 30, 56, 28, 66, 36, 72, 46, 72, 56],
+      ['E', '#f7b8ce', 50, 50, 22, 9, 0],
+      ['E', '#f7b8ce', 50, 38, 16, 8, 0],
+      ['E', '#f7b8ce', 50, 30, 10, 6, 0],
+      ['C', '#e07aa0', 50, 24, 5],
+      ['C', '#d94a5c', 50, 16, 5],
+      ['L', '#4f8a44', 1.4, 50, 12, 54, 8],
+      ['E', '#f5d24c', 38, 46, 3, 1.4, 20],
+      ['E', '#5fc0a8', 60, 44, 3, 1.4, -25],
+      ['E', '#7fa8e0', 46, 56, 3, 1.4, 10],
+      ['E', '#f5d24c', 64, 54, 3, 1.4, 40],
+      ['E', '#e07aa0', 34, 56, 3, 1.4, -15],
+      ['E', '#5fc0a8', 54, 36, 3, 1.4, 30],
+      ['C', '#fff0f5', 20, 26, 5],
+      ['C', '#fff0f5', 82, 34, 4]
+    ]
+  },
+  {
+    id: 'icecream', cat: 'food', name: 'Ice Cream', s: [
+      ['R', '#eaf4f7', 0, 0, 100, 100],
+      ['C', '#f7e6c8', 20, 22, 12],
+      ['C', '#f7e6c8', 82, 76, 10],
+      ['P', '#e0a860', 36, 56, 64, 56, 50, 98],
+      ['L', '#c8904c', 1.2, 40, 62, 58, 80],
+      ['L', '#c8904c', 1.2, 44, 56, 62, 68],
+      ['L', '#c8904c', 1.2, 38, 68, 50, 84],
+      ['L', '#c8904c', 1.2, 60, 56, 40, 74],
+      ['L', '#c8904c', 1.2, 64, 64, 48, 86],
+      ['E', '#d99a52', 50, 56, 14, 4, 0],
+      ['C', '#f7d9a0', 50, 46, 16],
+      ['C', '#e896b8', 38, 34, 14],
+      ['C', '#9ed4a8', 62, 32, 14],
+      ['C', '#f2c9dd', 34, 30, 5],
+      ['C', '#bde4c4', 66, 28, 4.4],
+      ['C', '#fbeac8', 46, 42, 5],
+      ['P', '#f7d9a0', 62, 50, 68, 66, 58, 62],
+      ['C', '#d94a5c', 50, 16, 6],
+      ['L', '#4f8a44', 1.6, 50, 11, 56, 4],
+      ['C', '#f5d24c', 30, 46, 2],
+      ['C', '#7fa8e0', 68, 44, 2],
+      ['C', '#e07aa0', 56, 22, 1.8],
+      ['E', '#d8e8ee', 50, 96, 34, 5, 0]
+    ]
+  },
+  {
+    id: 'fruitbowl', cat: 'food', name: 'Fruit Bowl', s: [
+      ['R', '#f7f0e4', 0, 0, 100, 100],
+      ['R', '#d8b48c', 0, 74, 100, 26],
+      ['E', '#c8a078', 50, 76, 90, 6, 0],
+      ['C', '#f0c04c', 32, 46, 13],
+      ['C', '#e8a83c', 30, 42, 5],
+      ['C', '#d94a4a', 56, 42, 14],
+      ['E', '#e86a6a', 51, 36, 6, 4, -20],
+      ['L', '#5c8a3c', 1.6, 56, 28, 58, 20],
+      ['P', '#4f9142', 58, 22, 72, 16, 66, 26],
+      ['P', '#f5d24c', 70, 56, 90, 40, 94, 46, 78, 62],
+      ['P', '#e8c03c', 74, 58, 90, 42, 92, 45, 77, 60],
+      ['C', '#8a5ab0', 22, 62, 4],
+      ['C', '#9a6ac0', 30, 60, 4],
+      ['C', '#8a5ab0', 38, 62, 4],
+      ['C', '#9a6ac0', 26, 68, 4],
+      ['C', '#8a5ab0', 34, 68, 4],
+      ['B', '#e8dcc8', 50, 92, 20, 84, 14, 70, 86, 70, 92, 84, 78, 92],
+      ['E', '#d8c8ac', 50, 71, 38, 4, 0],
+      ['E', '#f0e4d0', 50, 88, 26, 4, 0],
+      ['C', '#5fa8d8', 12, 22, 8],
+      ['C', '#8fc8e8', 86, 18, 6]
+    ]
+  },
+  {
+    id: 'sushi', cat: 'food', name: 'Sushi Plate', s: [
+      ['R', '#eef2f0', 0, 0, 100, 100],
+      ['R', '#dfe6e2', 0, 66, 100, 34],
+      ['E', '#2f3540', 50, 62, 46, 26, 0],
+      ['E', '#3f4650', 50, 60, 42, 23, 0],
+      ['E', '#f7f4ee', 30, 52, 13, 8, -12],
+      ['E', '#e8735c', 30, 46, 14, 6, -12],
+      ['L', '#f2a08c', 1.4, 22, 44, 38, 48],
+      ['L', '#2f3540', 3, 30, 46, 30, 56],
+      ['C', '#f7f4ee', 58, 58, 12],
+      ['C', '#2f3540', 58, 58, 12.6],
+      ['C', '#f7f4ee', 58, 58, 10],
+      ['C', '#e8735c', 58, 58, 4.6],
+      ['C', '#5fc0a8', 55, 55, 1.8],
+      ['C', '#f0c04c', 61, 61, 1.8],
+      ['C', '#2f3540', 80, 66, 9.6],
+      ['C', '#f7f4ee', 80, 66, 7.6],
+      ['C', '#4f9142', 80, 66, 3.4],
+      ['E', '#5fa060', 18, 70, 7, 4, 0],
+      ['E', '#f0b8c0', 40, 74, 8, 3.4, 10],
+      ['E', '#e8a0aa', 44, 72, 7, 3, -10],
+      ['L', '#c8a878', 2, 8, 22, 46, 34],
+      ['L', '#c8a878', 2, 8, 30, 46, 40],
+      ['C', '#a8c8b8', 84, 24, 7]
+    ]
+  },
+  {
+    id: 'pizza', cat: 'food', name: 'Pizza Slice', s: [
+      ['R', '#f7f0e4', 0, 0, 100, 100],
+      ['R', '#e8d9c0', 0, 78, 100, 22],
+      ['E', '#d8c8a8', 50, 80, 60, 5, 0],
+      ['C', '#e8dcc8', 50, 46, 42],
+      ['C', '#f7f0e4', 50, 46, 38],
+      ['C', '#e8b45c', 50, 46, 34],
+      ['C', '#f0c878', 50, 46, 30],
+      ['C', '#d9432e', 50, 46, 27],
+      ['C', '#e8a83c', 50, 46, 25],
+      ['L', '#c9a45c', 2, 50, 46, 50, 12],
+      ['L', '#c9a45c', 2, 50, 46, 79, 29],
+      ['L', '#c9a45c', 2, 50, 46, 79, 63],
+      ['L', '#c9a45c', 2, 50, 46, 50, 80],
+      ['L', '#c9a45c', 2, 50, 46, 21, 63],
+      ['L', '#c9a45c', 2, 50, 46, 21, 29],
+      ['C', '#d9432e', 34, 30, 3.4],
+      ['C', '#d9432e', 62, 24, 3.6],
+      ['C', '#d9432e', 70, 50, 3.2],
+      ['C', '#d9432e', 40, 58, 3.4],
+      ['C', '#d9432e', 58, 66, 3],
+      ['C', '#d9432e', 28, 44, 3.2],
+      ['C', '#4f9142', 46, 36, 1.8],
+      ['C', '#4f9142', 66, 40, 1.6],
+      ['C', '#4f9142', 54, 54, 1.8]
+    ]
+  },
+  {
+    id: 'donut', cat: 'food', name: 'Sprinkle Donut', s: [
+      ['R', '#fdf0e6', 0, 0, 100, 100],
+      ['R', '#f0dcc8', 0, 78, 100, 22],
+      ['E', '#e0c8a8', 50, 80, 60, 5, 0],
+      ['C', '#c98a4c', 50, 50, 36],
+      ['C', '#e8b878', 50, 50, 34],
+      ['C', '#e0362e', 50, 50, 30],
+      ['C', '#f0574c', 50, 47, 27],
+      ['C', '#fdf0e6', 50, 50, 12],
+      ['C', '#f5c531', 30, 40, 2.4],
+      ['C', '#5fc0a8', 42, 30, 2.2],
+      ['C', '#7fa8e0', 60, 32, 2.4],
+      ['C', '#f5d24c', 70, 42, 2],
+      ['C', '#e07aa0', 36, 60, 2.2],
+      ['C', '#5fc0a8', 56, 66, 2.4],
+      ['C', '#7fa8e0', 68, 58, 2],
+      ['C', '#f5c531', 46, 70, 2.2],
+      ['C', '#e07aa0', 62, 22, 2]
+    ]
+  }
+];
+// ==ART_END==
+</script>
+<script>
+// ==APP_START==
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var E = ENGINE;
+
+  /* =================== THEMES =================== */
+  var THEMES = [
+    {
+      id: 'ete', name: '\u00c9t\u00e9', bg1: '#fdf3dd', bg2: '#f6e3bd', surface: '#fffdf6', surface2: '#f7edd8',
+      line: '#e3d3ac', ink: '#40372a', ink2: '#8d7d60', accent: '#e08a2e', accent2: '#2f9aa8', good: '#4e9a63',
+      p: { t: 'motes', c: ['#f5c96a', '#fbe3a8', '#f0a54a'] }, sc: [0, 4, 7, 9, 12, 16], wv: 'triangle'
+    },
+    {
+      id: 'printemps', name: 'Printemps', bg1: '#f2f8ec', bg2: '#e0f0dc', surface: '#ffffff', surface2: '#eef7e8',
+      line: '#cfe2c6', ink: '#33402f', ink2: '#7a8f74', accent: '#e0729c', accent2: '#5aa84e', good: '#4e9a63',
+      p: { t: 'petals', c: ['#f5b8ce', '#fbd6e2', '#a8d89a'] }, sc: [0, 2, 4, 7, 9, 12], wv: 'sine'
+    },
+    {
+      id: 'automne', name: 'Automne', bg1: '#f8ead6', bg2: '#eed6b6', surface: '#fffaf0', surface2: '#f5e6cf',
+      line: '#ddc3a0', ink: '#43301f', ink2: '#8f755a', accent: '#c05a24', accent2: '#8a6a20', good: '#6a8a3c',
+      p: { t: 'leaves', c: ['#d9642e', '#e8a63c', '#a8452a'] }, sc: [0, 3, 5, 7, 10, 12], wv: 'triangle'
+    },
+    {
+      id: 'hiver', name: 'Hiver', bg1: '#eef5fb', bg2: '#dbe9f5', surface: '#ffffff', surface2: '#eaf2fa',
+      line: '#c9dcec', ink: '#2c3a49', ink2: '#74899c', accent: '#3f7fb8', accent2: '#6f8fa8', good: '#4e9a8a',
+      p: { t: 'snow', c: ['#ffffff', '#dceaf7', '#bcd8ee'] }, sc: [0, 5, 7, 12, 14, 19], wv: 'sine'
+    },
+    {
+      id: 'nature', name: 'Nature', bg1: '#eef3e6', bg2: '#dde8d2', surface: '#fbfdf8', surface2: '#eaf1e2',
+      line: '#c9d8ba', ink: '#2f3a28', ink2: '#75856a', accent: '#4e8a3c', accent2: '#8a6a3c', good: '#4e9a63',
+      p: { t: 'fireflies', c: ['#c8e08a', '#9ac96a', '#f0e08a'] }, sc: [0, 2, 5, 7, 9, 14], wv: 'sine'
+    },
+    {
+      id: 'calme', name: 'Calme & Bien-\u00eatre', bg1: '#f4f2ec', bg2: '#e7e4da', surface: '#fffefb', surface2: '#f0ede4',
+      line: '#dad5c8', ink: '#3d3b34', ink2: '#8b8779', accent: '#8a9a86', accent2: '#b0a08a', good: '#7a9a76',
+      p: { t: 'dots', c: ['#cfd6c8', '#e0dcd0', '#bcc8b8'] }, sc: [0, 3, 7, 10, 12, 15], wv: 'sine'
+    },
+    {
+      id: 'creativite', name: 'Cr\u00e9ativit\u00e9', bg1: '#f6effa', bg2: '#e9dcf5', surface: '#fffdff', surface2: '#f2e9fa',
+      line: '#dccdea', ink: '#3a2f46', ink2: '#84739a', accent: '#8a4ec8', accent2: '#e07a2e', good: '#4e9a8a',
+      p: { t: 'sparkle', c: ['#c08ae8', '#f0a86a', '#7fd0e0'] }, sc: [0, 4, 6, 7, 11, 12], wv: 'triangle'
+    },
+    {
+      id: 'energie', name: '\u00c9nergie', bg1: '#fff2e8', bg2: '#ffe0cc', surface: '#fffcf8', surface2: '#ffeada',
+      line: '#f2cfb2', ink: '#42291d', ink2: '#96745e', accent: '#e8452e', accent2: '#f0a828', good: '#4e9a63',
+      p: { t: 'pulse', c: ['#ff8a5c', '#ffc46a', '#ff5c5c'] }, sc: [0, 4, 7, 11, 12, 16], wv: 'square'
+    },
+    {
+      id: 'minimaliste', name: 'Minimaliste', bg1: '#f7f7f6', bg2: '#ececeb', surface: '#ffffff', surface2: '#f2f2f1',
+      line: '#dcdcda', ink: '#26262a', ink2: '#8a8a8e', accent: '#26262a', accent2: '#8a8a8e', good: '#4e9a63',
+      p: { t: 'none', c: ['#dcdcda'] }, sc: [0, 5, 7, 12, 17, 19], wv: 'sine'
+    },
+    {
+      id: 'romantique', name: 'Romantique', bg1: '#fbeef2', bg2: '#f4dbe4', surface: '#fffbfc', surface2: '#f8e9ee',
+      line: '#e8cbd6', ink: '#43293a', ink2: '#987487', accent: '#c8446a', accent2: '#a06ab0', good: '#7a9a76',
+      p: { t: 'hearts', c: ['#f0a8c0', '#e07a9a', '#f7d0dc'] }, sc: [0, 3, 7, 8, 10, 12], wv: 'sine'
+    },
+    {
+      id: 'ocean', name: 'Oc\u00e9an', bg1: '#e8f4f8', bg2: '#cfe7f0', surface: '#fbfeff', surface2: '#e4f1f7',
+      line: '#b8d8e4', ink: '#1f3a46', ink2: '#6a8e9c', accent: '#2f8aa8', accent2: '#2f6ba8', good: '#3f9a8a',
+      p: { t: 'bubbles', c: ['#a8dcec', '#cfeef7', '#7fc4dc'] }, sc: [0, 2, 7, 9, 12, 14], wv: 'sine'
+    },
+    {
+      id: 'neon', name: 'N\u00e9on / Nuit Urbaine', bg1: '#151428', bg2: '#0d0c1c', surface: '#231f3e', surface2: '#1b1834',
+      line: '#3a3260', ink: '#eae6ff', ink2: '#9a92c8', accent: '#f042a8', accent2: '#3fe0e0', good: '#4ee08a',
+      p: { t: 'stars', c: ['#f042a8', '#3fe0e0', '#8a6af0'] }, sc: [0, 3, 5, 6, 10, 12], wv: 'square', dark: 1
+    },
+    {
+      id: 'fancy', name: 'Fancy', bg1: '#241c2e', bg2: '#160f1e', surface: '#33283f', surface2: '#291f34',
+      line: '#4c3c5c', ink: '#f4ecd8', ink2: '#b6a4c0', accent: '#d8b34c', accent2: '#a86ac0', good: '#6ac09a',
+      p: { t: 'gold', c: ['#e8c86a', '#d8b34c', '#f4e0a8'] }, sc: [0, 4, 7, 11, 14, 16], wv: 'triangle', dark: 1
+    }
+  ];
+  THEMES[3].ink2 = '#74899c';
+
+  /* =================== STORAGE =================== */
+  var K = { prog: 'nb.v1.progress', set: 'nb.v1.settings', stat: 'nb.v1.stats' };
+  function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+  var PROG = load(K.prog, {});
+  var SET = load(K.set, { theme: 'ete', sfx: true, music: false });
+  var STAT = load(K.stat, { filled: 0, done: 0 });
+
+  function pkey(pic, diff) { return pic + '|' + diff; }
+  function packSet(set, n) {
+    var b = new Uint8Array(Math.ceil(n / 8) || 1), s = '';
+    set.forEach(function (i) { b[i >> 3] |= 1 << (i & 7); });
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s);
+  }
+  function unpackSet(str, n) {
+    var set = new Set(); if (!str) return set;
+    var s; try { s = atob(str); } catch (e) { return set; }
+    for (var i = 0; i < n; i++) { var c = s.charCodeAt(i >> 3) || 0; if ((c >> (i & 7)) & 1) set.add(i); }
+    return set;
+  }
+  function getProg(pic, diff) { return PROG[pkey(pic, diff)] || null; }
+  function putProg(pic, diff, set, n, done) {
+    PROG[pkey(pic, diff)] = { f: packSet(set, n), n: n, d: done ? 1 : 0, t: Date.now() };
+    save(K.prog, PROG);
+  }
+
+  /* =================== AUDIO =================== */
+  var AC = null, master = null, musG = null, musTimer = null, musStep = 0;
+  function audio() {
+    if (AC) { if (AC.state === 'suspended') AC.resume(); return AC; }
+    try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+    master = AC.createGain(); master.gain.value = 0.32; master.connect(AC.destination);
+    musG = AC.createGain(); musG.gain.value = 0.16; musG.connect(AC.destination);
+    return AC;
+  }
+  function theme() { return THEMES.filter(function (t) { return t.id === SET.theme; })[0] || THEMES[0]; }
+  function tone(f, dur, type, vol, delay, dest) {
+    var ac = audio(); if (!ac) return;
+    var t = ac.currentTime + (delay || 0);
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol === undefined ? 0.5 : vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+    o.connect(g); g.connect(dest || master); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function note(semi, oct) { return 220 * Math.pow(2, (semi + (oct || 0) * 12) / 12); }
+  var SFX = {
+    fill: function (i, n) {
+      if (!SET.sfx) return;
+      var sc = theme().sc, s = sc[i % sc.length];
+      tone(note(s, 1), 0.16, 'sine', 0.2);
+      tone(note(s, 2), 0.1, 'sine', 0.07, 0.01);
+    },
+    err: function () { if (!SET.sfx) return; tone(180, 0.1, 'sine', 0.1); },
+    tap: function () { if (!SET.sfx) return; tone(660, 0.05, 'sine', 0.12); },
+    colour: function () {
+      if (!SET.sfx) return;
+      var sc = theme().sc;
+      tone(note(sc[0], 2), 0.2, 'sine', 0.3);
+      tone(note(sc[2], 2), 0.26, 'sine', 0.26, 0.08);
+      tone(note(sc[4], 2), 0.34, 'sine', 0.22, 0.16);
+    },
+    win: function () {
+      if (!SET.sfx) return;
+      var sc = theme().sc;
+      for (var i = 0; i < 6; i++) tone(note(sc[i % sc.length], 1 + Math.floor(i / 4)), 0.5, theme().wv, 0.26, i * 0.11);
+      tone(note(sc[0], 1), 1.4, 'sine', 0.18, 0.1);
+    }
+  };
+  function musicOn() {
+    musicOff();
+    if (!SET.music) return;
+    var ac = audio(); if (!ac) return;
+    musStep = 0;
+    musTimer = setInterval(function () {
+      if (!SET.music || !AC) return;
+      var t = theme(), sc = t.sc, seq = [0, 2, 4, 2, 3, 5, 4, 1];
+      var s = sc[seq[musStep % seq.length] % sc.length];
+      tone(note(s, musStep % 8 < 4 ? 0 : 1), 1.1, 'sine', 0.16, 0, musG);
+      if (musStep % 4 === 0) tone(note(sc[0], -1), 2.4, 'triangle', 0.13, 0, musG);
+      musStep++;
+    }, 900);
+  }
+  function musicOff() { if (musTimer) clearInterval(musTimer); musTimer = null; }
+
+  /* =================== PARTICLES =================== */
+  var pcv = $('#particles'), pctx = pcv.getContext('2d'), parts = [], pw = 0, ph = 0;
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function resizeP() {
+    pw = pcv.width = innerWidth; ph = pcv.height = innerHeight;
+    var t = theme().p, n = t.t === 'none' ? 0 : (reduced ? 10 : Math.min(46, Math.round(innerWidth / 16)));
+    parts = [];
+    for (var i = 0; i < n; i++) parts.push(newPart(t, true));
+  }
+  function newPart(t, init) {
+    return {
+      x: Math.random() * pw, y: init ? Math.random() * ph : -10,
+      r: 1.5 + Math.random() * 4, vy: 0.15 + Math.random() * 0.6, vx: (Math.random() - 0.5) * 0.4,
+      a: Math.random() * Math.PI * 2, sp: (Math.random() - 0.5) * 0.03,
+      o: 0.18 + Math.random() * 0.4, c: t.c[(Math.random() * t.c.length) | 0]
+    };
+  }
+  function drawParts() {
+    var t = theme().p;
+    pctx.clearRect(0, 0, pw, ph);
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      p.a += p.sp;
+      if (t.t === 'bubbles' || t.t === 'fireflies') { p.y -= p.vy; if (p.y < -12) { p.y = ph + 10; p.x = Math.random() * pw; } }
+      else if (t.t === 'stars' || t.t === 'dots' || t.t === 'sparkle' || t.t === 'pulse' || t.t === 'gold') {
+        p.o += Math.sin(p.a) * 0.006;
+      } else { p.y += p.vy; p.x += p.vx + Math.sin(p.a) * 0.3; if (p.y > ph + 12) { p.y = -10; p.x = Math.random() * pw; } }
+      pctx.globalAlpha = Math.max(0.05, Math.min(0.6, p.o));
+      pctx.fillStyle = p.c;
+      pctx.beginPath();
+      if (t.t === 'leaves' || t.t === 'petals') {
+        pctx.ellipse(p.x, p.y, p.r * 1.6, p.r * 0.8, p.a, 0, 6.284);
+      } else if (t.t === 'hearts') {
+        pctx.ellipse(p.x - p.r * .5, p.y, p.r * .6, p.r * .6, 0, 0, 6.284);
+        pctx.ellipse(p.x + p.r * .5, p.y, p.r * .6, p.r * .6, 0, 0, 6.284);
+        pctx.moveTo(p.x - p.r, p.y + p.r * .2); pctx.lineTo(p.x, p.y + p.r * 1.5); pctx.lineTo(p.x + p.r, p.y + p.r * .2);
+      } else if (t.t === 'stars' || t.t === 'sparkle') {
+        var r = p.r * 1.4;
+        pctx.moveTo(p.x, p.y - r); pctx.lineTo(p.x + r * .28, p.y - r * .28); pctx.lineTo(p.x + r, p.y);
+        pctx.lineTo(p.x + r * .28, p.y + r * .28); pctx.lineTo(p.x, p.y + r);
+        pctx.lineTo(p.x - r * .28, p.y + r * .28); pctx.lineTo(p.x - r, p.y); pctx.lineTo(p.x - r * .28, p.y - r * .28);
+      } else pctx.arc(p.x, p.y, p.r, 0, 6.284);
+      pctx.fill();
+    }
+    pctx.globalAlpha = 1;
+    requestAnimationFrame(drawParts);
+  }
+  addEventListener('resize', function () { resizeP(); sizeCanvas(); });
+
+  /* =================== THEME APPLY =================== */
+  function applyTheme() {
+    var t = theme(), r = document.documentElement.style;
+    r.setProperty('--bg1', t.bg1); r.setProperty('--bg2', t.bg2);
+    r.setProperty('--surface', t.surface); r.setProperty('--surface2', t.surface2);
+    r.setProperty('--line', t.line); r.setProperty('--ink', t.ink); r.setProperty('--ink2', t.ink2);
+    r.setProperty('--accent', t.accent); r.setProperty('--accent2', t.accent2); r.setProperty('--good', t.good);
+    document.body.style.background = 'linear-gradient(165deg,' + t.bg1 + ' 0%,' + t.bg2 + ' 100%)';
+    document.body.style.backgroundAttachment = 'fixed';
+    var m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t.bg1;
+    resizeP();
+  }
+
+  /* =================== NAV =================== */
+  var stack = ['home'];
+  function show(id) {
+    $$('.screen').forEach(function (s) { s.classList.toggle('on', s.id === 'scr-' + id); });
+    if (id !== 'play') stopPlay();
+    if (id === 'gallery') buildGallery();
+    if (id === 'settings') buildSettings();
+  }
+  function go(id) { stack.push(id); show(id); }
+  function back() { stack.pop(); show(stack[stack.length - 1] || 'home'); }
+  $$('[data-back]').forEach(function (b) { b.onclick = function () { stack = ['home']; show('home'); }; });
+
+  /* =================== HOME / CATEGORY =================== */
+  function picsOf(c) { return PICTURES.filter(function (p) { return p.cat === c; }); }
+  function buildHome() {
+    var el = $('#catList'); el.innerHTML = '';
+    CATS.forEach(function (c) {
+      var list = picsOf(c.id);
+      var done = list.filter(function (p) {
+        return E.DIFF_ORDER.some(function (d) { var g = getProg(p.id, d); return g && g.d; });
+      }).length;
+      var b = document.createElement('button');
+      b.className = 'cat';
+      b.innerHTML = '<span class="em">' + c.icon + '</span><b>' + c.name + '</b><small>' +
+        list.length + ' pictures \u00b7 ' + done + ' painted</small>';
+      b.onclick = function () { SFX.tap(); openCat(c); };
+      el.appendChild(b);
+    });
+  }
+  function openCat(c) {
+    $('#catTitle').textContent = c.name;
+    var el = $('#picList'); el.innerHTML = '';
+    picsOf(c.id).forEach(function (p) {
+      var b = document.createElement('button');
+      b.className = 'pic';
+      var cv = document.createElement('canvas'); cv.width = cv.height = 128;
+      var cx = cv.getContext('2d');
+      var im = cx.createImageData(128, 128);
+      im.data.set(E.thumbPixels(p, 128));
+      cx.putImageData(im, 0, 0);
+      b.appendChild(cv);
+      var m = document.createElement('div'); m.className = 'meta';
+      var dots = E.DIFF_ORDER.map(function (d) {
+        var g = getProg(p.id, d);
+        return '<i class="' + (g ? (g.d ? 'done' : 'part') : '') + '"></i>';
+      }).join('');
+      m.innerHTML = '<b>' + p.name + '</b><div class="dots">' + dots + '</div>';
+      b.appendChild(m);
+      b.onclick = function () { SFX.tap(); openSheet(p); };
+      el.appendChild(b);
+    });
+    go('cat');
+  }
+
+  /* =================== DIFFICULTY SHEET =================== */
+  var sheet = $('#sheet');
+  sheet.onclick = function (e) { if (e.target === sheet) sheet.classList.remove('on'); };
+  function openSheet(p) {
+    $('#sheetName').textContent = p.name;
+    var el = $('#dlist'); el.innerHTML = '';
+    E.DIFF_ORDER.forEach(function (d, i) {
+      var cfg = E.DIFF[d], g = getProg(p.id, d);
+      var b = document.createElement('button'); b.className = 'dbtn';
+      var pct = g ? Math.round(unpackSet(g.f, g.n).size / g.n * 100) : 0;
+      var st = g ? (g.d ? 'Painted' : pct + '% done') : 'Not started';
+      var cols = ['#5aa8c8', '#e0a02e', '#d9642e', '#a8446a'];
+      b.innerHTML = '<span class="chip" style="background:' + cols[i] + '">' + (i + 1) + '</span>' +
+        '<span class="t"><b>' + cfg.label + '</b><small>about ' + cfg.target + ' areas \u00b7 ' + cfg.pal + ' colours</small></span>' +
+        '<span class="st' + (g && g.d ? ' done' : '') + '">' + st + '</span>';
+      b.onclick = function () { sheet.classList.remove('on'); startPlay(p, d); };
+      el.appendChild(b);
+    });
+    sheet.classList.add('on');
+  }
+
+  /* =================== PLAY =================== */
+  var cv = $('#cv'), ctx = cv.getContext('2d'), stage = $('#stage');
+  var paintCv = document.createElement('canvas'), paintCx = paintCv.getContext('2d'), paintImg = null;
+  var lineCv = document.createElement('canvas'), lineCx = lineCv.getContext('2d');
+  var PAPER = [252, 250, 246];
+  var P = null, V = null, raf = 0, cw = 0, ch = 0, dpr = 1;
+  var pulse = null, marks = [], lastFrame = 0, playToken = 0;
+
+  function sizeCanvas() {
+    if (!P) return;
+    dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    cw = stage.clientWidth; ch = stage.clientHeight;
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    if (!V.size) fitView(); else clampView();
+  }
+  function fitView() { V.zoom = 1; V.size = Math.min(cw, ch); clampView(); }
+  function clampView() {
+    var s = V.size * V.zoom, m = Math.min(60, cw * 0.25);
+    V.panX = s <= cw ? (cw - s) / 2 : Math.min(m, Math.max(cw - s - m, V.panX));
+    V.panY = s <= ch ? (ch - s) / 2 : Math.min(m, Math.max(ch - s - m, V.panY));
+  }
+
+  function startPlay(pic, diff) {
+    go('play');
+    $('#playName').textContent = pic.name;
+    $('#playSub').textContent = E.DIFF[diff].label;
+    $('#loader').classList.remove('off');
+    var token = ++playToken;
+    P = { pic: pic, diff: diff, pz: null, filled: new Set(), sel: 1, ready: false, done: false, fade: 1 };
+    V = { size: 0, zoom: 1, panX: 0, panY: 0, res: 512 };
+    setTimeout(function () {
+      if (!P || token !== playToken) return;
+      var pz = E.buildPuzzle(pic, diff);
+      if (!P || token !== playToken) return;
+      P.pz = pz; V.res = pz.res;
+      var g = getProg(pic.id, diff);
+      if (g && g.n === pz.count) P.filled = unpackSet(g.f, g.n);
+      if (P.filled.size >= pz.count) P.filled = new Set();
+
+      paintCv.width = paintCv.height = pz.res;
+      lineCv.width = lineCv.height = pz.res;
+      paintImg = paintCx.createImageData(pz.res, pz.res);
+      var d = paintImg.data;
+      for (var i = 0; i < pz.res * pz.res; i++) {
+        d[i * 4] = PAPER[0]; d[i * 4 + 1] = PAPER[1]; d[i * 4 + 2] = PAPER[2]; d[i * 4 + 3] = 255;
+      }
+      P.filled.forEach(function (r) { paintRegion(r); });
+      paintCx.putImageData(paintImg, 0, 0);
+
+      var li = lineCx.createImageData(pz.res, pz.res), ld = li.data;
+      for (var k = 0; k < pz.res * pz.res; k++) {
+        ld[k * 4] = 58; ld[k * 4 + 1] = 50; ld[k * 4 + 2] = 42;
+        ld[k * 4 + 3] = pz.outline[k] ? 165 : 0;
+      }
+      lineCx.putImageData(li, 0, 0);
+
+      P.ready = true;
+      $('#loader').classList.add('off');
+      buildPalette();
+      sizeCanvas(); fitView();
+      pickFirstColour();
+      updateProgress();
+      if (!raf) loop();
+    }, 30);
+  }
+  function stopPlay() {
+    playToken++;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0; P = null; marks = []; pulse = null; peeking = false; hintR = null;
+  }
+
+  function paintRegion(id) {
+    var pz = P.pz, r = pz.regions[id], d = paintImg.data;
+    var on = P.filled.has(id), col = pz.palette[r.num - 1].rgb;
+    for (var i = r.off; i < r.off + r.len; i++) {
+      var p = pz.pix[i], o = p * 4;
+      if (on) {
+        var c = E.shift(col, (pz.shade[p] - 128) / 420);
+        d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2];
+      } else { d[o] = PAPER[0]; d[o + 1] = PAPER[1]; d[o + 2] = PAPER[2]; }
+      d[o + 3] = 255;
+    }
+  }
+  function flush() { paintCx.putImageData(paintImg, 0, 0); }
+
+  function remaining(num) {
+    var pz = P.pz, n = 0;
+    for (var i = 0; i < pz.regions.length; i++)
+      if (pz.regions[i].num === num && !P.filled.has(i)) n++;
+    return n;
+  }
+  function buildPalette() {
+    var el = $('#palette'); el.innerHTML = '';
+    P.pz.palette.forEach(function (c) {
+      var b = document.createElement('button'); b.className = 'sw'; b.dataset.num = c.num;
+      var lm = E.luma(c.rgb);
+      b.innerHTML = '<span class="blob" style="background:' + c.hex + ';color:' + (lm > 150 ? '#3b3229' : '#fff') +
+        '">' + c.num + '</span><small></small>';
+      b.onclick = function () { selectColour(c.num); SFX.tap(); };
+      el.appendChild(b);
+    });
+    refreshPalette();
+  }
+  function refreshPalette() {
+    $$('#palette .sw').forEach(function (b) {
+      var n = +b.dataset.num, left = remaining(n);
+      b.classList.toggle('sel', n === P.sel);
+      b.classList.toggle('done', left === 0);
+      b.querySelector('small').textContent = left === 0 ? '\u00b7' : left;
+    });
+  }
+  function selectColour(n) {
+    P.sel = n; refreshPalette();
+    var b = $('#palette .sw.sel'); if (b && b.scrollIntoView) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }
+  function pickFirstColour() {
+    for (var i = 0; i < P.pz.palette.length; i++) {
+      var n = P.pz.palette[i].num;
+      if (remaining(n) > 0) { selectColour(n); return; }
+    }
+    selectColour(1);
+  }
+  function nextColour() {
+    var pal = P.pz.palette, start = pal.findIndex(function (c) { return c.num === P.sel; });
+    for (var k = 1; k <= pal.length; k++) {
+      var c = pal[(start + k) % pal.length];
+      if (remaining(c.num) > 0) { selectColour(c.num); return; }
+    }
+  }
+  function updateProgress() {
+    var n = P.pz.count, f = P.filled.size, pct = Math.round(f / n * 100);
+    $('#progFill').style.width = pct + '%';
+    $('#progTxt').textContent = f + ' / ' + n;
+  }
+
+  function tryFill(sx, sy, silent) {
+    if (!P || !P.ready || P.done) return;
+    var id = E.pickAt(P.pz, viewFor(), sx, sy);
+    if (id < 0) return;
+    if (P.filled.has(id)) return;
+    var r = P.pz.regions[id];
+    if (r.num !== P.sel) {
+      if (!silent) {
+        SFX.err();
+        mark(sx, sy, r.num, '#c8442e');
+      }
+      return;
+    }
+    P.filled.add(id);
+    paintRegion(id); flush();
+    SFX.fill(r.num - 1, P.pz.palette.length);
+    pulse = { x: r.x, y: r.y, r: r.r, t: performance.now() };
+    updateProgress();
+    var left = remaining(r.num);
+    refreshPalette();
+    if (left === 0) { SFX.colour(); if (P.filled.size < P.pz.count) setTimeout(nextColour, 220); }
+    persist();
+    if (P.filled.size >= P.pz.count) finish();
+  }
+  var saveT = 0;
+  function persist() {
+    clearTimeout(saveT);
+    saveT = setTimeout(function () {
+      if (!P) return;
+      putProg(P.pic.id, P.diff, P.filled, P.pz.count, P.filled.size >= P.pz.count);
+      STAT.filled++; save(K.stat, STAT);
+    }, 400);
+  }
+  function mark(x, y, txt, col) {
+    var d = document.createElement('div');
+    d.className = 'hint'; d.textContent = txt; d.style.color = col;
+    d.style.left = x + 'px'; d.style.top = y + 'px';
+    stage.appendChild(d);
+    setTimeout(function () { d.remove(); }, 700);
+  }
+  function viewFor() { return { size: V.size, zoom: V.zoom, panX: V.panX, panY: V.panY, res: P.pz.res }; }
+
+  function finish() {
+    P.done = true;
+    var g = getProg(P.pic.id, P.diff);
+    var already = g && g.d;
+    putProg(P.pic.id, P.diff, P.filled, P.pz.count, true);
+    if (!already) { STAT.done++; save(K.stat, STAT); }
+    SFX.win();
+    burst();
+    setTimeout(function () {
+      var fc = $('#finCv'), fx = fc.getContext('2d');
+      fx.imageSmoothingEnabled = true;
+      fx.drawImage(paintCv, 0, 0, 360, 360);
+      $('#finTxt').textContent = P.pic.name + ' \u00b7 ' + E.DIFF[P.diff].label + ' \u00b7 ' + P.pz.count + ' areas';
+      $('#finish').classList.add('on');
+    }, 1400);
+  }
+  var sparks = [];
+  function burst() {
+    sparks = [];
+    var t = theme().p.c;
+    for (var i = 0; i < 70; i++) sparks.push({
+      x: cw / 2, y: ch / 2, vx: (Math.random() - 0.5) * 9, vy: (Math.random() - 0.9) * 8,
+      r: 2 + Math.random() * 4, c: t[(Math.random() * t.length) | 0], life: 1
+    });
+  }
+
+  /* ---- draw loop ---- */
+  function loop(ts) {
+    raf = requestAnimationFrame(loop);
+    if (!P || !P.ready) return;
+    var dt = Math.min(50, ts - lastFrame || 16); lastFrame = ts;
+    var s = V.size * V.zoom;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(paintCv, V.panX, V.panY, s, s);
+
+    if (P.done && P.fade > 0) P.fade = Math.max(0, P.fade - dt / 900);
+    if (P.fade > 0) {
+      ctx.globalAlpha = P.fade;
+      ctx.drawImage(lineCv, V.panX, V.panY, s, s);
+      ctx.globalAlpha = 1;
+      drawNumbers(s);
+    }
+    if (pulse) {
+      var e = (performance.now() - pulse.t) / 420;
+      if (e >= 1) pulse = null; else {
+        var k = s / P.pz.res;
+        ctx.globalAlpha = (1 - e) * 0.7;
+        ctx.strokeStyle = theme().accent; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(pulse.x * k + V.panX, pulse.y * k + V.panY, (pulse.r * k + 4) * (0.6 + e * 1.3), 0, 6.284);
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+    }
+    if (hintR !== null) {
+      var hr = P.pz.regions[hintR], hk = s / P.pz.res;
+      var he = ((performance.now() - hintT) / 1400);
+      if (he >= 1) hintR = null;
+      else {
+        ctx.globalAlpha = 0.85 * (1 - he);
+        ctx.strokeStyle = theme().accent; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(hr.x * hk + V.panX, hr.y * hk + V.panY, (hr.r * hk + 8) * (1 + Math.sin(he * 12) * 0.08), 0, 6.284);
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+    }
+    if (sparks.length) {
+      for (var i = sparks.length - 1; i >= 0; i--) {
+        var sp = sparks[i];
+        sp.x += sp.vx; sp.y += sp.vy; sp.vy += 0.22; sp.life -= 0.012;
+        if (sp.life <= 0) { sparks.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.max(0, sp.life);
+        ctx.fillStyle = sp.c;
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r, 0, 6.284); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  function drawNumbers(s) {
+    var pz = P.pz, k = s / pz.res, R = pz.regions;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var dim = 'rgba(74,64,54,.58)';
+    var hot = theme().dark ? '#1d1a2e' : theme().accent;
+    for (var i = 0; i < R.length; i++) {
+      var r = R[i];
+      if (P.filled.has(i)) continue;
+      var fs = Math.min(r.r * k * 1.45, 26);
+      if (fs < 5.5) continue;
+      var x = r.x * k + V.panX, y = r.y * k + V.panY;
+      if (x < -20 || y < -20 || x > cw + 20 || y > ch + 20) continue;
+      var on = r.num === P.sel;
+      if (on) {
+        ctx.globalAlpha = 0.18; ctx.fillStyle = hot;
+        ctx.beginPath(); ctx.arc(x, y, fs * 0.95, 0, 6.284); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      ctx.font = (on ? '800 ' : '600 ') + fs.toFixed(1) + 'px ' + getComputedStyle(document.body).fontFamily;
+      ctx.fillStyle = on ? hot : dim;
+      ctx.fillText(r.num, x, y);
+    }
+  }
+
+  /* ---- input ---- */
+  var ptrs = new Map(), panMode = false, pinch = null, moved = 0, painting = false, lastPaint = null;
+  stage.addEventListener('pointerdown', function (e) {
+    if (!P || !P.ready) return;
+    stage.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY });
+    moved = 0;
+    if (ptrs.size === 2) {
+      var a = Array.from(ptrs.values());
+      pinch = {
+        d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y),
+        cx: (a[0].x + a[1].x) / 2, cy: (a[0].y + a[1].y) / 2,
+        z: V.zoom, px: V.panX, py: V.panY
+      };
+      painting = false;
+    } else if (!panMode) {
+      painting = true; lastPaint = null;
+      paintAt(e);
+    }
+    audio();
+  });
+  stage.addEventListener('pointermove', function (e) {
+    if (!P || !P.ready) return;
+    var p = ptrs.get(e.pointerId); if (!p) return;
+    var dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (ptrs.size === 2 && pinch) {
+      var a = Array.from(ptrs.values());
+      var d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+      var cx = (a[0].x + a[1].x) / 2, cy = (a[0].y + a[1].y) / 2;
+      var nz = Math.max(0.85, Math.min(14, pinch.z * (d / pinch.d)));
+      var rb = stage.getBoundingClientRect();
+      var ox = pinch.cx - rb.left, oy = pinch.cy - rb.top;
+      var f = nz / pinch.z;
+      V.zoom = nz;
+      V.panX = (pinch.px - ox) * f + (cx - rb.left);
+      V.panY = (pinch.py - oy) * f + (cy - rb.top);
+      clampView();
+    } else if (panMode || (!painting && ptrs.size === 1)) {
+      V.panX += dx; V.panY += dy; clampView();
+    } else if (painting) {
+      paintAt(e);
+    }
+  });
+  function endPtr(e) {
+    ptrs.delete(e.pointerId);
+    if (ptrs.size < 2) pinch = null;
+    if (ptrs.size === 0) painting = false;
+  }
+  stage.addEventListener('pointerup', endPtr);
+  stage.addEventListener('pointercancel', endPtr);
+  stage.addEventListener('wheel', function (e) {
+    if (!P || !P.ready) return;
+    e.preventDefault();
+    var rb = stage.getBoundingClientRect(), ox = e.clientX - rb.left, oy = e.clientY - rb.top;
+    var nz = Math.max(0.85, Math.min(14, V.zoom * (e.deltaY < 0 ? 1.14 : 1 / 1.14)));
+    var f = nz / V.zoom;
+    V.panX = ox - (ox - V.panX) * f; V.panY = oy - (oy - V.panY) * f;
+    V.zoom = nz; clampView();
+  }, { passive: false });
+
+  function paintAt(e) {
+    var rb = stage.getBoundingClientRect();
+    var x = e.clientX - rb.left, y = e.clientY - rb.top;
+    var id = E.pickAt(P.pz, viewFor(), x, y);
+    if (id >= 0 && id === lastPaint) return;
+    lastPaint = id;
+    tryFill(x, y, moved > 12);
+  }
+
+  function zoomBy(f) {
+    var nz = Math.max(0.85, Math.min(14, V.zoom * f));
+    var ox = cw / 2, oy = ch / 2, k = nz / V.zoom;
+    V.panX = ox - (ox - V.panX) * k; V.panY = oy - (oy - V.panY) * k;
+    V.zoom = nz; clampView();
+  }
+  $('#zIn').onclick = function () { zoomBy(1.35); };
+  $('#zOut').onclick = function () { zoomBy(1 / 1.35); };
+  $('#btnFit').onclick = function () { fitView(); SFX.tap(); };
+  $('#btnPan').onclick = function () {
+    panMode = !panMode; this.classList.toggle('on', panMode); SFX.tap();
+  };
+  $('#playBack').onclick = function () { back(); };
+  var peeking = false;
+  addEventListener('pointerup', function () { peekOff(); });
+  addEventListener('pointercancel', function () { peekOff(); });
+  $('#btnPeek').onmousedown = peekOn; $('#btnPeek').onmouseup = peekOff;
+  $('#btnPeek').ontouchstart = function (e) { e.preventDefault(); peekOn(); };
+  $('#btnPeek').ontouchend = function (e) { e.preventDefault(); peekOff(); };
+  function peekOn() {
+    if (!P || !P.ready || peeking) return;
+    peeking = true;
+    var pz = P.pz, d = paintImg.data;
+    for (var i = 0; i < pz.regions.length; i++) {
+      if (P.filled.has(i)) continue;
+      var r = pz.regions[i], col = pz.palette[r.num - 1].rgb;
+      for (var k = r.off; k < r.off + r.len; k++) {
+        var p = pz.pix[k], o = p * 4;
+        d[o] = (col[0] + PAPER[0] * 2.1) / 3.1; d[o + 1] = (col[1] + PAPER[1] * 2.1) / 3.1;
+        d[o + 2] = (col[2] + PAPER[2] * 2.1) / 3.1;
+      }
+    }
+    flush();
+  }
+  function peekOff() {
+    if (!peeking || !P || !P.ready) { peeking = false; return; }
+    peeking = false;
+    var pz = P.pz;
+    for (var i = 0; i < pz.regions.length; i++) if (!P.filled.has(i)) paintRegion(i);
+    flush();
+  }
+  var hintR = null, hintT = 0;
+  $('#btnHint').onclick = function () {
+    if (!P || !P.ready || P.done) return;
+    SFX.tap();
+    var pz = P.pz, pool = [];
+    for (var i = 0; i < pz.regions.length; i++)
+      if (!P.filled.has(i) && pz.regions[i].num === P.sel) pool.push(i);
+    if (!pool.length) {
+      nextColour();
+      for (var j = 0; j < pz.regions.length; j++)
+        if (!P.filled.has(j) && pz.regions[j].num === P.sel) pool.push(j);
+    }
+    if (!pool.length) return;
+    hintR = pool[(Math.random() * pool.length) | 0]; hintT = performance.now();
+    var r = pz.regions[hintR], k = V.size * V.zoom / pz.res;
+    var x = r.x * k + V.panX, y = r.y * k + V.panY;
+    if (x < 20 || y < 20 || x > cw - 20 || y > ch - 20) {
+      V.panX += cw / 2 - x; V.panY += ch / 2 - y; clampView();
+    }
+  };
+
+  /* ---- finish modal ---- */
+  $('#finClose').onclick = function () { $('#finish').classList.remove('on'); back(); };
+  $('#finNext').onclick = function () {
+    $('#finish').classList.remove('on');
+    var list = picsOf(P.pic.cat), i = list.indexOf(P.pic);
+    var nxt = list[(i + 1) % list.length], d = P.diff;
+    back(); setTimeout(function () { startPlay(nxt, d); }, 60);
+  };
+  $('#finSave').onclick = function () {
+    var out = document.createElement('canvas'); out.width = out.height = 1024;
+    var o = out.getContext('2d'); o.imageSmoothingEnabled = true;
+    o.drawImage(paintCv, 0, 0, 1024, 1024);
+    try {
+      var a = document.createElement('a');
+      a.download = 'numbrush-' + P.pic.id + '-' + P.diff + '.png';
+      a.href = out.toDataURL('image/png');
+      a.click();
+    } catch (e) { }
+  };
+
+  /* =================== GALLERY =================== */
+  var galQueue = [];
+  function buildGallery() {
+    var el = $('#galList'); el.innerHTML = '';
+    galQueue = [];
+    var items = [];
+    Object.keys(PROG).forEach(function (k) {
+      if (!PROG[k].d) return;
+      var parts = k.split('|'), pic = PICTURES.filter(function (p) { return p.id === parts[0]; })[0];
+      if (pic) items.push({ pic: pic, diff: parts[1], t: PROG[k].t || 0 });
+    });
+    items.sort(function (a, b) { return b.t - a.t; });
+    $('#galEmpty').style.display = items.length ? 'none' : 'block';
+    items.forEach(function (it) {
+      var b = document.createElement('button'); b.className = 'g';
+      var c = document.createElement('canvas'); c.width = c.height = 160;
+      var cx = c.getContext('2d');
+      var im = cx.createImageData(160, 160);
+      im.data.set(E.thumbPixels(it.pic, 160));
+      cx.putImageData(im, 0, 0);
+      b.appendChild(c);
+      var m = document.createElement('div'); m.className = 'meta';
+      m.innerHTML = '<b>' + it.pic.name + '</b><small>' + E.DIFF[it.diff].label + '</small>';
+      b.appendChild(m);
+      b.onclick = function () { SFX.tap(); openSheet(it.pic); };
+      el.appendChild(b);
+      galQueue.push({ it: it, cx: cx });
+    });
+    drainGallery();
+  }
+  function drainGallery() {
+    var job = galQueue.shift(); if (!job) return;
+    setTimeout(function () {
+      try {
+        var pz = E.buildPuzzle(job.it.pic, job.it.diff, { res: 160, searchRes: 160 });
+        var im = job.cx.createImageData(160, 160), d = im.data;
+        for (var i = 0; i < pz.regions.length; i++) {
+          var r = pz.regions[i], col = pz.palette[r.num - 1].rgb;
+          for (var k = r.off; k < r.off + r.len; k++) {
+            var p = pz.pix[k], o = p * 4;
+            var c = E.shift(col, (pz.shade[p] - 128) / 420);
+            d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+          }
+        }
+        job.cx.putImageData(im, 0, 0);
+      } catch (e) { }
+      drainGallery();
+    }, 40);
+  }
+
+  /* =================== SETTINGS =================== */
+  function buildSettings() {
+    $('#tgSfx').classList.toggle('on', !!SET.sfx);
+    $('#tgMusic').classList.toggle('on', !!SET.music);
+    var done = Object.keys(PROG).filter(function (k) { return PROG[k].d; }).length;
+    $('#statTxt').textContent = done + ' painted \u00b7 ' + Object.keys(PROG).length + ' started';
+    var el = $('#themeList'); el.innerHTML = '';
+    THEMES.forEach(function (t) {
+      var b = document.createElement('button');
+      b.className = 'th' + (t.id === SET.theme ? ' sel' : '');
+      b.innerHTML = '<span class="sws"><i style="background:' + t.bg1 + '"></i><i style="background:' + t.accent +
+        '"></i><i style="background:' + t.accent2 + '"></i><i style="background:' + t.surface + '"></i></span><b>' + t.name + '</b>';
+      b.onclick = function () {
+        SET.theme = t.id; save(K.set, SET); applyTheme(); buildSettings(); SFX.tap();
+        if (SET.music) musicOn();
+      };
+      el.appendChild(b);
+    });
+  }
+  $('#tgSfx').onclick = function () { SET.sfx = !SET.sfx; save(K.set, SET); this.classList.toggle('on', SET.sfx); if (SET.sfx) SFX.tap(); };
+  $('#tgMusic').onclick = function () {
+    SET.music = !SET.music; save(K.set, SET); this.classList.toggle('on', SET.music);
+    if (SET.music) { audio(); musicOn(); } else musicOff();
+  };
+  $('#btnReset').onclick = function () {
+    if (!confirm('Erase every painted picture and all progress?')) return;
+    PROG = {}; STAT = { filled: 0, done: 0 };
+    save(K.prog, PROG); save(K.stat, STAT);
+    buildSettings(); buildHome();
+  };
+  $('#goGallery').onclick = function () { SFX.tap(); go('gallery'); };
+  $('#goSettings').onclick = function () { SFX.tap(); go('settings'); };
+
+  /* =================== BOOT =================== */
+  applyTheme();
+  buildHome();
+  drawParts();
+  addEventListener('keydown', function (e) {
+    if (!P || !P.ready) return;
+    if (e.key === '+' || e.key === '=') zoomBy(1.3);
+    if (e.key === '-') zoomBy(1 / 1.3);
+    if (e.key === '0') fitView();
+    if (e.key === 'Escape') back();
+  });
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+  window.addEventListener('pointerdown', function once() {
+    if (SET.music) { audio(); musicOn(); }
+    window.removeEventListener('pointerdown', once);
+  });
+})();
+// ==APP_END==
+</script>
+</body></html>

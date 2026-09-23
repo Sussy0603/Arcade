@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Prism Path</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{background:var(--bg);color:var(--text);transition:background .5s,color .5s;
+       display:flex;align-items:center;justify-content:center}
+  #fx{position:fixed;inset:0;z-index:0;pointer-events:none}
+  #app{position:relative;z-index:1;width:100%;max-width:460px;height:100%;
+       max-height:900px;display:flex;flex-direction:column;padding:16px}
+  .screen{flex:1;display:none;flex-direction:column;animation:in .28s ease}
+  .screen.on{display:flex}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .top{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:44px}
+  .top h2{font-size:19px;font-weight:700;flex:1}
+  .ico{width:40px;height:40px;border:0;border-radius:12px;cursor:pointer;
+       background:transparent;color:var(--text);font-size:19px;display:grid;
+       place-items:center;transition:background .2s}
+  .ico:hover{background:var(--surface)}
+
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;
+          justify-content:center;gap:13px}
+  .logo{font-size:41px;font-weight:800;letter-spacing:1px;color:var(--text)}
+  .tag{font-size:12px;letter-spacing:4px;opacity:.55;margin-bottom:24px;text-transform:uppercase}
+  .beamicon{font-size:52px;margin-bottom:6px;filter:drop-shadow(0 0 14px var(--primary))}
+
+  .btn{width:250px;height:54px;border:0;border-radius:16px;cursor:pointer;
+       font-size:16px;font-weight:600;display:flex;align-items:center;
+       justify-content:center;gap:9px;background:var(--surface);color:var(--text);
+       transition:transform .12s,filter .2s}
+  .btn:hover{filter:brightness(1.1)}
+  .btn:active{transform:scale(.96)}
+  .btn.primary{background:var(--primary);color:var(--on-primary)}
+  .stat{font-size:12px;opacity:.5;margin-top:16px;text-align:center;line-height:1.7}
+
+  .scroll{flex:1;overflow-y:auto;padding-right:4px}
+  .scroll::-webkit-scrollbar{width:4px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--surface);border-radius:4px}
+
+  .card{background:var(--surface);border-radius:15px;padding:16px;margin-bottom:10px;
+        cursor:pointer;display:flex;align-items:center;gap:14px;
+        transition:transform .12s,filter .2s;opacity:.94}
+  .card:hover{filter:brightness(1.08)}
+  .card:active{transform:scale(.98)}
+  .card.flat{cursor:default}
+  .card.flat:active{transform:none}
+  .badge{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;
+         background:color-mix(in srgb,var(--primary) 22%,transparent);
+         color:var(--primary);font-weight:800;font-size:12px;flex-shrink:0}
+  .cardtxt{flex:1;min-width:0}
+  .cardtxt b{display:block;font-size:16px;font-weight:700;margin-bottom:2px}
+  .cardtxt small{font-size:12px;opacity:.62}
+
+  #boardwrap{flex:1;display:flex;align-items:center;justify-content:center}
+  #board{width:100%;max-width:420px;aspect-ratio:1;border-radius:16px;
+         touch-action:manipulation;cursor:pointer}
+  .chips{display:flex;justify-content:space-between;margin-bottom:10px}
+  .chip{background:var(--surface);padding:7px 15px;border-radius:20px;
+        font-size:13px;font-weight:600}
+  .hint{text-align:center;font-size:12px;opacity:.5;padding:14px 8px;line-height:1.6}
+
+  .themes{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:8px}
+  .th{border-radius:13px;padding:11px;cursor:pointer;border:2.5px solid transparent;
+      transition:transform .12s}
+  .th:active{transform:scale(.96)}
+  .th.sel{border-color:currentColor}
+  .th b{font-size:12.5px;font-weight:700;display:block;margin-bottom:8px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dots{display:flex;gap:4px}
+  .dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}
+  .levgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+  .lev{aspect-ratio:1;border-radius:13px;background:var(--surface);cursor:pointer;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;
+       gap:2px;transition:transform .12s,filter .2s;border:2px solid transparent}
+  .lev:hover{filter:brightness(1.1)}
+  .lev:active{transform:scale(.93)}
+  .lev b{font-size:17px;font-weight:700}
+  .lev small{font-size:9.5px;opacity:.6;line-height:1}
+  .lev.done{border-color:var(--primary)}
+  .lev .tick{font-size:9px;color:var(--primary)}
+  .sect{font-weight:700;margin:20px 0 6px;font-size:15px}
+  .sect:first-child{margin-top:0}
+  .sub{font-size:11.5px;opacity:.55;margin-bottom:9px}
+
+  .row{display:flex;align-items:center;justify-content:space-between;
+       background:var(--surface);border-radius:13px;padding:14px 16px;margin-bottom:9px}
+  .sw{width:48px;height:28px;border-radius:14px;border:0;cursor:pointer;
+      background:rgba(128,128,128,.35);position:relative;transition:background .2s;flex-shrink:0}
+  .sw.on{background:var(--primary)}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;
+             border-radius:50%;background:#fff;transition:transform .2s;
+             box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .sw.on::after{transform:translateX(20px)}
+
+  .ach{display:flex;align-items:center;gap:12px;background:var(--surface);
+       border-radius:12px;padding:12px;margin-bottom:7px}
+  .ach.lock{opacity:.35}
+  .ach .em{font-size:22px;flex-shrink:0}
+  .ach b{font-size:14px;display:block}
+  .ach small{font-size:11.5px;opacity:.65}
+
+  .modal{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.55);
+         display:none;align-items:flex-end;justify-content:center;
+         animation:fade .2s}
+  .modal.on{display:flex}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .sheet{background:var(--surface);width:100%;max-width:460px;
+         border-radius:24px 24px 0 0;padding:28px 24px 34px;text-align:center;
+         animation:up .3s cubic-bezier(.2,.9,.3,1)}
+  @keyframes up{from{transform:translateY(100%)}to{transform:none}}
+  .sheet .big{font-size:46px;margin-bottom:6px}
+  .sheet h3{font-size:25px;margin-bottom:4px}
+  .sheet p{font-size:14px;opacity:.65;margin-bottom:22px}
+  .sheet .btns{display:flex;gap:11px}
+  .sheet .btn{width:auto;flex:1;height:50px;font-size:15px}
+  .ghost{background:transparent;border:1.5px solid color-mix(in srgb,var(--text) 30%,transparent)}
+  input[type=text]{width:100%;padding:13px;border-radius:11px;font-size:15px;
+    border:1.5px solid color-mix(in srgb,var(--text) 25%,transparent);
+    background:transparent;color:var(--text);margin-bottom:16px;text-align:center}
+  input:focus{outline:none;border-color:var(--primary)}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div id="app">
+
+  <!-- MENU -->
+  <div class="screen on" id="s-menu">
+    <div class="top"><div style="flex:1"></div>
+      <button class="ico" id="mute" title="Sound">🔊</button>
+    </div>
+    <div class="center">
+      <div class="beamicon">✦</div>
+      <div class="logo">Prism Path</div>
+      <div class="tag">bend the light</div>
+      <button class="btn primary" data-go="difficulty">▶ Play</button>
+      <button class="btn" data-go="daily" id="dailybtn">📅 Daily Challenge</button>
+      <button class="btn" data-go="profile">👤 Profile</button>
+      <button class="btn" data-go="settings">⚙ Settings</button>
+      <div class="stat" id="menustat"></div>
+    </div>
+  </div>
+
+  <!-- DIFFICULTY -->
+  <div class="screen" id="s-difficulty">
+    <div class="top"><button class="ico" data-go="menu">←</button><h2>Choose Difficulty</h2></div>
+    <div class="scroll" id="difflist"></div>
+  </div>
+
+  <!-- LEVELS -->
+  <div class="screen" id="s-levels">
+    <div class="top"><button class="ico" data-go="difficulty">←</button><h2 id="levtitle"></h2></div>
+    <div class="sub" style="margin-bottom:10px">Every level is unlocked. Play them in any order.</div>
+    <div class="scroll"><div class="levgrid" id="levgrid"></div><div style="height:20px"></div></div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen" id="s-game">
+    <div class="top">
+      <button class="ico" id="gameback">←</button>
+      <h2 id="gametitle"></h2>
+      <button class="ico" id="mute2">🔊</button>
+      <button class="ico" id="reset">↻</button>
+    </div>
+    <div class="chips">
+      <div class="chip" id="litchip">0 / 0 lit</div>
+      <div class="chip" id="movechip">0 moves</div>
+    </div>
+    <div id="boardwrap"><canvas id="board"></canvas></div>
+    <div class="hint">Tap a mirror ╱ or splitter ⋰ to rotate it.<br>Light every target ◎ to win.</div>
+  </div>
+
+  <!-- DAILY -->
+  <div class="screen" id="s-daily">
+    <div class="top"><button class="ico" data-go="menu">←</button><h2>Daily Challenge</h2></div>
+    <div class="center" id="dailybody"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="screen" id="s-profile">
+    <div class="top"><button class="ico" data-go="menu">←</button><h2>Profile</h2>
+      <button class="ico" data-go="settings">⚙</button></div>
+    <div class="scroll" id="profilebody"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="s-settings">
+    <div class="top"><button class="ico" id="setback">←</button><h2>Settings</h2></div>
+    <div class="scroll" id="settingsbody"></div>
+  </div>
+</div>
+
+<!-- WIN SHEET -->
+<div class="modal" id="win">
+  <div class="sheet">
+    <div class="big">✨</div>
+    <h3>Solved!</h3>
+    <p id="winmoves"></p>
+    <div class="btns">
+      <button class="btn ghost" id="winmenu">Menu</button>
+      <button class="btn primary" id="winnext">Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME SHEET -->
+<div class="modal" id="namemodal">
+  <div class="sheet">
+    <h3 style="margin-bottom:16px">Profile Name</h3>
+    <input type="text" id="nameinput" maxlength="18" placeholder="Your name">
+    <div class="btns">
+      <button class="btn ghost" id="namecancel">Cancel</button>
+      <button class="btn primary" id="namesave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET SHEET -->
+<div class="modal" id="resetmodal">
+  <div class="sheet">
+    <div class="big">⚠️</div>
+    <h3>Reset progress?</h3>
+    <p>This erases every solved level, achievement, and your streak. It cannot be undone.</p>
+    <div class="btns">
+      <button class="btn ghost" id="resetcancel">Cancel</button>
+      <button class="btn primary" id="resetok" style="background:#c0392b;color:#fff">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ ENGINE (brute-force verified: 1200/1200 solvable) ============ */
+const N=0,E=1,S=2,W=3;
+const EMPTY=0,SOURCE=1,MIRROR=2,SPLITTER=3,BLOCKER=4,TARGET=5;
+const SLASH={[N]:E,[E]:N,[S]:W,[W]:S}, BACK={[N]:W,[W]:N,[S]:E,[E]:S};
+const reflect=(d,rot)=>(rot%2===0?SLASH:BACK)[d];
+const dxf=(x,d)=>d===E?x+1:d===W?x-1:x;
+const dyf=(y,d)=>d===S?y+1:d===N?y-1:y;
+const MAXSTEPS=2000;
+const mkTile=(type,rotation=0,locked=false)=>({type,rotation,locked});
+const rotatable=t=>!t.locked&&(t.type===MIRROR||t.type===SPLITTER);
+
+function trace(g){
+  const h=g.length,w=g[0].length,vis=new Set(),q=[];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)
+    if(g[y][x].type===SOURCE) q.push([x,y,g[y][x].rotation%4]);
+  let steps=0;
+  while(q.length&&steps++<MAXSTEPS){
+    const [x,y,d]=q.pop(), key=x+','+y+','+d;
+    if(vis.has(key))continue;
+    vis.add(key);
+    const nx=dxf(x,d), ny=dyf(y,d);
+    if(nx<0||ny<0||nx>=w||ny>=h)continue;
+    const t=g[ny][nx];
+    if(t.type===BLOCKER||t.type===TARGET||t.type===SOURCE){
+      vis.add(nx+','+ny+','+d);
+    } else if(t.type===MIRROR){
+      vis.add(nx+','+ny+','+d);
+      q.push([nx,ny,reflect(d,t.rotation)]);
+    } else if(t.type===SPLITTER){
+      // Do NOT pre-mark the pass-through state: it would look already-visited
+      // when dequeued and be dropped, silently degrading this into a mirror.
+      q.push([nx,ny,d]);
+      q.push([nx,ny,reflect(d,t.rotation)]);
+    } else {
+      q.push([nx,ny,d]);
+    }
+  }
+  return vis;
+}
+function beamCells(g){const s=new Set();for(const k of trace(g)){const i=k.lastIndexOf(',');s.add(k.slice(0,i));}return s;}
+function targetsOf(g){const o=[];for(let y=0;y<g.length;y++)for(let x=0;x<g[0].length;x++)if(g[y][x].type===TARGET)o.push([x,y]);return o;}
+function litTargets(g){const c=beamCells(g);return targetsOf(g).filter(([x,y])=>c.has(x+','+y));}
+function isSolved(g){const t=targetsOf(g);return t.length>0&&litTargets(g).length===t.length;}
+
+/* seeded RNG so a level index always yields the same board */
+function mulberry32(a){return function(){a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const ri=(rng,n)=>Math.floor(rng()*n);
+
+/* ============ GENERATOR ============
+   A target ABSORBS the beam, so two targets can never share one branch — the
+   first eats the light. N targets => N independent branches => >=N-1 splitters.
+   We walk the beam and place pieces ON it (guaranteed to be hit), splitting when
+   short on branches. Board is solved BY CONSTRUCTION, then rotations scramble. */
+const DIFFS={
+  easy:   {size:5,targets:1,mirrors:2,blockers:1,splitters:0,minTurns:2},
+  medium: {size:6,targets:2,mirrors:3,blockers:2,splitters:1,minTurns:1},
+  hard:   {size:7,targets:3,mirrors:4,blockers:3,splitters:2,minTurns:1},
+  expert: {size:8,targets:3,mirrors:6,blockers:4,splitters:2,minTurns:1},
+};
+const DIFFNAMES=['easy','medium','hard','expert'];
+const DIFFLABEL={easy:'Easy',medium:'Medium',hard:'Hard',expert:'Expert'};
+
+function carve(d,rng){
+  const n=d.size;
+  const g=Array.from({length:n},()=>Array.from({length:n},()=>mkTile(EMPTY)));
+  const edges=[];
+  for(let i=1;i<n-1;i++) edges.push([i,0],[i,n-1],[0,i],[n-1,i]);
+  const [sx,sy]=edges[ri(rng,edges.length)];
+  const aim = sy===0?S : sy===n-1?N : sx===0?E : W;
+  g[sy][sx]=mkTile(SOURCE,aim,true);
+
+  let need=d.targets, splits=d.splitters, mirrors=d.mirrors;
+  const movable=[]; let heads=[[sx,sy,aim,0]], placed=0, guard=0;
+
+  while(heads.length&&placed<need&&guard++<300){
+    let [x,y,dr,turns]=heads.shift();
+    const run=1+ri(rng,3); let moved=0;
+    while(moved<run){
+      const nx=dxf(x,dr), ny=dyf(y,dr);
+      if(nx<0||ny<0||nx>=n||ny>=n) break;
+      if(g[ny][nx].type!==EMPTY) break;
+      x=nx;y=ny;moved++;
+    }
+    if(moved===0) continue;
+
+    const live=heads.length+1;
+    if((need-placed)-live>0 && splits>0){
+      const rot=ri(rng,2);
+      g[y][x]=mkTile(SPLITTER,rot); movable.push([x,y]); splits--;
+      heads.push([x,y,dr,turns]);
+      heads.push([x,y,reflect(dr,rot),turns]);
+      continue;
+    }
+    const mustEnd=(need-placed)>=live, tooSoon=turns<d.minTurns;
+    if(mirrors>0 && (tooSoon || (!mustEnd && rng()<0.6))){
+      const rot=ri(rng,2);
+      g[y][x]=mkTile(MIRROR,rot); movable.push([x,y]); mirrors--;
+      heads.push([x,y,reflect(dr,rot),turns+1]);
+      continue;
+    }
+    g[y][x]=mkTile(TARGET,0,true); placed++;
+  }
+  if(placed<need) return null;
+  if(!isSolved(g)) return null;
+
+  const beam=beamCells(g), off=[];
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++)
+    if(g[y][x].type===EMPTY && !beam.has(x+','+y)) off.push([x,y]);
+  for(let i=off.length-1;i>0;i--){const j=ri(rng,i+1);[off[i],off[j]]=[off[j],off[i]];}
+
+  let oi=0;
+  for(let i=0;i<d.blockers&&oi<off.length;i++,oi++){const[x,y]=off[oi];g[y][x]=mkTile(BLOCKER,0,true);}
+  for(let i=0;i<mirrors&&oi<off.length;i++,oi++){const[x,y]=off[oi];g[y][x]=mkTile(MIRROR,ri(rng,2));movable.push([x,y]);}
+  if(!isSolved(g)) return null;
+
+  let changed=false;
+  for(const [x,y] of movable){ if(rng()<0.6){g[y][x].rotation^=1;changed=true;} }
+  if(!changed&&movable.length){const[x,y]=movable[ri(rng,movable.length)];g[y][x].rotation^=1;}
+  if(isSolved(g)) return null;
+  return {grid:g,movable};
+}
+function generate(name,seed){
+  const d=DIFFS[name], rng=mulberry32(seed);
+  for(let i=0;i<500;i++){ const r=carve(d,rng); if(r) return r; }
+  const g=Array.from({length:5},()=>Array.from({length:5},()=>mkTile(EMPTY)));
+  g[0][0]=mkTile(SOURCE,S,true); g[2][0]=mkTile(MIRROR,0); g[2][3]=mkTile(TARGET,0,true);
+  return {grid:g,movable:[[0,2]]};
+}
+const dailySeed=dt=>dt.getUTCFullYear()*10000+(dt.getUTCMonth()+1)*100+dt.getUTCDate();
+const dailyDifficulty=dt=>['medium','hard','expert'][ri(mulberry32(dailySeed(dt)),3)];
+const dailyPuzzle=dt=>generate(dailyDifficulty(dt),dailySeed(dt));
+
+/* ============ THEMES ============ */
+const THEMES=[
+ {id:'ete',label:'Été',season:1,fx:'beach',bgm:'water',sfx:'summer',
+  bg:'#FFFBE6',surface:'#B2EBD4',primary:'#FF8A65',accent:'#FFCC9E',text:'#4E3B2A'},
+ {id:'printemps',label:'Printemps',season:1,fx:'flowers',bgm:'birds',sfx:'spring',
+  bg:'#FDF6FA',surface:'#E6E6FA',primary:'#E7A4C0',accent:'#B0E0E6',text:'#5A5560'},
+ {id:'automne',label:'Automne',season:1,fx:'leaves',bgm:'lofi',sfx:'autumn',
+  bg:'#2E2018',surface:'#5C3A21',primary:'#D97706',accent:'#B45309',text:'#F5E6D3'},
+ {id:'hiver',label:'Hiver',season:1,fx:'snow',bgm:'bells',sfx:'winter',
+  bg:'#0F1724',surface:'#1E293B',primary:'#DC2626',accent:'#10B981',text:'#F8FAFC'},
+ {id:'nature',label:'Nature',fx:'leaves',
+  bg:'#FAF7F0',surface:'#D9E0CC',primary:'#7C9070',accent:'#D98B6A',text:'#3A3A32'},
+ {id:'calme',label:'Calme & Bien-être',fx:'none',
+  bg:'#F0F7FA',surface:'#D3DDE3',primary:'#1F6F78',accent:'#A9B7E0',text:'#263238'},
+ {id:'creativite',label:'Créativité',fx:'none',
+  bg:'#FFFBEB',surface:'#FFE9A8',primary:'#FF6B35',accent:'#FF8FA3',text:'#3D2C1E'},
+ {id:'energie',label:'Énergie',fx:'none',
+  bg:'#0D0D0D',surface:'#3E0A16',primary:'#EF233C',accent:'#FF2E88',text:'#FFFFFF'},
+ {id:'minimaliste',label:'Minimaliste',fx:'none',
+  bg:'#FFFFFF',surface:'#F0F0F0',primary:'#0B1E3D',accent:'#C9A227',text:'#0A0A0A'},
+ {id:'romantique',label:'Romantique',fx:'roses',
+  bg:'#FFF5F7',surface:'#F5E6DC',primary:'#D98BA6',accent:'#C5B3E6',text:'#5C4A4F'},
+ {id:'ocean',label:'Océan',fx:'fish',
+  bg:'#03254E',surface:'#115E67',primary:'#40E0D0',accent:'#FF7F50',text:'#F4E4C1'},
+ {id:'neon',label:'Néon / Nuit Urbaine',fx:'none',
+  bg:'#08080F',surface:'#1A0B2E',primary:'#9D4EDD',accent:'#00F5FF',text:'#FF10F0'},
+ {id:'fancy',label:'Fancy',fx:'coffee',
+  bg:'#17100C',surface:'#3E2723',primary:'#800020',accent:'#D4AF37',text:'#F5E9D3'},
+];
+const themeById=id=>THEMES.find(t=>t.id===id)||THEMES[4];
+const isDark=t=>{const c=t.bg.slice(1);const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  return (0.299*r+0.587*g+0.114*b)/255 < 0.5;};
+
+/* ============ STORAGE (localStorage, plain) ============ */
+const DB={
+  _d:null,
+  load(){ try{ this._d=JSON.parse(localStorage.getItem('prism')||'{}'); }catch(e){ this._d={}; } },
+  save(){ try{ localStorage.setItem('prism',JSON.stringify(this._d)); }catch(e){} },
+  get(k,dv){ return this._d[k]===undefined?dv:this._d[k]; },
+  set(k,v){ this._d[k]=v; this.save(); },
+  reset(){ this._d={}; this.save(); },
+};
+DB.load();
+
+const nameOf=()=>DB.get('name','Player');
+const themeId=()=>DB.get('theme','nature');
+const muted=()=>DB.get('muted',false);
+const sfxOn=()=>DB.get('sfx',true);
+const totalSolved=()=>DB.get('total',0);
+const LEVELS_PER_DIFF=24;
+const bestMoves=(d,l)=>DB.get('best_'+d+'_'+l,-1);
+const isLevelDone=(d,l)=>bestMoves(d,l)>=0;
+const countDone=d=>{let n=0;for(let i=0;i<LEVELS_PER_DIFF;i++)if(isLevelDone(d,i))n++;return n;};
+const dayKey=()=>{const n=new Date();return n.getUTCFullYear()+'-'+(n.getUTCMonth()+1)+'-'+n.getUTCDate();};
+const dailyDone=()=>DB.get('daily_last')===dayKey();
+const streak=()=>DB.get('streak',0);
+const achieved=()=>DB.get('ach',[]);
+const recentAch=()=>DB.get('ach_recent',null);
+
+const ACHS=[
+ {id:'first_solve',t:'First Light',d:'Solve your first puzzle',e:'✨'},
+ {id:'solve_10',t:'Getting Warm',d:'Solve 10 puzzles',e:'🔟'},
+ {id:'solve_50',t:'Beam Bender',d:'Solve 50 puzzles',e:'🪞'},
+ {id:'solve_100',t:'Prism Master',d:'Solve 100 puzzles',e:'👑'},
+ {id:'expert_solve',t:'Expert Mind',d:'Solve an Expert puzzle',e:'🧠'},
+ {id:'efficient',t:'Efficient',d:'Solve in 3 moves or fewer',e:'⚡'},
+ {id:'daily_first',t:'Daily Devotee',d:'Complete a Daily Challenge',e:'📅'},
+ {id:'streak_7',t:'Week of Light',d:'7-day daily streak',e:'🔥'},
+ {id:'streak_30',t:'Unbroken Beam',d:'30-day daily streak',e:'💎'},
+];
+function unlock(id){
+  const a=achieved();
+  if(a.includes(id))return;
+  a.push(id); DB.set('ach',a); DB.set('ach_recent',id);
+}
+function completeLevel(diff,level,moves){
+  const k='best_'+diff+'_'+level, prev=DB.get(k,-1);
+  const firstTime = prev<0;
+  // keep the BEST score, and only count a level toward the total ONCE —
+  // levels are replayable in any order, so re-solving must not inflate stats
+  if(firstTime||moves<prev) DB.set(k,moves);
+  if(firstTime) DB.set('total',totalSolved()+1);
+  unlock('first_solve');
+  if(totalSolved()>=10)unlock('solve_10');
+  if(totalSolved()>=50)unlock('solve_50');
+  if(totalSolved()>=100)unlock('solve_100');
+  if(diff==='expert')unlock('expert_solve');
+  if(moves<=3)unlock('efficient');
+}
+function markDailyDone(){
+  if(dailyDone())return;
+  const y=new Date(Date.now()-864e5);
+  const yk=y.getUTCFullYear()+'-'+(y.getUTCMonth()+1)+'-'+y.getUTCDate();
+  const s=(DB.get('daily_last')===yk)?streak()+1:1;
+  DB.set('streak',s); DB.set('daily_last',dayKey());
+  unlock('daily_first');
+  if(s>=7)unlock('streak_7');
+  if(s>=30)unlock('streak_30');
+}
+
+/* ============ AUDIO (WebAudio synth — no files needed) ============ */
+const Audio_={
+  ctx:null, bgmNodes:[], bgmTimer:null,
+  init(){ if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } },
+  beep(freq,dur,type,vol,slideTo){
+    if(!this.ctx||muted()||!sfxOn())return;
+    const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(freq,t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||0.12,t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(this.ctx.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  },
+  noise(dur,vol,filterFreq){
+    if(!this.ctx||muted()||!sfxOn())return;
+    const t=this.ctx.currentTime, n=Math.floor(this.ctx.sampleRate*dur);
+    const buf=this.ctx.createBuffer(1,n,this.ctx.sampleRate), dat=buf.getChannelData(0);
+    for(let i=0;i<n;i++) dat[i]=(Math.random()*2-1)*(1-i/n);
+    const src=this.ctx.createBufferSource(); src.buffer=buf;
+    const f=this.ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=filterFreq||1200;
+    const g=this.ctx.createGain(); g.gain.value=vol||0.10;
+    src.connect(f); f.connect(g); g.connect(this.ctx.destination);
+    src.start(t);
+  },
+  /* season-flavoured SFX */
+  sfx(name){
+    this.init(); if(!this.ctx)return;
+    const pack=(theme.sfx)||'default';
+    if(name==='rotate'){
+      if(pack==='summer')      this.beep(880,0.13,'sine',0.10,1320);      // warm sun chime
+      else if(pack==='spring') this.beep(1568,0.10,'triangle',0.08,2093); // sparkle
+      else if(pack==='autumn') this.noise(0.12,0.09,800);                 // crunchy leaf
+      else if(pack==='winter') this.noise(0.09,0.06,4200);                // snow crunch
+      else                     this.beep(660,0.09,'sine',0.09,880);
+    } else if(name==='win'){
+      const s=[523,659,784,1047];
+      s.forEach((f,i)=>setTimeout(()=>this.beep(f,0.28,'triangle',0.13),i*95));
+    } else if(name==='error'){
+      this.beep(180,0.13,'sawtooth',0.06,120);
+    } else if(name==='tap'){
+      this.beep(440,0.05,'sine',0.05);
+    }
+  },
+  /* gentle looping pad per season */
+  startBGM(){
+    this.stopBGM(); this.init();
+    if(!this.ctx||muted()||!theme.bgm)return;
+    const kind=theme.bgm;
+    const loop=()=>{
+      if(muted()||!this.ctx)return;
+      if(kind==='water'){ this.noise(1.6,0.020,420); }
+      else if(kind==='birds'){
+        const f=1800+Math.random()*900;
+        this.beep(f,0.10,'sine',0.030,f*1.35);
+        setTimeout(()=>this.beep(f*0.85,0.08,'sine',0.022),160);
+      }
+      else if(kind==='lofi'){
+        const ch=[[220,277,330],[196,247,294],[247,311,370],[175,220,262]];
+        const c=ch[Math.floor(Math.random()*ch.length)];
+        c.forEach((f,i)=>setTimeout(()=>this.beep(f,1.7,'sine',0.028),i*70));
+      }
+      else if(kind==='bells'){
+        const mel=[659,784,880,784,659,587];
+        const f=mel[Math.floor(Math.random()*mel.length)];
+        this.beep(f,1.2,'triangle',0.030,f);
+        setTimeout(()=>this.beep(f*2,0.7,'sine',0.014),90);
+      }
+    };
+    loop();
+    this.bgmTimer=setInterval(loop, kind==='birds'?2600 : kind==='water'?1700 : 2400);
+  },
+  stopBGM(){ if(this.bgmTimer){clearInterval(this.bgmTimer);this.bgmTimer=null;} },
+};
+
+/* ============ APP STATE ============ */
+let theme = themeById(themeId());
+let G=null, MOVES=0, DIFF='easy', LEVEL=0, ISDAILY=false, WON=false;
+
+function applyTheme(t){
+  theme=t; DB.set('theme',t.id);
+  const r=document.documentElement.style;
+  r.setProperty('--bg',t.bg);
+  r.setProperty('--surface',t.surface);
+  r.setProperty('--primary',t.primary);
+  r.setProperty('--accent',t.accent);
+  r.setProperty('--text',t.text);
+  r.setProperty('--on-primary', isDark(t)?'#fff':'#fff');
+  seedParticles();
+  Audio_.startBGM();
+  syncMute();
+}
+function syncMute(){
+  const ic = muted() ? '🔇' : '🔊';
+  const a=document.getElementById('mute'), b=document.getElementById('mute2');
+  if(a)a.textContent=ic; if(b)b.textContent=ic;
+}
+function toggleMute(){
+  DB.set('muted',!muted());
+  if(muted()) Audio_.stopBGM(); else { Audio_.init(); Audio_.startBGM(); }
+  syncMute();
+}
+
+/* ============ SCREENS ============ */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  if(id==='menu') renderMenu();
+  if(id==='difficulty') renderDifficulty();
+  if(id==='levels') renderLevels();
+  if(id==='daily') renderDaily();
+  if(id==='profile') renderProfile();
+  if(id==='settings') renderSettings();
+}
+function renderMenu(){
+  document.getElementById('dailybtn').textContent = dailyDone()?'📅 Daily ✓':'📅 Daily Challenge';
+  let s = totalSolved()+' puzzle'+(totalSolved()===1?'':'s')+' solved';
+  if(streak()>0) s += '<br>🔥 '+streak()+' day streak';
+  document.getElementById('menustat').innerHTML=s;
+  syncMute();
+}
+function renderDifficulty(){
+  document.getElementById('difflist').innerHTML = DIFFNAMES.map(d=>{
+    const s=DIFFS[d], done=countDone(d);
+    return `<div class="card" data-diff="${d}">
+      <div class="badge">${s.size}×${s.size}</div>
+      <div class="cardtxt"><b>${DIFFLABEL[d]}</b>
+      <small>${s.targets} target${s.targets>1?'s':''} · ${done}/${LEVELS_PER_DIFF} solved</small></div>
+      <div style="opacity:.5">›</div></div>`;
+  }).join('');
+  document.querySelectorAll('[data-diff]').forEach(el=>{
+    el.onclick=()=>{ Audio_.sfx('tap'); PICKDIFF=el.dataset.diff; show('levels'); };
+  });
+}
+
+/* Every difficulty AND every level is open from the start — nothing is gated. */
+let PICKDIFF='easy';
+function renderLevels(){
+  const d=PICKDIFF;
+  document.getElementById('levtitle').textContent =
+    DIFFLABEL[d]+' · '+countDone(d)+'/'+LEVELS_PER_DIFF;
+  let h='';
+  for(let i=0;i<LEVELS_PER_DIFF;i++){
+    const done=isLevelDone(d,i), best=bestMoves(d,i);
+    h+=`<div class="lev ${done?'done':''}" data-lev="${i}">
+      <b>${i+1}</b>
+      ${done?`<small class="tick">✓ ${best}</small>`:'<small>&nbsp;</small>'}
+    </div>`;
+  }
+  document.getElementById('levgrid').innerHTML=h;
+  document.querySelectorAll('[data-lev]').forEach(el=>{
+    el.onclick=()=>{ Audio_.sfx('tap'); startGame(d, +el.dataset.lev, false); };
+  });
+}
+function renderDaily(){
+  const now=new Date(), diff=dailyDifficulty(now), done=dailyDone();
+  document.getElementById('dailybody').innerHTML=`
+    <div style="font-size:48px">📅</div>
+    <div style="font-size:25px;font-weight:700">Daily Challenge</div>
+    <div style="opacity:.6;font-size:14px">${now.getUTCDate()}/${now.getUTCMonth()+1}/${now.getUTCFullYear()}</div>
+    <div style="background:color-mix(in srgb,var(--primary) 20%,transparent);color:var(--primary);
+         padding:8px 18px;border-radius:20px;font-weight:600;margin-top:6px">
+      Today's difficulty: ${DIFFLABEL[diff]}</div>
+    <div style="color:var(--accent);margin-top:4px">🔥 ${streak()} day streak</div>
+    ${done?'<div style="font-size:34px;margin-top:14px">✅</div><div style="opacity:.7">Completed today!</div>':''}
+    <button class="btn primary" id="dailygo" style="margin-top:16px">
+      ${done?'Play again':'▶ Start'}</button>
+    <div class="stat" style="max-width:260px">Everyone gets the same puzzle today.</div>`;
+  document.getElementById('dailygo').onclick=()=>{ Audio_.sfx('tap'); startGame(diff,0,true); };
+}
+function renderProfile(){
+  const r=ACHS.find(a=>a.id===recentAch()), got=achieved();
+  document.getElementById('profilebody').innerHTML=`
+    <div class="card" id="editname">
+      <div class="badge" style="border-radius:50%;font-size:20px">${nameOf()[0].toUpperCase()}</div>
+      <div class="cardtxt"><b>${esc(nameOf())}</b>
+        <small>${totalSolved()} solved · ${streak()} day streak</small></div>
+      <div style="opacity:.5">✎</div>
+    </div>
+    <div class="sect">Recent Achievement</div>
+    <div class="card flat" style="background:color-mix(in srgb,var(--primary) 14%,transparent);
+         border:1px solid color-mix(in srgb,var(--primary) 35%,transparent)">
+      ${r?`<div class="em" style="font-size:29px">${r.e}</div>
+        <div class="cardtxt"><b>${r.t}</b><small>${r.d}</small></div>`
+        :`<div class="cardtxt"><small>No achievements yet — go solve one!</small></div>`}
+    </div>
+    <div class="sect">All Achievements</div>
+    ${ACHS.map(a=>`<div class="ach ${got.includes(a.id)?'':'lock'}">
+      <div class="em">${a.e}</div>
+      <div style="flex:1"><b>${a.t}</b><small>${a.d}</small></div>
+      ${got.includes(a.id)?'<div style="color:var(--accent)">✓</div>':''}</div>`).join('')}
+    <div class="sect">Progress</div>
+    ${DIFFNAMES.map(d=>`<div class="row" style="padding:11px 15px">
+      <span>${DIFFLABEL[d]}</span>
+      <span style="opacity:.6">${countDone(d)}/${LEVELS_PER_DIFF} solved</span></div>`).join('')}
+    <div style="height:20px"></div>`;
+  document.getElementById('editname').onclick=()=>{
+    document.getElementById('nameinput').value=nameOf();
+    document.getElementById('namemodal').classList.add('on');
+  };
+}
+function themeCard(t){
+  const sel = t.id===theme.id ? 'sel':'';
+  return `<div class="th ${sel}" data-theme="${t.id}"
+      style="background:${t.surface};color:${t.primary}">
+    <b style="color:${t.text}">${t.label}</b>
+    <div class="dots">
+      <div class="dot" style="background:${t.bg}"></div>
+      <div class="dot" style="background:${t.primary}"></div>
+      <div class="dot" style="background:${t.accent}"></div>
+      <div class="dot" style="background:${t.text}"></div>
+    </div></div>`;
+}
+function renderSettings(){
+  const seasons=THEMES.filter(t=>t.season), moods=THEMES.filter(t=>!t.season);
+  document.getElementById('settingsbody').innerHTML=`
+    <div class="sect">Audio</div>
+    <div class="row"><div><b style="font-weight:600">Background Music</b>
+      <div style="font-size:11.5px;opacity:.55">Changes with season themes</div></div>
+      <button class="sw ${muted()?'':'on'}" id="swmusic"></button></div>
+    <div class="row"><div><b style="font-weight:600">Sound Effects</b></div>
+      <button class="sw ${sfxOn()?'on':''}" id="swsfx"></button></div>
+
+    <div class="sect">Color Theme — Saisons</div>
+    <div class="sub">Season themes also change the sounds &amp; background</div>
+    <div class="themes">${seasons.map(themeCard).join('')}</div>
+
+    <div class="sect">Color Theme — Mood</div>
+    <div class="themes">${moods.map(themeCard).join('')}</div>
+
+    <div class="sect">Data</div>
+    <div class="row" id="resetrow" style="cursor:pointer">
+      <div><b style="font-weight:600">Reset progress</b>
+      <div style="font-size:11.5px;opacity:.55">Clears levels, achievements, streak</div></div>
+      <div style="opacity:.5">🗑</div></div>
+    <div class="stat">Prism Path — saved in this browser.</div>
+    <div style="height:20px"></div>`;
+
+  document.getElementById('swmusic').onclick=()=>{toggleMute();renderSettings();};
+  document.getElementById('swsfx').onclick=()=>{DB.set('sfx',!sfxOn());Audio_.sfx('tap');renderSettings();};
+  document.getElementById('resetrow').onclick=()=>document.getElementById('resetmodal').classList.add('on');
+  document.querySelectorAll('[data-theme]').forEach(el=>{
+    el.onclick=()=>{ applyTheme(themeById(el.dataset.theme)); Audio_.sfx('tap'); renderSettings(); };
+  });
+}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ============ GAME ============ */
+function startGame(diff,level,daily){
+  DIFF=diff; LEVEL=level; ISDAILY=daily; WON=false; MOVES=0;
+  const seed = daily ? dailySeed(new Date())
+                     : (DIFFNAMES.indexOf(diff)+1)*100000 + level;
+  G = generate(diff, seed).grid;
+  document.getElementById('gametitle').textContent =
+    daily ? 'Daily Challenge' : DIFFLABEL[diff]+' · '+(level+1);
+  show('game'); syncMute(); resizeBoard(); draw();
+}
+function resetLevel(){ WON=false; MOVES=0;
+  const seed = ISDAILY ? dailySeed(new Date())
+                       : (DIFFNAMES.indexOf(DIFF)+1)*100000 + LEVEL;
+  G = generate(DIFF,seed).grid; draw();
+}
+const cvs=document.getElementById('board'), ctx=cvs.getContext('2d');
+function resizeBoard(){
+  const r=cvs.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  cvs.width=r.width*dpr; cvs.height=r.width*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+cvs.addEventListener('click',e=>{
+  if(!G||WON)return;
+  const r=cvs.getBoundingClientRect(), n=G.length, cell=r.width/n;
+  const x=Math.floor((e.clientX-r.left)/cell), y=Math.floor((e.clientY-r.top)/cell);
+  if(x<0||y<0||x>=n||y>=n)return;
+  const t=G[y][x];
+  if(!rotatable(t)){ Audio_.sfx('error'); return; }
+  t.rotation^=1; MOVES++;
+  Audio_.sfx('rotate');
+  if(navigator.vibrate) navigator.vibrate(8);
+  draw();
+  if(isSolved(G)) winLevel();
+});
+function winLevel(){
+  WON=true; Audio_.sfx('win');
+  if(navigator.vibrate) navigator.vibrate([12,40,12]);
+  if(ISDAILY) markDailyDone(); else completeLevel(DIFF,LEVEL,MOVES);
+  document.getElementById('winmoves').textContent = MOVES+' move'+(MOVES===1?'':'s');
+  const last = !ISDAILY && LEVEL >= LEVELS_PER_DIFF-1;
+  document.getElementById('winnext').style.display = (ISDAILY||last)?'none':'flex';
+  setTimeout(()=>document.getElementById('win').classList.add('on'),420);
+}
+
+/* ---- board rendering ---- */
+function draw(){
+  if(!G)return;
+  const n=G.length, w=cvs.getBoundingClientRect().width, cell=w/n;
+  const t=theme;
+  ctx.clearRect(0,0,w,w);
+
+  // panel
+  ctx.fillStyle=hexA(t.surface,0.38);
+  roundRect(ctx,0,0,w,w,15); ctx.fill();
+
+  // grid
+  ctx.strokeStyle=hexA(t.text,0.10); ctx.lineWidth=1;
+  for(let i=0;i<=n;i++){
+    ctx.beginPath(); ctx.moveTo(i*cell,0); ctx.lineTo(i*cell,w); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i*cell); ctx.lineTo(w,i*cell); ctx.stroke();
+  }
+
+  // beams (under tiles)
+  const pulse = 0.72 + 0.28*Math.sin(Date.now()/420);
+  for(const key of trace(G)){
+    const p=key.split(','), x=+p[0], y=+p[1], d=+p[2];
+    const cx=(x+.5)*cell, cy=(y+.5)*cell;
+    const from = edgePt(cx,cy,cell,opp(d));
+    const tile = G[y][x];
+    const to = tile.type!==EMPTY ? [cx,cy] : edgePt(cx,cy,cell,d);
+    ctx.save();
+    ctx.strokeStyle=hexA(t.primary,0.20*pulse);
+    ctx.lineWidth=11; ctx.lineCap='round';
+    ctx.shadowColor=t.primary; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.moveTo(from[0],from[1]); ctx.lineTo(to[0],to[1]); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle=t.primary; ctx.lineWidth=3.2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(from[0],from[1]); ctx.lineTo(to[0],to[1]); ctx.stroke();
+  }
+
+  // tiles
+  const lit=new Set(litTargets(G).map(([x,y])=>x+','+y));
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const tl=G[y][x], cx=(x+.5)*cell, cy=(y+.5)*cell;
+    if(tl.type===SOURCE) drawSource(cx,cy,cell,tl.rotation);
+    else if(tl.type===MIRROR) drawMirror(cx,cy,cell,tl.rotation,tl.locked);
+    else if(tl.type===SPLITTER) drawSplitter(cx,cy,cell,tl.rotation);
+    else if(tl.type===BLOCKER) drawBlocker(cx,cy,cell);
+    else if(tl.type===TARGET) drawTarget(cx,cy,cell,lit.has(x+','+y),pulse);
+  }
+
+  const tg=targetsOf(G).length, lt=litTargets(G).length;
+  document.getElementById('litchip').textContent=lt+' / '+tg+' lit';
+  document.getElementById('movechip').textContent=MOVES+' move'+(MOVES===1?'':'s');
+}
+const opp=d=>d===N?S:d===S?N:d===E?W:E;
+function edgePt(cx,cy,cell,d){
+  const h=cell/2;
+  return d===N?[cx,cy-h]:d===S?[cx,cy+h]:d===E?[cx+h,cy]:[cx-h,cy];
+}
+function drawSource(cx,cy,cell,rot){
+  ctx.save();
+  ctx.shadowColor=theme.primary; ctx.shadowBlur=16;
+  ctx.fillStyle=theme.primary;
+  roundRect(ctx,cx-cell*.26,cy-cell*.26,cell*.52,cell*.52,cell*.14); ctx.fill();
+  ctx.restore();
+  const o = rot===N?[0,-cell*.18]:rot===S?[0,cell*.18]:rot===E?[cell*.18,0]:[-cell*.18,0];
+  ctx.fillStyle=theme.bg;
+  ctx.beginPath(); ctx.arc(cx+o[0],cy+o[1],cell*.07,0,7); ctx.fill();
+}
+function mirrorPts(cx,cy,cell,rot){
+  const h=cell*.30;
+  return rot%2===0 ? [[cx-h,cy+h],[cx+h,cy-h]] : [[cx-h,cy-h],[cx+h,cy+h]];
+}
+function drawMirror(cx,cy,cell,rot,locked){
+  const [a,b]=mirrorPts(cx,cy,cell,rot);
+  ctx.save();
+  ctx.strokeStyle=hexA(theme.accent,0.30); ctx.lineWidth=cell*.24; ctx.lineCap='round';
+  ctx.shadowColor=theme.accent; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = locked ? hexA(theme.text,0.55) : theme.accent;
+  ctx.lineWidth=cell*.13; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke();
+}
+function drawSplitter(cx,cy,cell,rot){
+  const [a,b]=mirrorPts(cx,cy,cell,rot);
+  ctx.strokeStyle=theme.accent; ctx.lineWidth=cell*.10; ctx.lineCap='round';
+  for(let i=0;i<5;i+=2){
+    const t0=i/5, t1=(i+1)/5;
+    ctx.beginPath();
+    ctx.moveTo(a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0);
+    ctx.lineTo(a[0]+(b[0]-a[0])*t1, a[1]+(b[1]-a[1])*t1);
+    ctx.stroke();
+  }
+  ctx.strokeStyle=hexA(theme.accent,0.4); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,cell*.34,0,7); ctx.stroke();
+}
+function drawBlocker(cx,cy,cell){
+  ctx.fillStyle=hexA(theme.text,0.72);
+  roundRect(ctx,cx-cell*.28,cy-cell*.28,cell*.56,cell*.56,cell*.10); ctx.fill();
+  ctx.strokeStyle=hexA(theme.bg,0.55); ctx.lineWidth=cell*.06; ctx.lineCap='round';
+  const q=cell*.13;
+  ctx.beginPath(); ctx.moveTo(cx-q,cy-q); ctx.lineTo(cx+q,cy+q); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-q,cy+q); ctx.lineTo(cx+q,cy-q); ctx.stroke();
+}
+function drawTarget(cx,cy,cell,on,pulse){
+  if(on){
+    ctx.save();
+    ctx.shadowColor=theme.primary; ctx.shadowBlur=20*pulse;
+    ctx.fillStyle=hexA(theme.primary,0.35*pulse);
+    ctx.beginPath(); ctx.arc(cx,cy,cell*.30,0,7); ctx.fill();
+    ctx.restore();
+  }
+  ctx.strokeStyle = on?theme.primary:hexA(theme.text,0.45);
+  ctx.lineWidth=cell*.07;
+  ctx.beginPath(); ctx.arc(cx,cy,cell*.26,0,7); ctx.stroke();
+  ctx.fillStyle = on?theme.primary:hexA(theme.text,0.28);
+  ctx.beginPath(); ctx.arc(cx,cy,cell*.13,0,7); ctx.fill();
+}
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+}
+function hexA(hex,a){
+  const c=hex.slice(1);
+  const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ============ PARTICLE BACKGROUND ============ */
+const fxc=document.getElementById('fx'), fxx=fxc.getContext('2d');
+let PS=[];
+function seedParticles(){
+  const counts={none:0,snow:46,leaves:24,flowers:26,beach:14,fish:12,coffee:11,roses:20};
+  const n=counts[theme.fx]||0;
+  PS=Array.from({length:n},()=>({
+    x:Math.random(), y:Math.random(),
+    sp:0.2+Math.random()*0.8, sz:0.5+Math.random()*0.9,
+    ph:Math.random()*Math.PI*2, rot:Math.random()*Math.PI*2,
+  }));
+}
+function fxResize(){
+  const dpr=window.devicePixelRatio||1;
+  fxc.width=innerWidth*dpr; fxc.height=innerHeight*dpr;
+  fxx.setTransform(dpr,0,0,dpr,0,0);
+}
+function drawFx(t){
+  const W=innerWidth,H=innerHeight;
+  fxx.clearRect(0,0,W,H);
+  const f=theme.fx;
+  if(f==='none'||!PS.length){ return; }
+  for(const p of PS){
+    if(f==='beach'||f==='fish'){
+      const x=((p.x + t*p.sp*0.035)%1.2)*W;
+      const y=p.y*H + Math.sin(t*2+p.ph)*14;
+      f==='beach'?pSun(x,y,p.sz):pFish(x,y,p.sz);
+    } else {
+      const y=((p.y + t*p.sp*0.05)%1.2)*H;
+      const x=p.x*W + Math.sin(t*2+p.ph)*18;
+      if(f==='snow')pSnow(x,y,p.sz);
+      else if(f==='leaves')pLeaf(x,y,p.sz,t+p.ph);
+      else if(f==='flowers')pFlower(x,y,p.sz);
+      else if(f==='roses')pRose(x,y,p.sz);
+      else if(f==='coffee')pCup(x,y,p.sz);
+    }
+  }
+  if(f==='beach') pWaves(t,W,H);
+  if(f==='fish') pRays(W,H);
+}
+function pSnow(x,y,z){ fxx.fillStyle='rgba(255,255,255,.75)';
+  fxx.beginPath(); fxx.arc(x,y,2.4*z,0,7); fxx.fill(); }
+function pLeaf(x,y,z,a){
+  fxx.save(); fxx.translate(x,y); fxx.rotate(a);
+  fxx.fillStyle=hexA(theme.accent,.55);
+  fxx.beginPath(); fxx.moveTo(0,-6*z);
+  fxx.quadraticCurveTo(6*z,0,0,7*z);
+  fxx.quadraticCurveTo(-6*z,0,0,-6*z);
+  fxx.fill(); fxx.restore();
+}
+function pFlower(x,y,z){
+  fxx.fillStyle=hexA(theme.primary,.5);
+  for(let i=0;i<5;i++){ const a=i*Math.PI*2/5;
+    fxx.beginPath(); fxx.arc(x+Math.cos(a)*3.2*z, y+Math.sin(a)*3.2*z, 2.4*z,0,7); fxx.fill(); }
+  fxx.fillStyle=hexA(theme.accent,.85);
+  fxx.beginPath(); fxx.arc(x,y,1.7*z,0,7); fxx.fill();
+}
+function pRose(x,y,z){
+  const r=5*z; fxx.fillStyle=hexA(theme.primary,.55);
+  fxx.beginPath(); fxx.moveTo(x,y+r*.9);
+  fxx.bezierCurveTo(x-r*1.4,y-r*.2, x-r*.5,y-r*1.1, x,y-r*.35);
+  fxx.bezierCurveTo(x+r*.5,y-r*1.1, x+r*1.4,y-r*.2, x,y+r*.9);
+  fxx.fill();
+}
+function pCup(x,y,z){
+  fxx.fillStyle=hexA(theme.accent,.4);
+  roundRect(fxx,x-4.5*z,y-3.5*z,9*z,7*z,3*z); fxx.fill();
+  fxx.strokeStyle=hexA(theme.accent,.4); fxx.lineWidth=1.2*z;
+  fxx.beginPath(); fxx.arc(x+6*z,y,2.4*z,0,7); fxx.stroke();
+}
+function pSun(x,y,z){
+  fxx.fillStyle=hexA(theme.accent,.30);
+  fxx.beginPath(); fxx.arc(x,y,7*z,0,7); fxx.fill();
+  fxx.fillStyle=hexA(theme.primary,.18);
+  fxx.beginPath(); fxx.arc(x,y,12*z,0,7); fxx.fill();
+}
+function pFish(x,y,z){
+  fxx.fillStyle=hexA(theme.accent,.6);
+  fxx.beginPath(); fxx.moveTo(x-8*z,y);
+  fxx.quadraticCurveTo(x,y-5*z,x+8*z,y);
+  fxx.quadraticCurveTo(x,y+5*z,x-8*z,y);
+  fxx.fill();
+  fxx.beginPath(); fxx.moveTo(x-8*z,y);
+  fxx.lineTo(x-13*z,y-4*z); fxx.lineTo(x-13*z,y+4*z); fxx.closePath(); fxx.fill();
+}
+function pWaves(t,W,H){
+  fxx.strokeStyle=hexA(theme.primary,.12); fxx.lineWidth=2;
+  for(let k=0;k<3;k++){
+    const base=H*(0.80+k*0.06);
+    fxx.beginPath(); fxx.moveTo(0,base);
+    for(let x=0;x<=W;x+=12) fxx.lineTo(x, base+Math.sin(x/42+t*2+k)*(5+k*2));
+    fxx.stroke();
+  }
+}
+function pRays(W,H){
+  fxx.fillStyle=hexA(theme.primary,.05);
+  for(let i=0;i<4;i++){ const x=W*(0.12+i*0.26);
+    fxx.beginPath(); fxx.moveTo(x,0); fxx.lineTo(x+34,0);
+    fxx.lineTo(x+90,H); fxx.lineTo(x+20,H); fxx.closePath(); fxx.fill(); }
+}
+
+/* ============ LOOP ============ */
+let t0=Date.now();
+function frame(){
+  const t=(Date.now()-t0)/1000;
+  drawFx(t);
+  if(document.getElementById('s-game').classList.contains('on')) draw();
+  requestAnimationFrame(frame);
+}
+
+/* ============ WIRING ============ */
+document.querySelectorAll('[data-go]').forEach(el=>{
+  el.onclick=()=>{ Audio_.init(); Audio_.sfx('tap'); show(el.dataset.go); };
+});
+document.getElementById('mute').onclick=toggleMute;
+document.getElementById('mute2').onclick=toggleMute;
+document.getElementById('reset').onclick=()=>{Audio_.sfx('tap');resetLevel();};
+document.getElementById('gameback').onclick=()=>show(ISDAILY?'daily':'levels');
+document.getElementById('setback').onclick=()=>show('menu');
+
+document.getElementById('winmenu').onclick=()=>{
+  document.getElementById('win').classList.remove('on'); show('menu');
+};
+document.getElementById('winnext').onclick=()=>{
+  document.getElementById('win').classList.remove('on');
+  startGame(DIFF, LEVEL+1, false);
+};
+document.getElementById('namecancel').onclick=()=>document.getElementById('namemodal').classList.remove('on');
+document.getElementById('namesave').onclick=()=>{
+  const v=document.getElementById('nameinput').value.trim();
+  if(v) DB.set('name',v);
+  document.getElementById('namemodal').classList.remove('on');
+  renderProfile();
+};
+document.getElementById('resetcancel').onclick=()=>document.getElementById('resetmodal').classList.remove('on');
+document.getElementById('resetok').onclick=()=>{
+  DB.reset();
+  document.getElementById('resetmodal').classList.remove('on');
+  applyTheme(themeById(themeId()));
+  renderSettings();
+};
+addEventListener('resize',()=>{fxResize();resizeBoard();});
+// browsers block audio until the first gesture
+addEventListener('pointerdown',()=>{ Audio_.init();
+  if(Audio_.ctx&&Audio_.ctx.state==='suspended') Audio_.ctx.resume();
+},{once:true});
+
+/* ============ BOOT ============ */
+fxResize();
+applyTheme(themeById(themeId()));
+show('menu');
+frame();
+
+/* ═══════════════════════════════════════════════════════
+   DEVELOPER MODE — only active with ?devmode=1 in the URL
+   (added by MOS's "Play as DevOps"). Everything below is inert
+   otherwise — normal play is completely unaffected.
+   ═══════════════════════════════════════════════════════ */
+if(new URLSearchParams(location.search).get('devmode')==='1'){
+  const panel = document.createElement('div');
+  panel.id = 'devPanel';
+  panel.style.cssText = 'position:fixed;top:14px;left:14px;z-index:999;background:rgba(20,16,24,.92);'
+    +'border:1px solid #e0b062;border-radius:12px;padding:10px 12px;font:600 12px system-ui,sans-serif;'
+    +'color:#fff;display:flex;flex-direction:column;gap:6px;max-width:200px;box-shadow:0 8px 30px rgba(0,0,0,.5);';
+  panel.innerHTML = `
+    <div style="letter-spacing:.08em;text-transform:uppercase;font-size:10px;opacity:.7">🛠️ Dev Mode</div>
+    <div id="devLazerInfo" style="font-size:11px;opacity:.85">—</div>
+    <button id="devAutoSolve" style="padding:6px 8px;border-radius:8px;background:#e0b062;color:#14100c;border:none;cursor:pointer;font:600 11px inherit">▶ Auto-solve</button>
+    <button id="devForceWin" style="padding:6px 8px;border-radius:8px;background:#3a3243;color:#fff;border:none;cursor:pointer;font:600 11px inherit">⏭ Force win</button>
+  `;
+  document.body.appendChild(panel);
+
+  function devLazerInfo(){
+    const el = document.getElementById('devLazerInfo');
+    if(!el) return;
+    if(!G){ el.textContent = 'No puzzle loaded.'; return; }
+    const targets = targetsOf(G).length;
+    const lit = litTargets(G).length;
+    let rotCount = 0;
+    for(let y=0;y<G.length;y++) for(let x=0;x<G[0].length;x++) if(rotatable(G[y][x])) rotCount++;
+    el.textContent = `${lit}/${targets} lit · ${rotCount} rotatable tile(s)`;
+  }
+
+  // Every rotatable tile only has 2 functional states (rotation parity), and
+  // real boards top out around 8 of them (see DIFFS above), so a full brute
+  // force is at most 2^8=256 checks — trivial, and always exact.
+  document.getElementById('devAutoSolve').addEventListener('click', ()=>{
+    if(!G || WON) return;
+    const cells = [];
+    for(let y=0;y<G.length;y++) for(let x=0;x<G[0].length;x++) if(rotatable(G[y][x])) cells.push([x,y]);
+    const k = cells.length;
+    if(k > 20) return; // pathological — never happens with today's DIFFS
+    const orig = cells.map(([x,y])=>G[y][x].rotation);
+    let found = -1;
+    for(let mask=0; mask<(1<<k); mask++){
+      for(let i=0;i<k;i++){ const [x,y]=cells[i]; G[y][x].rotation = (mask>>i)&1; }
+      if(isSolved(G)){ found = mask; break; }
+    }
+    if(found===-1){
+      cells.forEach(([x,y],i)=>{ G[y][x].rotation = orig[i]; });
+      draw(); devLazerInfo();
+      return;
+    }
+    MOVES += k;
+    draw();
+    winLevel();
+  });
+
+  document.getElementById('devForceWin').addEventListener('click', ()=>{
+    if(!G || WON) return;
+    winLevel();
+  });
+
+  setInterval(()=>{
+    const gameScreen = document.getElementById('s-game');
+    if(gameScreen && gameScreen.classList.contains('on')) devLazerInfo();
+  }, 1000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Clock School</title>
+<style>
+:root{
+  --bg1:#BDE8FF; --bg2:#FFF6D6;
+  --ink:#274060;
+  --sun:#FFC93C;
+  --panel:#FFFFFF;
+  --accent:#FF7A5C;
+  --good:#3EB489;
+  --bad:#FF5D5D;
+  --hourHand:#274060;
+  --minHand:#FF7A5C;
+  --shadow:0 6px 0 rgba(39,64,96,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(170deg,var(--bg1),var(--bg2));
+  color:var(--ink); min-height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 12px 24px;user-select:none;-webkit-user-select:none;overflow-x:hidden;
+  touch-action:manipulation;
+}
+header{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+h1{font-size:clamp(22px,6vw,30px);}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(39,64,96,.15);}
+.btn.small{padding:6px 10px;font-size:13px;}
+.btn.primary{background:var(--accent);color:#fff;}
+.topbtns{display:flex;gap:6px;}
+.controls{width:100%;max-width:520px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;}
+.seg{display:flex;background:rgba(255,255,255,.6);border-radius:999px;padding:4px;gap:4px;box-shadow:inset 0 2px 4px rgba(39,64,96,.08);flex-wrap:wrap;justify-content:center;}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 11px;}
+.seg button.on{background:#fff;box-shadow:0 3px 0 rgba(39,64,96,.12);}
+.hud{width:100%;max-width:520px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:700;font-size:14px;}
+.hud .stat{background:rgba(255,255,255,.65);border-radius:14px;padding:6px 12px;box-shadow:0 3px 0 rgba(39,64,96,.08);}
+#task{
+  width:100%;max-width:520px;background:var(--panel);border-radius:20px;padding:12px 16px;text-align:center;
+  font-weight:700;font-size:clamp(17px,4.5vw,21px);box-shadow:var(--shadow);margin-bottom:10px;min-height:54px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+#task .big{font-size:1.3em;color:var(--accent);}
+#clockWrap{position:relative;width:min(80vw,340px);margin:4px 0 10px;}
+svg{display:block;width:100%;height:auto;touch-action:none;}
+.hand-hit{stroke:transparent;stroke-width:34;stroke-linecap:round;cursor:grab;}
+.hand-hit:active{cursor:grabbing;}
+#answers{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%;max-width:520px;margin-bottom:8px;}
+#answers .btn{font-size:20px;padding:12px 20px;min-width:110px;font-variant-numeric:tabular-nums;}
+#answers .btn.good{background:var(--good);color:#fff;}
+#answers .btn.bad{background:var(--bad);color:#fff;animation:wob .35s;}
+@keyframes wob{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+#checkRow{display:flex;gap:10px;margin-bottom:8px;}
+#feedback{min-height:30px;font-weight:800;font-size:19px;text-align:center;}
+#feedback.good{color:var(--good);} #feedback.bad{color:var(--bad);}
+.starbar{font-size:22px;letter-spacing:2px;min-height:30px;}
+footer{margin-top:12px;font-size:12px;opacity:.5;font-weight:600;}
+@media (prefers-reduced-motion:reduce){#answers .btn.bad{animation:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🕐 <span data-i18n="title">Clock School</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg" id="modeSeg">
+    <button data-mode="read" class="on">👀 <span data-i18n="read">Read</span></button>
+    <button data-mode="set">✋ <span data-i18n="set">Set</span></button>
+  </div>
+  <div class="seg" id="diffSeg">
+    <button data-diff="hour" class="on" data-i18n="dHour">O'clock</button>
+    <button data-diff="half" data-i18n="dHalf">Half</button>
+    <button data-diff="quarter" data-i18n="dQuarter">Quarter</button>
+    <button data-diff="five" data-i18n="dFive">5 min</button>
+  </div>
+</div>
+
+<div class="hud">
+  <div class="stat">🔥 <span data-i18n="streak">Streak</span>: <span id="streak">0</span></div>
+  <div class="stat">⭐ <span data-i18n="score">Stars</span>: <span id="score">0</span></div>
+  <div class="stat">🏆 <span data-i18n="best">Best</span>: <span id="best">0</span></div>
+</div>
+
+<div id="task"></div>
+
+<div id="clockWrap">
+<svg id="clock" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="100" cy="100" r="96" fill="#fff" stroke="#274060" stroke-width="6"/>
+  <circle cx="100" cy="100" r="88" fill="#FFFBEF"/>
+  <g id="ticks"></g>
+  <g id="nums"></g>
+  <line id="hourHand" x1="100" y1="100" x2="100" y2="58" stroke="var(--hourHand)" stroke-width="9" stroke-linecap="round"/>
+  <line id="minHand" x1="100" y1="100" x2="100" y2="34" stroke="var(--minHand)" stroke-width="6" stroke-linecap="round"/>
+  <line id="hourHit" class="hand-hit" x1="100" y1="100" x2="100" y2="58"/>
+  <line id="minHit" class="hand-hit" x1="100" y1="100" x2="100" y2="34"/>
+  <circle cx="100" cy="100" r="7" fill="#274060"/>
+  <circle cx="100" cy="100" r="3" fill="#FFC93C"/>
+</svg>
+</div>
+
+<div id="answers"></div>
+<div id="checkRow" style="display:none">
+  <button class="btn primary" id="checkBtn" data-i18n="check">Check ✓</button>
+</div>
+<div id="feedback"></div>
+<div class="starbar" id="starbar"></div>
+
+<footer>STeamWorkS · Clock School</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Clock School",read:"Read",set:"Set",dHour:"O'clock",dHalf:"Half",dQuarter:"Quarter",dFive:"5 min",
+      streak:"Streak",score:"Stars",best:"Best",check:"Check ✓",
+      taskRead:"What time is it?",taskSet:"Move the hands to show",
+      yes:["Awesome! 🎉","Perfect! ⭐","You got it! 🥳","Super! 🌟"],
+      no:"Almost! Try again 💪", showAns:"It was {t}",
+      oclock:"{h} o'clock", half:"half past {h}", quarterPast:"quarter past {h}", quarterTo:"quarter to {h}"},
+  fr:{title:"L'École de l'Heure",read:"Lire",set:"Régler",dHour:"Heures",dHalf:"Demies",dQuarter:"Quarts",dFive:"5 min",
+      streak:"Série",score:"Étoiles",best:"Record",check:"Vérifier ✓",
+      taskRead:"Quelle heure est-il ?",taskSet:"Place les aiguilles sur",
+      yes:["Génial ! 🎉","Parfait ! ⭐","Bien joué ! 🥳","Super ! 🌟"],
+      no:"Presque ! Essaie encore 💪", showAns:"C'était {t}",
+      oclock:"{h} heures", half:"{h} heures et demie", quarterPast:"{h} heures et quart", quarterTo:"{h2} heures moins le quart"}
+};
+const SKEY="stws_clock_v1";
+const DIFF_STEPS={hour:60,half:30,quarter:15,five:5};
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let mode=save.mode||"read";
+let diff=save.diff||"hour";
+let score=save.score||0, best=save.best||0, streak=0;
+let target={h:3,m:0};      // the answer
+let hands={h:3,m:0};       // what the clock currently shows
+let busy=false, dragging=null;
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.mode=mode;save.diff=diff;save.score=score;save.best=best;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,t,dur,type,vol){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime+t);
+  g.gain.setValueAtTime(0,c.currentTime+t);
+  g.gain.linearRampToValueAtTime(vol||.15,c.currentTime+t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(c.currentTime+t);o.stop(c.currentTime+t+dur+.05);
+}
+const sTick=()=>tone(700,0,.05,"square",.05);
+const sYes=()=>{tone(523,0,.12);tone(659,.1,.12);tone(784,.2,.22);};
+const sNo=()=>tone(170,0,.3,"sawtooth",.06);
+
+/* ---------- clock face ---------- */
+function buildFace(){
+  const ticks=document.getElementById("ticks"), nums=document.getElementById("nums");
+  let t="",n="";
+  for(let i=0;i<60;i++){
+    const a=i*6*Math.PI/180, big=i%5===0;
+    const r1=big?78:83, r2=88;
+    t+=`<line x1="${100+r1*Math.sin(a)}" y1="${100-r1*Math.cos(a)}" x2="${100+r2*Math.sin(a)}" y2="${100-r2*Math.cos(a)}" stroke="#274060" stroke-width="${big?3:1.2}" stroke-linecap="round" opacity="${big?1:.4}"/>`;
+  }
+  for(let h=1;h<=12;h++){
+    const a=h*30*Math.PI/180, r=66;
+    n+=`<text x="${100+r*Math.sin(a)}" y="${100-r*Math.cos(a)}" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="800" fill="#274060" font-family="inherit">${h}</text>`;
+  }
+  ticks.innerHTML=t; nums.innerHTML=n;
+}
+function hourAngle(h,m){return ((h%12)+m/60)*30;}
+function minAngle(m){return m*6;}
+function drawHands(){
+  const ha=hourAngle(hands.h,hands.m), ma=minAngle(hands.m);
+  const set=(id,ang,len)=>{
+    const a=ang*Math.PI/180;
+    const el=document.getElementById(id);
+    el.setAttribute("x2",100+len*Math.sin(a));
+    el.setAttribute("y2",100-len*Math.cos(a));
+  };
+  set("hourHand",ha,42); set("hourHit",ha,42);
+  set("minHand",ma,66); set("minHit",ma,66);
+}
+
+/* ---------- time helpers ---------- */
+function randTime(){
+  const step=DIFF_STEPS[diff];
+  const h=1+Math.floor(Math.random()*12);
+  const m=step===60?0:Math.floor(Math.random()*(60/step))*step;
+  return {h,m};
+}
+function fmt(t){return t.h+":"+String(t.m).padStart(2,"0");}
+function words(t){
+  const S=STR[lang];
+  if(t.m===0)return S.oclock.replace("{h}",t.h);
+  if(t.m===30)return S.half.replace("{h}",t.h);
+  if(t.m===15)return S.quarterPast.replace("{h}",t.h);
+  if(t.m===45)return S.quarterTo.replace("{h}",t.h%12+1).replace("{h2}",t.h%12+1);
+  return fmt(t);
+}
+function sameTime(a,b){return a.h%12===b.h%12&&a.m===b.m;}
+
+/* ---------- rounds ---------- */
+function newRound(){
+  busy=false;
+  document.getElementById("feedback").textContent="";
+  document.getElementById("feedback").className="";
+  let nt; do{nt=randTime();}while(sameTime(nt,target));
+  target=nt;
+  if(mode==="read"){
+    hands={...target}; drawHands();
+    document.getElementById("task").innerHTML=`👀 <span data-i18n="taskRead">${STR[lang].taskRead}</span>`;
+    document.getElementById("checkRow").style.display="none";
+    buildChoices();
+  }else{
+    hands={h:12,m:0}; drawHands();
+    document.getElementById("task").innerHTML=`✋ ${STR[lang].taskSet} <span class="big">${fmt(target)}</span>`;
+    document.getElementById("answers").innerHTML="";
+    document.getElementById("checkRow").style.display="flex";
+  }
+}
+function buildChoices(){
+  const box=document.getElementById("answers");
+  const opts=[fmt(target)], seen=new Set(opts);
+  while(opts.length<4){
+    const c=fmt(randTime());
+    if(!seen.has(c)){seen.add(c);opts.push(c);}
+  }
+  for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
+  box.innerHTML="";
+  opts.forEach(o=>{
+    const b=document.createElement("button");
+    b.className="btn"; b.textContent=o;
+    b.addEventListener("click",()=>pick(o,b));
+    box.appendChild(b);
+  });
+}
+function pick(o,btn){
+  if(busy)return;
+  if(o===fmt(target)){btn.classList.add("good");win();}
+  else{btn.classList.add("bad");miss();setTimeout(()=>btn.classList.remove("bad"),450);}
+}
+function checkSet(){
+  if(busy)return;
+  if(sameTime(hands,target))win();
+  else miss();
+}
+function win(){
+  busy=true; sYes(); streak++; score++;
+  if(streak>best){best=streak;}
+  persist(); updateHud();
+  const y=STR[lang].yes;
+  const fb=document.getElementById("feedback");
+  fb.textContent=y[Math.floor(Math.random()*y.length)]+"  ("+words(target)+")";
+  fb.className="good";
+  document.getElementById("starbar").textContent="⭐".repeat(Math.min(streak,10));
+  setTimeout(newRound,1400);
+}
+function miss(){
+  sNo(); streak=0; updateHud();
+  const fb=document.getElementById("feedback");
+  fb.textContent=STR[lang].no; fb.className="bad";
+  document.getElementById("starbar").textContent="";
+}
+function updateHud(){
+  document.getElementById("streak").textContent=streak;
+  document.getElementById("score").textContent=score;
+  document.getElementById("best").textContent=best;
+}
+
+/* ---------- dragging ---------- */
+const svg=document.getElementById("clock");
+function svgPoint(evt){
+  const r=svg.getBoundingClientRect();
+  const x=(evt.clientX-r.left)/r.width*200, y=(evt.clientY-r.top)/r.height*200;
+  return {x:x-100,y:y-100};
+}
+function angleOf(p){ let a=Math.atan2(p.x,-p.y)*180/Math.PI; if(a<0)a+=360; return a; }
+function startDrag(which){return evt=>{ if(mode!=="set"||busy)return; dragging=which; evt.preventDefault();
+  try{evt.target.setPointerCapture(evt.pointerId);}catch(e){} };}
+function onMove(evt){
+  if(!dragging||mode!=="set"||busy)return;
+  const a=angleOf(svgPoint(evt));
+  if(dragging==="min"){
+    const step=Math.max(5,DIFF_STEPS[diff]===60?15:DIFF_STEPS[diff]); // in set mode allow 5-min snapping min
+    let m=Math.round(a/6/step)*step%60; if(m<0)m+=60;
+    if(m!==hands.m){hands.m=m;sTick();drawHands();}
+  }else{
+    let h=Math.round(a/30)%12; if(h===0)h=12;
+    if(h!==hands.h){hands.h=h;sTick();drawHands();}
+  }
+}
+function endDrag(){dragging=null;}
+document.getElementById("minHit").addEventListener("pointerdown",startDrag("min"));
+document.getElementById("hourHit").addEventListener("pointerdown",startDrag("hour"));
+svg.addEventListener("pointermove",onMove);
+window.addEventListener("pointerup",endDrag);
+window.addEventListener("pointercancel",endDrag);
+
+/* ---------- ui ---------- */
+document.getElementById("checkBtn").addEventListener("click",checkSet);
+document.getElementById("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");mode=b.dataset.mode;persist();streak=0;updateHud();newRound();
+});
+document.getElementById("diffSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");diff=b.dataset.diff;persist();streak=0;updateHud();newRound();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();newRound();});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;if(STR[lang][k])el.textContent=STR[lang][k];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+document.querySelectorAll("#diffSeg button").forEach(b=>b.classList.toggle("on",b.dataset.diff===diff));
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+buildFace(); applyLang(); updateHud(); newRound();
+
+window.__test={randTime,fmt,words,sameTime,hourAngle,minAngle,DIFF_STEPS,
+  getState:()=>({mode,diff,target:{...target},hands:{...hands},streak,score}),
+  setHands:(h,m)=>{hands={h,m};drawHands();},checkSet,newRound,
+  setDiff:(d)=>{diff=d;},setMode:(m)=>{mode=m;newRound();}};
+</script>
+</body>
+</html>

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Battleship</title>
+<style>
+:root{
+  --bg1:#06283D; --bg2:#021421;
+  --grid:#0B3954; --gridline:#1D5B79;
+  --ink:#DDF2FF;
+  --panel:#0E3A56;
+  --accent:#47D8E0;
+  --hit:#FF6B5D; --miss:#3E7CB1; --sunk:#8B1E1E;
+  --ship:#3E9CB8;
+  --shadow:0 6px 0 rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:radial-gradient(circle at 50% 0%,var(--bg1),var(--bg2));
+  color:var(--ink);min-height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 10px 24px;user-select:none;-webkit-user-select:none;overflow-x:hidden;
+}
+header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+h1{font-size:clamp(20px,5.4vw,28px);letter-spacing:.5px;}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.4);}
+.btn:disabled{opacity:.35;cursor:default;transform:none;}
+.btn.small{padding:6px 10px;font-size:13px;}
+.btn.primary{background:linear-gradient(145deg,#47D8E0,#1898A8);color:#04222F;}
+.topbtns{display:flex;gap:6px;}
+.controls{width:100%;max-width:560px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;}
+.seg{display:flex;background:rgba(0,0,0,.3);border-radius:999px;padding:4px;gap:4px;}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 12px;opacity:.6;}
+.seg button.on{background:rgba(255,255,255,.16);opacity:1;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+#status{width:100%;max-width:560px;text-align:center;font-weight:800;font-size:clamp(14px,4.2vw,18px);
+  min-height:32px;margin:2px 0 8px;}
+#status .sunkmsg{color:var(--hit);}
+.gridlabel{font-weight:800;font-size:14px;opacity:.8;margin:6px 0 4px;text-align:center;letter-spacing:1px;text-transform:uppercase;}
+.boardbox{width:min(94vw,420px);background:var(--grid);border-radius:16px;padding:8px;
+  box-shadow:0 8px 0 rgba(0,0,0,.4), inset 0 0 30px rgba(71,216,224,.08);}
+svg{display:block;width:100%;height:auto;}
+.cell{fill:transparent;stroke:var(--gridline);stroke-width:1;cursor:pointer;}
+.cell:hover{fill:rgba(71,216,224,.15);}
+.cell.dead{cursor:default;}
+.cell.dead:hover{fill:transparent;}
+.shipbody{fill:var(--ship);opacity:.85;}
+.shipbody.sunkbody{fill:var(--sunk);opacity:1;}
+.shipbody.selbody{fill:var(--accent);opacity:1;}
+.hitdot{fill:var(--hit);}
+.hitx{stroke:#fff;stroke-width:3;stroke-linecap:round;}
+.missdot{fill:var(--miss);}
+.fleetbar{display:flex;gap:10px;justify-content:center;margin:6px 0;flex-wrap:wrap;font-size:12px;font-weight:700;}
+.fleetbar .f{display:flex;align-items:center;gap:4px;opacity:1;transition:opacity .3s;border:none;background:transparent;color:var(--ink);font-family:inherit;font-weight:700;font-size:12px;}
+.fleetbar .f.tray{cursor:pointer;background:rgba(255,255,255,.06);border-radius:10px;padding:4px 8px;}
+.fleetbar .f.unplaced .b{background:transparent;border:2px dashed var(--accent);}
+.fleetbar .f.seltray{outline:3px solid var(--accent);background:rgba(71,216,224,.15);}
+.fleetbar .f.dead{opacity:.3;text-decoration:line-through;}
+.fleetbar .blocks{display:flex;gap:2px;}
+.fleetbar .b{width:10px;height:10px;border-radius:3px;background:var(--ship);}
+#placeRow{display:flex;gap:10px;justify-content:center;margin:8px 0;}
+.pulse{animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+#handoff{display:none;position:fixed;inset:0;background:linear-gradient(170deg,#06283D,#021421);z-index:50;
+  align-items:center;justify-content:center;padding:20px;}
+#handoff.show{display:flex;}
+.handcard{background:var(--panel);border-radius:26px;padding:30px 26px;text-align:center;max-width:340px;width:100%;
+  box-shadow:0 12px 0 rgba(0,0,0,.45);}
+.handemoji{font-size:52px;margin-bottom:6px;}
+.handcard h2{font-size:24px;margin-bottom:6px;}
+.handcard p{font-size:14px;opacity:.75;margin-bottom:16px;font-weight:700;}
+.handcard .btn{font-size:16px;padding:12px 26px;}
+footer{margin-top:14px;font-size:12px;opacity:.4;font-weight:600;}
+#thinking{display:inline-block;animation:think 1s infinite;}
+@keyframes think{0%,100%{opacity:.3;}50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){#thinking,.pulse{animation:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚢 <span data-i18n="title">Battleship</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg" id="modeSeg">
+    <button data-mode="1p" class="on">🤖 <span data-i18n="vsBot">vs Bot</span></button>
+    <button data-mode="2p">👥 <span data-i18n="twoP">2 Players</span></button>
+  </div>
+  <div class="seg" id="diffSeg">
+    <button data-diff="easy" class="on" data-i18n="easy">Easy</button>
+    <button data-diff="medium" data-i18n="medium">Medium</button>
+    <button data-diff="hard" data-i18n="hard">Hard</button>
+  </div>
+  <button class="btn primary" id="newBtn" data-i18n="new">New Game</button>
+</div>
+
+<div id="status"></div>
+
+<div class="gridlabel" id="topLabel">Enemy waters — tap to fire</div>
+<div class="fleetbar" id="enemyFleet"></div>
+<div class="boardbox"><svg id="enemyGrid" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+<div id="placeRow" style="display:none">
+  <button class="btn" id="rotateBtn">🔄 <span data-i18n="rotate">Rotate</span></button>
+  <button class="btn" id="shuffleBtn">🎲 <span data-i18n="shuffle">Shuffle</span></button>
+  <button class="btn primary pulse" id="startBtn" data-i18n="start">Start battle ⚓</button>
+</div>
+
+<div class="gridlabel" id="bottomLabel">Your fleet</div>
+<div class="fleetbar" id="myFleet"></div>
+<div class="boardbox"><svg id="myGrid" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+<div id="passRow" style="display:none;margin:10px 0;">
+  <button class="btn primary" id="passBtn"></button>
+</div>
+
+<div id="handoff">
+  <div class="handcard">
+    <div class="handemoji">🫡</div>
+    <h2 id="handTitle"></h2>
+    <p id="handSub"></p>
+    <button class="btn primary" id="readyBtn"></button>
+  </div>
+</div>
+
+<footer>STeamWorkS · Battleship</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Battleship",vsBot:"vs Bot",twoP:"2 Players",easy:"Easy",medium:"Medium",hard:"Hard",new:"New Game",
+      p1:"Player 1",p2:"Player 2",done:"Done ✔",passTo:"Pass the device to {p}",noPeek:"No peeking! 👀",imReady:"{p} — Ready!",
+      fire2p:"{p} — fire! 🎯",placeFor:"{p}: place your fleet",win2p:"{p} wins! 🎉 ({a} shots)",passShot:"Pass to {p} ➜",
+      fleetOfLabel:"{p}'s waters",yourFleetLabel:"{p}'s fleet",
+      enemyWaters:"Enemy waters — tap to fire",yourWaters:"Your fleet",
+      shuffle:"Shuffle",rotate:"Rotate",start:"Start battle ⚓",
+      place:"Tap a ship, then tap a square to move it · 🔄 rotates",cantPlace:"Doesn't fit there!",placeShip:"Place your {s} ({n}) — tap a square · 🔄 rotates",allSet:"Fleet ready — start the battle! ⚓",yourTurn:"Your turn — fire! 🎯",botTurn:"Enemy is aiming",
+      hit:"Hit! 💥",miss:"Splash… 🌊",sunkYou:"You sank their {s}! 🔥",sunkBot:"They sank your {s}!",
+      win:"Victory! Enemy fleet destroyed 🎉 ({a} shots)",lose:"Defeat — your fleet is sunk 💀",
+      ships:{5:"Carrier",4:"Battleship",3:"Cruiser","3b":"Submarine",2:"Destroyer"}},
+  fr:{title:"Bataille Navale",vsBot:"vs Robot",twoP:"2 Joueurs",easy:"Facile",medium:"Moyen",hard:"Difficile",new:"Nouvelle partie",
+      p1:"Joueur 1",p2:"Joueur 2",done:"Terminé ✔",passTo:"Passe l'appareil à {p}",noPeek:"On ne triche pas ! 👀",imReady:"{p} — Prêt !",
+      fire2p:"{p} — feu ! 🎯",placeFor:"{p} : place ta flotte",win2p:"{p} gagne ! 🎉 ({a} tirs)",passShot:"Passe à {p} ➜",
+      fleetOfLabel:"Eaux de {p}",yourFleetLabel:"Flotte de {p}",
+      enemyWaters:"Eaux ennemies — touche pour tirer",yourWaters:"Ta flotte",
+      shuffle:"Mélanger",rotate:"Pivoter",start:"À l'attaque ⚓",
+      place:"Touche un navire, puis une case pour le déplacer · 🔄 pivote",cantPlace:"Ça ne rentre pas là !",placeShip:"Place ton {s} ({n}) — touche une case · 🔄 pivote",allSet:"Flotte prête — à l'attaque ! ⚓",yourTurn:"À toi — feu ! 🎯",botTurn:"L'ennemi vise",
+      hit:"Touché ! 💥",miss:"Plouf… 🌊",sunkYou:"Tu as coulé leur {s} ! 🔥",sunkBot:"Ils ont coulé ton {s} !",
+      win:"Victoire ! Flotte ennemie détruite 🎉 ({a} tirs)",lose:"Défaite — ta flotte est coulée 💀",
+      ships:{5:"Porte-avions",4:"Cuirassé",3:"Croiseur","3b":"Sous-marin",2:"Torpilleur"}}
+};
+const SKEY="stws_battleship_v1";
+const G=10;
+const FLEET=[{id:0,len:5,key:5},{id:1,len:4,key:4},{id:2,len:3,key:3},{id:3,len:3,key:"3b"},{id:4,len:2,key:2}];
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let diff=save.diff||"easy";
+let mode=save.mode||"1p";
+
+/* phase: place | battle | over */
+let phase, myShips, botShips, myShots, botShots, busy=false, playerShotCount, p2ShotCount, botAI;
+let placingPlayer=1, cur=1, awaitPass=false;
+function fleetOf(p){return p===1?myShips:botShips;}
+function shotsBy(p){return p===1?myShots:botShots;}
+function nameOf(p){return mode==="1p"?(p===1?STR[lang].p1:"Bot"):(p===1?STR[lang].p1:STR[lang].p2);}
+function PF(){return fleetOf(placingPlayer);}
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.diff=diff;save.mode=mode;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,t,dur,type,vol){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime+t);
+  g.gain.setValueAtTime(0,c.currentTime+t);
+  g.gain.linearRampToValueAtTime(vol||.13,c.currentTime+t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(c.currentTime+t);o.stop(c.currentTime+t+dur+.05);
+}
+const sFire=()=>tone(300,0,.08,"square",.08);
+const sHit=()=>{tone(150,0,.25,"sawtooth",.12);tone(90,.05,.3,"sawtooth",.1);};
+const sMiss=()=>tone(600,0,.18,"sine",.08);
+const sSunk=()=>{[220,180,140,100].forEach((f,i)=>tone(f,i*.09,.2,"sawtooth",.1));};
+const sWin=()=>{[523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.15,"triangle",.13));};
+const sLose=()=>{[392,330,262,196].forEach((f,i)=>tone(f,i*.15,.25,"sawtooth",.07));};
+
+/* ============ placement (pure) ============ */
+function randomFleet(){
+  for(let attempt=0;attempt<200;attempt++){
+    const cells=Array(G*G).fill(-1);
+    const ships=[];
+    let okAll=true;
+    for(const sp of FLEET){
+      let placed=false;
+      for(let t=0;t<200&&!placed;t++){
+        const horiz=Math.random()<.5;
+        const r=Math.floor(Math.random()*(horiz?G:G-sp.len+1));
+        const c=Math.floor(Math.random()*(horiz?G-sp.len+1:G));
+        const idxs=[];
+        let ok=true;
+        for(let k=0;k<sp.len;k++){
+          const rr=horiz?r:r+k, cc=horiz?c+k:c;
+          const idx=rr*G+cc;
+          if(cells[idx]!==-1){ok=false;break;}
+          idxs.push(idx);
+        }
+        if(ok){idxs.forEach(i=>cells[i]=sp.id);ships.push({...sp,cells:idxs,hits:0});placed=true;}
+      }
+      if(!placed){okAll=false;break;}
+    }
+    if(okAll)return {cells,ships};
+  }
+  return null;
+}
+function validFleet(f){
+  if(!f||f.ships.length!==FLEET.length)return false;
+  const seen=new Set();
+  for(const s of f.ships){
+    if(s.cells.length!==s.len)return false;
+    // contiguity + straightness
+    const rs=s.cells.map(i=>Math.floor(i/G)),cs=s.cells.map(i=>i%G);
+    const horiz=rs.every(r=>r===rs[0]);
+    const vert=cs.every(c=>c===cs[0]);
+    if(!horiz&&!vert)return false;
+    const line=(horiz?cs:rs).slice().sort((a,b)=>a-b);
+    for(let k=1;k<line.length;k++)if(line[k]!==line[k-1]+1)return false;
+    for(const i of s.cells){if(i<0||i>=G*G||seen.has(i))return false;seen.add(i);}
+  }
+  return seen.size===17;
+}
+
+
+/* ============ manual placement ============ */
+let selShip=-1, placeHoriz=true;
+function emptyFleet(){
+  return {cells:Array(G*G).fill(-1), ships:FLEET.map(sp=>({...sp,cells:[],hits:0}))};
+}
+function allPlaced(f){return f.ships.every(sh=>sh.cells.length===sh.len);}
+function firstUnplaced(f){const sh=f.ships.find(x=>x.cells.length<x.len);return sh?sh.id:-1;}
+function shipHoriz(ship){
+  if(ship.cells.length<2)return placeHoriz;
+  return Math.floor(ship.cells[0]/G)===Math.floor(ship.cells[1]/G);
+}
+function cellsFor(anchor,len,horiz){
+  const r=Math.floor(anchor/G),c=anchor%G,out=[];
+  for(let k=0;k<len;k++){
+    const rr=horiz?r:r+k, cc=horiz?c+k:c;
+    if(rr>=G||cc>=G)return null;
+    out.push(rr*G+cc);
+  }
+  return out;
+}
+function tryPlace(fleet,shipId,anchor,horiz){
+  const ship=fleet.ships.find(x=>x.id===shipId);
+  const cells=cellsFor(anchor,ship.len,horiz);
+  if(!cells)return false;
+  for(const i of cells)if(fleet.cells[i]!==-1&&fleet.cells[i]!==shipId)return false;
+  for(const i of ship.cells)fleet.cells[i]=-1;
+  for(const i of cells)fleet.cells[i]=shipId;
+  ship.cells=cells;
+  return true;
+}
+function placeTap(idx){
+  if(idx===undefined||idx<0||idx>=G*G)return;
+  const F=PF();
+  const id=F.cells[idx];
+  if(id!==-1&&id!==selShip){selShip=id;placeHoriz=shipHoriz(F.ships.find(x=>x.id===id));sFire();renderAll();placeStatus();return;}
+  if(id!==-1&&id===selShip){selShip=-1;renderAll();placeStatus();return;}
+  if(selShip>=0){
+    const ship=F.ships.find(x=>x.id===selShip);
+    const wasUnplaced=ship.cells.length<ship.len;
+    if(tryPlace(F,selShip,idx,shipHoriz(ship))){
+      sMiss();
+      if(wasUnplaced)selShip=firstUnplaced(F);
+      renderAll();placeStatus();
+    }
+    else{sHit();setStatus('<span class="sunkmsg">'+STR[lang].cantPlace+'</span>');setTimeout(()=>{if(phase==="place")placeStatus();},900);}
+  }
+}
+function placeStatus(){
+  if(phase!=="place")return;
+  const F=PF();
+  const pre=mode==="2p"?STR[lang].placeFor.replace("{p}",nameOf(placingPlayer))+" · ":"";
+  if(allPlaced(F)&&selShip<0){setStatus(pre+STR[lang].allSet);return;}
+  if(allPlaced(F)){setStatus(pre+STR[lang].place);return;}
+  const sh=F.ships.find(x=>x.id===(selShip>=0?selShip:firstUnplaced(F)));
+  if(sh)setStatus(pre+STR[lang].placeShip.replace("{s}",STR[lang].ships[sh.key]).replace("{n}",sh.len));
+}
+function rotateSel(){
+  if(phase!=="place"||selShip<0)return;
+  const F=PF();
+  const ship=F.ships.find(x=>x.id===selShip);
+  if(ship.cells.length<ship.len){placeHoriz=!placeHoriz;sFire();placeStatus();return;}
+  if(tryPlace(F,selShip,ship.cells[0],!shipHoriz(ship))){sMiss();renderAll();}
+  else{sHit();setStatus('<span class="sunkmsg">'+STR[lang].cantPlace+'</span>');setTimeout(()=>{if(phase==="place")placeStatus();},900);}
+}
+
+/* ============ bot AI ============ */
+function makeAI(difficulty){
+  return {difficulty,shots:new Set(),hits:new Set(),sunkCells:new Set(),targetStack:[]};
+}
+function neighbors(idx){
+  const r=Math.floor(idx/G),c=idx%G,out=[];
+  if(r>0)out.push(idx-G);if(r<G-1)out.push(idx+G);
+  if(c>0)out.push(idx-1);if(c<G-1)out.push(idx+1);
+  return out;
+}
+/* density map over remaining ships given shots/hits/misses */
+function densityPick(ai, remainingLens){
+  const miss=new Set([...ai.shots].filter(i=>!ai.hits.has(i)));
+  const live=[...ai.hits].filter(i=>!ai.sunkCells.has(i)); // unresolved hits
+  const dens=Array(G*G).fill(0);
+  for(const len of remainingLens){
+    /* horizontal */
+    for(let r=0;r<G;r++)for(let c=0;c<=G-len;c++){
+      const idxs=[];let ok=true,cover=0;
+      for(let k=0;k<len;k++){
+        const i=r*G+c+k;
+        if(miss.has(i)||ai.sunkCells.has(i)){ok=false;break;}
+        if(ai.hits.has(i))cover++;
+        idxs.push(i);
+      }
+      if(!ok)continue;
+      const w=live.length? (cover>0?cover*40:0) : 1;
+      if(w>0)for(const i of idxs)if(!ai.shots.has(i))dens[i]+=w;
+    }
+    /* vertical */
+    for(let c=0;c<G;c++)for(let r=0;r<=G-len;r++){
+      const idxs=[];let ok=true,cover=0;
+      for(let k=0;k<len;k++){
+        const i=(r+k)*G+c;
+        if(miss.has(i)||ai.sunkCells.has(i)){ok=false;break;}
+        if(ai.hits.has(i))cover++;
+        idxs.push(i);
+      }
+      if(!ok)continue;
+      const w=live.length? (cover>0?cover*40:0) : 1;
+      if(w>0)for(const i of idxs)if(!ai.shots.has(i))dens[i]+=w;
+    }
+  }
+  let best=-1,bi=-1;
+  for(let i=0;i<G*G;i++)if(!ai.shots.has(i)&&dens[i]>best){best=dens[i];bi=i;}
+  if(bi<0){ // fallback: any untried
+    for(let i=0;i<G*G;i++)if(!ai.shots.has(i)){bi=i;break;}
+  }
+  return bi;
+}
+function aiChoose(ai, enemyShips){
+  const remaining=enemyShips.filter(s=>s.hits<s.len).map(s=>s.len);
+  if(ai.difficulty==="easy"){
+    /* hunt/target: random + neighbor stack */
+    while(ai.targetStack.length){
+      const t=ai.targetStack.pop();
+      if(!ai.shots.has(t))return t;
+    }
+    let i;const untried=[];
+    for(i=0;i<G*G;i++)if(!ai.shots.has(i))untried.push(i);
+    return untried[Math.floor(Math.random()*untried.length)];
+  }
+  if(ai.difficulty==="medium"){
+    const live=[...ai.hits].filter(i=>!ai.sunkCells.has(i));
+    if(live.length)return densityPick(ai,remaining);
+    /* parity hunt on smallest remaining ship */
+    const par=Math.min(...remaining);
+    const cand=[];
+    for(let i=0;i<G*G;i++){
+      const r=Math.floor(i/G),c=i%G;
+      if(!ai.shots.has(i)&&(r+c)%par===0)cand.push(i);
+    }
+    if(cand.length)return cand[Math.floor(Math.random()*cand.length)];
+    return densityPick(ai,remaining);
+  }
+  return densityPick(ai,remaining);
+}
+function aiFeedback(ai, idx, wasHit, sunkShip){
+  ai.shots.add(idx);
+  if(wasHit){
+    ai.hits.add(idx);
+    if(ai.difficulty==="easy")for(const nb of neighbors(idx))if(!ai.shots.has(nb))ai.targetStack.push(nb);
+  }
+  if(sunkShip)for(const c of sunkShip.cells)ai.sunkCells.add(c);
+}
+
+/* ============ shooting (pure-ish) ============ */
+function fireAt(fleet, shots, idx){
+  /* returns {hit, sunk(ship|null)} — mutates shots + ship.hits */
+  shots.add(idx);
+  const id=fleet.cells[idx];
+  if(id===-1)return {hit:false,sunk:null};
+  const ship=fleet.ships.find(s=>s.id===id);
+  ship.hits++;
+  return {hit:true,sunk:ship.hits===ship.len?ship:null};
+}
+function fleetDead(fleet){return fleet.ships.every(s=>s.hits>=s.len);}
+
+/* ============ rendering ============ */
+const C=40;
+function drawGrid(svgId, fleet, shots, showShips, mode){
+  /* mode: "fire" | "place" | null */
+  const svg=document.getElementById(svgId);
+  let s="";
+  for(let r=0;r<G;r++)for(let c=0;c<G;c++){
+    const idx=r*G+c,x=c*C,y=r*C;
+    const shot=shots.has(idx);
+    const shipId=fleet?fleet.cells[idx]:-1;
+    const isShip=shipId!==-1;
+    const ship=isShip&&fleet?fleet.ships.find(sp=>sp.id===shipId):null;
+    const isSunk=ship&&ship.hits>=ship.len;
+    if(isShip&&(showShips||isSunk)){
+      const sel=mode==="place"&&shipId===selShip;
+      s+=`<rect class="shipbody${isSunk?" sunkbody":""}${sel?" selbody":""}" x="${x+3}" y="${y+3}" width="${C-6}" height="${C-6}" rx="8"/>`;
+    }
+    if(shot){
+      if(isShip){
+        s+=`<circle class="hitdot" cx="${x+C/2}" cy="${y+C/2}" r="9"/>`;
+        s+=`<line class="hitx" x1="${x+12}" y1="${y+12}" x2="${x+C-12}" y2="${y+C-12}"/>`;
+        s+=`<line class="hitx" x1="${x+C-12}" y1="${y+12}" x2="${x+12}" y2="${y+C-12}"/>`;
+      }else{
+        s+=`<circle class="missdot" cx="${x+C/2}" cy="${y+C/2}" r="5"/>`;
+      }
+    }
+    const canClick=(mode==="fire"&&!shot)||mode==="place";
+    s+=`<rect class="cell ${canClick?"":"dead"}" data-i="${idx}" x="${x}" y="${y}" width="${C}" height="${C}"/>`;
+  }
+  svg.innerHTML=s;
+  if(mode==="fire"){
+    svg.querySelectorAll(".cell:not(.dead)").forEach(el=>{
+      el.addEventListener("click",()=>playerFire(+el.dataset.i));
+    });
+  }else if(mode==="place"){
+    svg.querySelectorAll(".cell").forEach(el=>{
+      el.addEventListener("click",()=>placeTap(+el.dataset.i));
+    });
+  }
+}
+function drawTray(){
+  const el=document.getElementById("myFleet");
+  el.innerHTML="";
+  const F=PF();
+  for(const sp of FLEET){
+    const ship=F.ships.find(x=>x.id===sp.id);
+    const placed=ship.cells.length===ship.len;
+    const b=document.createElement("button");
+    b.className="f tray"+(placed?"":" unplaced")+(selShip===sp.id?" seltray":"");
+    b.innerHTML=`<span class="blocks">${'<span class="b"></span>'.repeat(sp.len)}</span> ${STR[lang].ships[sp.key]}`;
+    b.addEventListener("click",()=>{selShip=sp.id;if(placed)placeHoriz=shipHoriz(ship);sFire();renderAll();placeStatus();});
+    el.appendChild(b);
+  }
+}
+function drawFleetBar(elId, fleet){
+  const el=document.getElementById(elId);
+  if(fleet===null){el.innerHTML="";return;}
+  el.innerHTML=FLEET.map(sp=>{
+    const ship=fleet?fleet.ships.find(s=>s.id===sp.id):null;
+    const dead=ship&&ship.hits>=ship.len;
+    return `<div class="f ${dead?"dead":""}"><span class="blocks">${'<span class="b"></span>'.repeat(sp.len)}</span> ${STR[lang].ships[sp.key]}</div>`;
+  }).join("");
+}
+function renderAll(){
+  if(phase==="place"){
+    /* during placement only the active player's own grid matters */
+    drawGrid("enemyGrid",mode==="1p"?botShips:fleetOf(3-placingPlayer),new Set(),false,null);
+    drawGrid("myGrid",PF(),new Set(),true,"place");
+    drawFleetBar("enemyFleet",null);
+    drawTray();
+    document.getElementById("topLabel").textContent=mode==="1p"?STR[lang].enemyWaters:STR[lang].fleetOfLabel.replace("{p}",nameOf(3-placingPlayer));
+    document.getElementById("bottomLabel").textContent=mode==="1p"?STR[lang].yourWaters:STR[lang].yourFleetLabel.replace("{p}",nameOf(placingPlayer));
+  }else{
+    const shooter=mode==="1p"?1:cur;
+    const defender=3-shooter;
+    const topFleet=mode==="1p"?botShips:fleetOf(defender);
+    const topShots=mode==="1p"?myShots:shotsBy(shooter);
+    const botFleet=mode==="1p"?myShips:fleetOf(shooter);
+    const botFshots=mode==="1p"?botShots:shotsBy(defender);
+    const reveal=phase==="over";
+    drawGrid("enemyGrid",topFleet,topShots,reveal,(phase==="battle"&&!busy&&!awaitPass)?"fire":null);
+    drawGrid("myGrid",botFleet,botFshots,true,null);
+    drawFleetBar("enemyFleet",topFleet);
+    drawFleetBar("myFleet",botFleet);
+    document.getElementById("topLabel").textContent=mode==="1p"?STR[lang].enemyWaters:STR[lang].fleetOfLabel.replace("{p}",nameOf(defender));
+    document.getElementById("bottomLabel").textContent=mode==="1p"?STR[lang].yourWaters:STR[lang].yourFleetLabel.replace("{p}",nameOf(shooter));
+  }
+  document.getElementById("placeRow").style.display=phase==="place"?"flex":"none";
+  document.getElementById("passRow").style.display=(phase==="battle"&&awaitPass)?"flex":"none";
+  const sb=document.getElementById("startBtn");
+  if(phase==="place"){
+    sb.disabled=!allPlaced(PF());
+    sb.classList.toggle("pulse",allPlaced(PF()));
+    sb.textContent=(mode==="2p"&&placingPlayer===1)?STR[lang].done:STR[lang].start;
+  }
+}
+function setStatus(html){document.getElementById("status").innerHTML=html;}
+
+/* ============ handoff overlay (2P) ============ */
+let handoffCb=null;
+function showHandoff(toPlayer,cb){
+  handoffCb=cb;
+  document.getElementById("handTitle").textContent=STR[lang].passTo.replace("{p}",nameOf(toPlayer));
+  document.getElementById("handSub").textContent=STR[lang].noPeek;
+  document.getElementById("readyBtn").textContent=STR[lang].imReady.replace("{p}",nameOf(toPlayer));
+  document.getElementById("handoff").classList.add("show");
+}
+document.getElementById("readyBtn").addEventListener("click",()=>{
+  const cb=handoffCb;handoffCb=null;
+  if(cb)cb();                             /* render the next view first… */
+  document.getElementById("handoff").classList.remove("show");  /* …then lift the curtain */
+});
+
+/* ============ flow ============ */
+function newGame(){
+  phase="place";busy=false;awaitPass=false;playerShotCount=0;p2ShotCount=0;placeHoriz=true;
+  placingPlayer=1;cur=1;
+  document.getElementById("handoff").classList.remove("show");handoffCb=null;
+  if(mode==="1p"){
+    myShips=emptyFleet();botShips=randomFleet();
+  }else{
+    myShips=emptyFleet();botShips=emptyFleet();
+  }
+  selShip=firstUnplaced(PF());
+  myShots=new Set();botShots=new Set();
+  botAI=makeAI(diff);
+  renderAll();
+  placeStatus();
+}
+function advancePlace(){
+  if(!allPlaced(PF())||!validFleet(PF()))return;
+  if(mode==="1p"){
+    if(!botShips||!validFleet(botShips))botShips=randomFleet();
+    selShip=-1;phase="battle";renderAll();
+    setStatus(STR[lang].yourTurn);
+    return;
+  }
+  if(placingPlayer===1){
+    showHandoff(2,()=>{
+      placingPlayer=2;selShip=firstUnplaced(PF());placeHoriz=true;
+      renderAll();placeStatus();
+    });
+  }else{
+    selShip=-1;
+    showHandoff(1,()=>{
+      cur=1;phase="battle";awaitPass=false;
+      renderAll();
+      setStatus(STR[lang].fire2p.replace("{p}",nameOf(1)));
+    });
+  }
+}
+const startBattle=advancePlace; /* kept for tests/back-compat */
+function playerFire(idx){
+  if(phase!=="battle"||busy||awaitPass)return;
+  const shooter=mode==="1p"?1:cur;
+  const defender=3-shooter;
+  const targetFleet=mode==="1p"?botShips:fleetOf(defender);
+  const shots=mode==="1p"?myShots:shotsBy(shooter);
+  if(shots.has(idx))return;
+  busy=true;sFire();
+  if(shooter===1)playerShotCount++;else p2ShotCount++;
+  const res=fireAt(targetFleet,shots,idx);
+  let msg;
+  if(res.sunk){sSunk();msg=`<span class="sunkmsg">${STR[lang].sunkYou.replace("{s}",STR[lang].ships[res.sunk.key])}</span>`;}
+  else if(res.hit){sHit();msg=STR[lang].hit;}
+  else{sMiss();msg=STR[lang].miss;}
+  if(fleetDead(targetFleet)){
+    phase="over";busy=false;awaitPass=false;
+    if(mode==="1p"){sWin();setStatus(STR[lang].win.replace("{a}",playerShotCount));}
+    else{sWin();setStatus(STR[lang].win2p.replace("{p}",nameOf(shooter)).replace("{a}",shooter===1?playerShotCount:p2ShotCount));}
+    renderAll();return;
+  }
+  if(mode==="1p"){
+    renderAll();
+    setStatus(msg+" · "+STR[lang].botTurn+' <span id="thinking">…</span>');
+    setTimeout(botTurn,900);
+  }else{
+    busy=false;awaitPass=true;
+    renderAll();
+    setStatus(msg);
+    document.getElementById("passBtn").textContent=STR[lang].passShot.replace("{p}",nameOf(defender));
+  }
+}
+document.getElementById("passBtn").addEventListener("click",()=>{
+  if(phase!=="battle"||!awaitPass)return;
+  const next=3-cur;
+  showHandoff(next,()=>{
+    cur=next;awaitPass=false;
+    renderAll();
+    setStatus(STR[lang].fire2p.replace("{p}",nameOf(cur)));
+  });
+});
+function botTurn(){
+  const idx=aiChoose(botAI,myShips.ships);
+  const res=fireAt(myShips,botShots,idx);
+  aiFeedback(botAI,idx,res.hit,res.sunk);
+  if(res.sunk)sSunk();else if(res.hit)sHit();else sMiss();
+  renderAll();
+  if(fleetDead(myShips)){
+    phase="over";busy=false;sLose();
+    setStatus(STR[lang].lose);
+    renderAll();return;
+  }
+  busy=false;renderAll();
+  let pre="";
+  if(res.sunk)pre=`<span class="sunkmsg">${STR[lang].sunkBot.replace("{s}",STR[lang].ships[res.sunk.key])}</span> · `;
+  setStatus(pre+STR[lang].yourTurn);
+}
+
+/* ============ ui ============ */
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");mode=b.dataset.mode;persist();
+  document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+  newGame();
+});
+document.getElementById("shuffleBtn").addEventListener("click",()=>{
+  if(phase!=="place")return;
+  if(placingPlayer===1)myShips=randomFleet();else botShips=randomFleet();
+  selShip=-1;renderAll();placeStatus();
+});
+document.getElementById("rotateBtn").addEventListener("click",rotateSel);
+document.getElementById("startBtn").addEventListener("click",advancePlace);
+document.getElementById("diffSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");diff=b.dataset.diff;persist();newGame();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();renderAll();
+  if(phase==="place")placeStatus();
+  else if(phase==="battle")setStatus(mode==="1p"?STR[lang].yourTurn:STR[lang].fire2p.replace("{p}",nameOf(cur)));});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{if(STR[lang][el.dataset.i18n])el.textContent=STR[lang][el.dataset.i18n];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+document.querySelectorAll("#diffSeg button").forEach(b=>b.classList.toggle("on",b.dataset.diff===diff));
+document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+applyLang();newGame();
+
+window.__test={randomFleet,validFleet,emptyFleet,allPlaced,firstUnplaced,tryPlace,cellsFor,shipHoriz,placeTap,rotateSel,getSel:()=>selShip,getHoriz:()=>placeHoriz,advancePlace,setMode:(m)=>{mode=m;},get2p:()=>({mode,placingPlayer,cur,awaitPass,shots:{p1:myShots.size,p2:botShots.size}}),makeAI,aiChoose,aiFeedback,fireAt,fleetDead,densityPick,neighbors,G,FLEET,
+  getState:()=>({phase,playerShotCount,p2ShotCount}),newGame,startBattle,playerFire,
+  _fleets:()=>({myShips,botShips})};
+</script>
+</body>
+</html>

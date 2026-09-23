@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Tidy Up</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4EFE5; --surface:#FFFDF7; --ink:#2E2A24; --muted:#8B8375;
+  --accent:#C08552; --accent2:#6E8F7D; --line:rgba(46,42,36,.12);
+  --radius:18px; --shadow:0 10px 30px -12px rgba(0,0,0,.25);
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-body);background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+#app{position:relative;width:100%;height:100%;max-width:520px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.screen{position:relative;z-index:1;flex:1;display:none;flex-direction:column;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.screen.on{display:flex;animation:fade .35s ease}
+.screen.flat{padding:0;overflow:hidden}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.topbar{position:relative;z-index:3;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;min-height:48px}
+.spacer{flex:1}
+.iconbtn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:17px;transition:transform .15s,box-shadow .15s,opacity .2s}
+.iconbtn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn.off{opacity:.42}
+.iconbtn:focus-visible,button:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+h1.logo{font-family:var(--font-display);font-weight:900;font-size:clamp(42px,13vw,60px);letter-spacing:-.035em;line-height:.92;text-align:center}
+h1.logo .dot{color:var(--accent2)}
+.tag{text-align:center;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-top:12px;font-weight:600}
+h2.title{font-family:var(--font-display);font-weight:600;font-size:26px;letter-spacing:-.02em;margin-bottom:3px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 0 10px}
+.btn{width:100%;padding:16px 18px;border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:13px;transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s,border-color .16s}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--accent)}
+.btn:active{transform:scale(.975)}
+.btn .ic{font-size:20px;width:26px;text-align:center;flex:none}
+.btn .arw{margin-left:auto;color:var(--muted);font-size:16px}
+.btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn.primary .arw{color:#fff;opacity:.8}
+.btn.ghost{background:transparent}
+.menu{display:flex;flex-direction:column;gap:11px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.stat b{display:block;font-family:var(--font-display);font-size:22px;font-weight:600}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rules li{margin:0 0 9px 18px;font-size:13.5px;line-height:1.55}
+.roomlist{display:flex;flex-direction:column;gap:11px}
+.rl{display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:13px 15px;cursor:pointer;transition:transform .16s,border-color .16s}
+.rl:hover{transform:translateY(-2px);border-color:var(--accent)}
+.rl .em{font-size:22px}
+.rl .nm{font-family:var(--font-display);font-size:17px;font-weight:600}
+.rl .dt{font-size:11.5px;color:var(--muted)}
+.rl .st{margin-left:auto;color:var(--accent);font-size:14px;letter-spacing:2px}
+
+/* ===== GAME ===== */
+.hud{display:flex;align-items:center;gap:7px;padding:8px 14px 6px}
+.pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--muted)}
+.pill b{color:var(--ink);font-weight:700}
+#stage{position:relative;flex:1;margin:0 10px;border-radius:18px;overflow:hidden;touch-action:none;box-shadow:0 8px 26px -16px rgba(0,0,0,.5)}
+#room{position:absolute;inset:0;width:100%;height:100%}
+.zone{position:absolute;border:2px dashed transparent;border-radius:12px;pointer-events:none;transition:border-color .2s,background .2s;display:grid;place-items:start center}
+.zone.live{border-color:rgba(255,255,255,.85);background:rgba(255,255,255,.16)}
+.zone.hot{border-color:#FFE9A8;background:rgba(255,233,168,.3)}
+.zone b{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.4);
+  padding:2px 8px;border-radius:99px;opacity:0;transition:opacity .2s;margin-top:-9px;font-weight:700}
+.zone.live b{opacity:1}
+.item{position:absolute;cursor:grab;touch-action:none;transition:transform .28s cubic-bezier(.34,1.6,.64,1),filter .2s;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.25))}
+.item svg{width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
+.item.drag{cursor:grabbing;transition:none;filter:drop-shadow(0 10px 10px rgba(0,0,0,.35));z-index:50}
+.item.placed{cursor:default;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+.item.nope{animation:nope .38s ease}
+@keyframes nope{0%,100%{rotate:0deg}25%{rotate:-9deg}75%{rotate:9deg}}
+.item.set{animation:setdown .3s cubic-bezier(.34,1.7,.64,1)}
+@keyframes setdown{0%{scale:1.14}60%{scale:.94}100%{scale:1}}
+#warm{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.2s ease;
+  background:radial-gradient(70% 60% at 60% 30%,rgba(255,214,150,.42),rgba(255,180,110,0) 70%)}
+#warm.on{opacity:1}
+.tray{display:flex;gap:9px;padding:10px 14px calc(12px + env(safe-area-inset-bottom))}
+.tbtn{flex:1;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.overlay{position:absolute;inset:0;z-index:6;background:rgba(46,42,36,.55);display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
+.overlay.on{display:flex;animation:fade .3s ease}
+.panel{background:var(--surface);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.5)}
+.panel h3{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:4px}
+.starrow{font-size:30px;letter-spacing:6px;color:var(--accent);margin:10px 0 4px}
+#toast{position:absolute;left:50%;bottom:96px;transform:translate(-50%,14px);z-index:9;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="visibility:hidden" aria-label="Back">←</button>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="sfxBtn" aria-label="Toggle sound">🔔</button>
+  </div>
+
+  <section class="screen on" id="s-main">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <h1 class="logo">Tidy<span class="dot">.</span>Up</h1>
+      <p class="tag">everything has a place</p>
+      <div class="stats">
+        <div class="stat"><b id="mRooms">0</b><span>rooms done</span></div>
+        <div class="stat"><b id="mStars">0</b><span>stars</span></div>
+        <div class="stat"><b id="mItems">0</b><span>things put away</span></div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="btn primary" id="playBtn"><span class="ic">🧺</span>Start tidying<span class="arw">→</span></button>
+      <button class="btn" id="roomsBtn"><span class="ic">🏠</span>Choose a room<span class="arw">→</span></button>
+      <button class="btn ghost" id="helpBtn"><span class="ic">?</span>How to play<span class="arw">→</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-rooms">
+    <h2 class="title">Rooms</h2>
+    <p class="sub">Each visit scatters things a little differently.</p>
+    <div class="roomlist" id="roomList"></div>
+  </section>
+
+  <section class="screen flat" id="s-game">
+    <div class="hud">
+      <span class="pill" id="pRoom">—</span>
+      <span class="pill">Away <b id="pDone">0</b>/<b id="pTot">0</b></span>
+    </div>
+    <div id="stage">
+      <canvas id="room"></canvas>
+      <div id="warm"></div>
+    </div>
+    <div class="tray">
+      <button class="tbtn" id="hintBtn">💡 Where does this go?</button>
+      <button class="tbtn" id="resetBtn" style="flex:0 0 auto;padding:12px 16px">↻</button>
+    </div>
+    <div class="overlay" id="endOv">
+      <div class="panel">
+        <h3 id="endTitle">All tidy</h3>
+        <div class="starrow" id="endStars">★★★</div>
+        <p class="sub" style="margin:0 0 16px" id="endSub">—</p>
+        <button class="btn primary" id="nextRoom" style="justify-content:center">Next room</button>
+        <button class="btn ghost" id="endHome" style="justify-content:center;margin-top:9px">Back to menu</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-help">
+    <h2 class="title">How to play</h2>
+    <p class="sub">No timer, no fail. Just put things where they live.</p>
+    <ul class="rules">
+      <li><b>Drag</b> anything off the floor and drop it where it belongs.</li>
+      <li>While you're holding something, the places that will take it <b>light up</b>.</li>
+      <li>Drop it somewhere wrong and it just wobbles back — nothing breaks.</li>
+      <li>Tap <b>Where does this go?</b> if a thing has you stumped.</li>
+      <li>Tidy a room without a single wrong drop for three stars.</li>
+    </ul>
+    <button class="btn ghost" id="helpBack" style="justify-content:center;margin-top:24px">Got it</button>
+  </section>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+/* ================= ICONS ================= */
+const I={
+book:(a,b)=>`<rect x="8" y="10" width="24" height="21" rx="2" fill="${a}"/><rect x="8" y="10" width="6" height="21" fill="${b}"/><rect x="16" y="15" width="12" height="2" rx="1" fill="rgba(255,255,255,.6)"/><rect x="16" y="20" width="9" height="2" rx="1" fill="rgba(255,255,255,.45)"/>`,
+pillow:(a,b)=>`<rect x="5" y="12" width="30" height="18" rx="7" fill="${a}"/><path d="M10 16 q10 4 20 0" stroke="${b}" stroke-width="2" fill="none" opacity=".7"/>`,
+teddy:(a,b)=>`<circle cx="13" cy="12" r="5" fill="${b}"/><circle cx="27" cy="12" r="5" fill="${b}"/><circle cx="20" cy="18" r="10" fill="${a}"/><circle cx="16.5" cy="16" r="1.7" fill="#2E2A24"/><circle cx="23.5" cy="16" r="1.7" fill="#2E2A24"/><ellipse cx="20" cy="21" rx="4" ry="3" fill="${b}"/><ellipse cx="20" cy="31" rx="8" ry="6" fill="${a}"/>`,
+plant:(a,b)=>`<path d="M20 26 q-12 -4 -12 -16 q12 2 12 16z" fill="${a}"/><path d="M20 24 q12 -6 12 -16 q-12 3 -12 16z" fill="${b}"/><path d="M20 28 V16" stroke="${b}" stroke-width="2"/><path d="M12 27 h16 l-2 8 h-12z" fill="#C08552"/>`,
+shoe:(a,b)=>`<path d="M7 26 q0 -8 5 -8 q4 0 6 4 l10 3 q6 1 6 5 v2 h-27z" fill="${a}"/><rect x="7" y="28" width="27" height="3" rx="1.5" fill="${b}"/>`,
+lamp:(a,b)=>`<path d="M12 18 l4 -10 h8 l4 10z" fill="${a}"/><rect x="19" y="18" width="2" height="12" fill="${b}"/><ellipse cx="20" cy="31" rx="8" ry="3" fill="${b}"/>`,
+clock:(a,b)=>`<circle cx="20" cy="20" r="12" fill="${a}"/><circle cx="20" cy="20" r="9" fill="#FFFDF7"/><path d="M20 20 V13 M20 20 l5 4" stroke="${b}" stroke-width="2" stroke-linecap="round"/>`,
+mug:(a,b)=>`<rect x="9" y="13" width="18" height="17" rx="3" fill="${a}"/><path d="M27 17 h4 a4 4 0 0 1 0 8 h-4" stroke="${b}" stroke-width="3" fill="none"/><rect x="9" y="13" width="18" height="4" fill="${b}"/>`,
+jar:(a,b)=>`<rect x="11" y="14" width="18" height="18" rx="3" fill="${a}" opacity=".85"/><rect x="10" y="10" width="20" height="5" rx="2" fill="${b}"/><rect x="14" y="20" width="12" height="9" rx="2" fill="rgba(255,255,255,.35)"/>`,
+bottle:(a,b)=>`<path d="M17 8 h6 v6 l3 5 v13 a2 2 0 0 1 -2 2 h-8 a2 2 0 0 1 -2 -2 v-13 l3 -5z" fill="${a}"/><rect x="16" y="6" width="8" height="4" rx="1" fill="${b}"/><rect x="15" y="21" width="10" height="5" fill="rgba(255,255,255,.4)"/>`,
+plate:(a,b)=>`<ellipse cx="20" cy="21" rx="14" ry="9" fill="${a}"/><ellipse cx="20" cy="20" rx="9" ry="5.5" fill="${b}"/>`,
+towel:(a,b)=>`<rect x="10" y="9" width="20" height="23" rx="3" fill="${a}"/><rect x="10" y="16" width="20" height="4" fill="${b}"/><rect x="10" y="24" width="20" height="3" fill="${b}" opacity=".6"/>`,
+apple:(a,b)=>`<path d="M20 13 q-9 -4 -9 6 q0 11 9 12 q9 -1 9 -12 q0 -10 -9 -6z" fill="${a}"/><path d="M20 13 V8 q3 -1 5 -3" stroke="${b}" stroke-width="2" fill="none"/>`,
+cushion:(a,b)=>`<rect x="7" y="9" width="26" height="24" rx="6" fill="${a}"/><circle cx="20" cy="21" r="6" fill="${b}" opacity=".55"/>`,
+remote:(a,b)=>`<rect x="14" y="6" width="12" height="28" rx="4" fill="${a}"/><circle cx="20" cy="12" r="2.6" fill="${b}"/><rect x="16" y="18" width="8" height="2.4" rx="1.2" fill="${b}"/><rect x="16" y="23" width="8" height="2.4" rx="1.2" fill="${b}"/>`,
+vase:(a,b)=>`<path d="M15 9 h10 l-2 7 q6 4 6 10 a9 9 0 0 1 -18 0 q0 -6 6 -10z" fill="${a}"/><ellipse cx="20" cy="9" rx="5" ry="1.8" fill="${b}"/>`,
+frame:(a,b)=>`<rect x="7" y="10" width="26" height="21" rx="2" fill="${a}"/><rect x="11" y="14" width="18" height="13" fill="${b}"/><path d="M11 27 l6 -7 4 4 3 -3 5 6z" fill="rgba(255,255,255,.55)"/>`,
+laptop:(a,b)=>`<rect x="9" y="10" width="22" height="15" rx="2" fill="${a}"/><rect x="11" y="12" width="18" height="11" fill="${b}"/><path d="M6 27 h28 l-2 4 h-24z" fill="${a}"/>`,
+notebook:(a,b)=>`<rect x="10" y="8" width="21" height="25" rx="2" fill="${a}"/><rect x="10" y="8" width="4" height="25" fill="${b}"/><rect x="17" y="14" width="10" height="1.8" fill="rgba(255,255,255,.6)"/><rect x="17" y="19" width="10" height="1.8" fill="rgba(255,255,255,.45)"/>`,
+pencup:(a,b)=>`<path d="M13 18 h14 l-2 14 h-10z" fill="${a}"/><rect x="16" y="6" width="2.5" height="13" fill="${b}"/><rect x="21" y="9" width="2.5" height="10" fill="#E4553C"/>`,
+globe:(a,b)=>`<circle cx="20" cy="18" r="11" fill="${a}"/><path d="M9 18 h22 M20 7 q6 11 0 22 M20 7 q-6 11 0 22" stroke="${b}" stroke-width="1.4" fill="none"/><path d="M14 30 h12 l-2 4 h-8z" fill="${b}"/>`,
+paper:(a,b)=>`<circle cx="20" cy="21" r="11" fill="${a}"/><path d="M13 18 q5 3 3 8 M25 15 q-4 5 1 9" stroke="${b}" stroke-width="1.4" fill="none"/>`,
+hat:(a,b)=>`<ellipse cx="20" cy="26" rx="15" ry="5" fill="${a}"/><path d="M11 25 q1 -13 9 -13 q8 0 9 13z" fill="${b}"/><rect x="11" y="22" width="18" height="3.5" fill="${a}"/>`,
+pot:(a,b)=>`<path d="M10 14 h20 l-3 17 h-14z" fill="${a}"/><rect x="8" y="10" width="24" height="5" rx="2" fill="${b}"/>`,
+trowel:(a,b)=>`<path d="M20 6 q7 8 4 16 q-4 5 -8 0 q-3 -8 4 -16z" fill="${a}"/><rect x="18" y="22" width="4" height="8" fill="${b}"/><rect x="16" y="29" width="8" height="6" rx="3" fill="#8B6A45"/>`,
+can:(a,b)=>`<rect x="10" y="15" width="16" height="15" rx="3" fill="${a}"/><path d="M26 18 l8 -6 v3 l-6 6z" fill="${a}"/><path d="M12 15 q6 -9 12 0" stroke="${b}" stroke-width="2.4" fill="none"/>`,
+seeds:(a,b)=>`<rect x="11" y="9" width="18" height="23" rx="2" fill="${a}"/><circle cx="20" cy="18" r="5" fill="${b}"/><rect x="14" y="26" width="12" height="2" fill="${b}" opacity=".6"/>`,
+kettle:(a,b)=>`<path d="M11 17 h16 v10 a4 4 0 0 1 -4 4 h-8 a4 4 0 0 1 -4 -4z" fill="${a}"/><path d="M27 20 l7 -4 v3 l-6 4z" fill="${a}"/><path d="M14 17 q6 -8 11 0" stroke="${b}" stroke-width="2.4" fill="none"/>`,
+candle:(a,b)=>`<rect x="15" y="14" width="10" height="18" rx="2" fill="${a}"/><path d="M20 14 q-3 -4 0 -8 q3 4 0 8z" fill="#F5B627"/><ellipse cx="20" cy="32" rx="8" ry="2.6" fill="${b}"/>`,
+ball:(a,b)=>`<circle cx="20" cy="20" r="12" fill="${a}"/><path d="M8 20 q12 -8 24 0 q-12 8 -24 0" fill="${b}" opacity=".6"/>`,
+blanket:(a,b)=>`<path d="M6 14 q14 -6 28 0 v12 q-14 6 -28 0z" fill="${a}"/><path d="M6 20 q14 -6 28 0" stroke="${b}" stroke-width="2" fill="none"/>`,
+cactus:(a,b)=>`<rect x="17" y="10" width="6" height="19" rx="3" fill="${a}"/><rect x="10" y="16" width="5" height="9" rx="2.5" fill="${a}"/><rect x="25" y="14" width="5" height="11" rx="2.5" fill="${a}"/><path d="M13 28 h14 l-2 7 h-10z" fill="${b}"/>`
+};
+const COL={
+book:['#C05B4D','#8E3F35'],book2:['#3E6B8C','#2A4A63'],book3:['#7A8F4E','#57683A'],
+pillow:['#EFE3D0','#D8C7AC'],teddy:['#C79A67','#8E6C46'],plant:['#6E9B5C','#4E7442'],
+shoe:['#5C6B7A','#3E4A56'],lamp:['#F0CE7A','#8B6A45'],clock:['#D9AF6B','#4A4238'],
+mug:['#E8E2D5','#C08552'],jar:['#CFE0DA','#B08B5E'],bottle:['#8FB3C9','#4E6E85'],
+plate:['#F3EEE4','#DCD3C3'],towel:['#D9A5A5','#B87C7C'],apple:['#D24B3E','#6E9B5C'],
+cushion:['#B58BA4','#8C6480'],remote:['#4B4B52','#B9B9C2'],vase:['#7FA9A0','#5E8078'],
+frame:['#A8794E','#DCE6EE'],laptop:['#8B8F98','#3A424C'],notebook:['#D98F5E','#A65E36'],
+pencup:['#7A8F9E','#E8C468'],globe:['#7FA0C4','#F3EEE4'],paper:['#F3EEE4','#C9C1B2'],
+hat:['#D9C39A','#B08B5E'],pot:['#C08552','#9A6540'],trowel:['#B9BEC4','#7C848C'],
+can:['#7FA9A0','#4E7A72'],seeds:['#E4C77E','#8E6C46'],kettle:['#C9CDD3','#5E6670'],
+candle:['#F0E4CF','#C08552'],ball:['#E4795E','#F3EEE4'],blanket:['#B58BA4','#8C6480'],
+cactus:['#6E9B5C','#C08552']
+};
+function icon(type){
+  const c=COL[type]||['#C08552','#8B6A45'];
+  const fn=I[type]||I.ball;
+  return '<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">'+fn(c[0],c[1])+'</svg>';
+}
+const LABEL={book:'book',pillow:'pillow',teddy:'teddy',plant:'plant',shoe:'shoe',lamp:'lamp',clock:'clock',
+mug:'mug',jar:'jar',bottle:'bottle',plate:'plate',towel:'towel',apple:'apple',cushion:'cushion',
+remote:'remote',vase:'vase',frame:'picture',laptop:'laptop',notebook:'notebook',pencup:'pen pot',
+globe:'globe',paper:'paper ball',hat:'hat',pot:'plant pot',trowel:'trowel',can:'watering can',
+seeds:'seed packet',kettle:'kettle',candle:'candle',ball:'ball',blanket:'blanket',cactus:'cactus'};
+
+/* ================= ROOMS ================= */
+function wall(c,W,H,top,wallCol,floorCol){
+  c.fillStyle=wallCol;c.fillRect(0,0,W,H*top);
+  c.fillStyle=floorCol;c.fillRect(0,H*top,W,H*(1-top));
+  c.strokeStyle='rgba(0,0,0,.10)';c.lineWidth=1;
+  for(let i=1;i<9;i++){c.beginPath();c.moveTo(0,H*(top+ (1-top)*i/9));c.lineTo(W,H*(top+(1-top)*i/9));c.stroke();}
+  c.fillStyle='rgba(0,0,0,.06)';c.fillRect(0,H*top-4,W,4);
+}
+function rrect(c,x,y,w,h,r,col){c.fillStyle=col;c.beginPath();c.roundRect?c.roundRect(x,y,w,h,r):c.rect(x,y,w,h);c.fill();}
+const ROOMS=[
+{
+ name:'Bedroom',em:'🛏',
+ draw(c,W,H){
+   wall(c,W,H,.66,'#E9DCC9','#C9A87C');
+   // window
+   rrect(c,W*.60,H*.10,W*.32,H*.30,10,'#F6FAFD');
+   c.fillStyle='#9CC4DA';c.fillRect(W*.62,H*.12,W*.28,H*.26);
+   c.strokeStyle='#B08B5E';c.lineWidth=4;c.strokeRect(W*.60,H*.10,W*.32,H*.30);
+   c.beginPath();c.moveTo(W*.76,H*.10);c.lineTo(W*.76,H*.40);c.stroke();
+   rrect(c,W*.575,H*.395,W*.37,H*.028,4,'#B08B5E');
+   // shelf
+   rrect(c,W*.06,H*.16,W*.42,H*.028,4,'#B08B5E');
+   rrect(c,W*.09,H*.188,W*.02,H*.04,2,'#9A7A50');
+   rrect(c,W*.43,H*.188,W*.02,H*.04,2,'#9A7A50');
+   // bed
+   rrect(c,W*.03,H*.42,W*.06,H*.30,6,'#8E6C46');
+   rrect(c,W*.03,H*.52,W*.50,H*.28,10,'#EFE3D0');
+   rrect(c,W*.16,H*.56,W*.37,H*.24,10,'#A9C0B4');
+   // bedside table
+   rrect(c,W*.56,H*.60,W*.20,H*.22,6,'#B08B5E');
+   rrect(c,W*.575,H*.66,W*.17,H*.05,3,'#9A7A50');
+   // rug
+   c.fillStyle='#D9A5A5';c.beginPath();c.ellipse(W*.72,H*.88,W*.24,H*.08,0,0,7);c.fill();
+ },
+ zones:[
+  {n:'shelf',x:.05,y:.10,w:.44,h:.10,accepts:['book','frame','clock'],slots:[[.11,.135],[.20,.135],[.29,.135],[.38,.135]]},
+  {n:'bed',x:.03,y:.46,w:.52,h:.20,accepts:['pillow','teddy','blanket'],slots:[[.11,.545],[.24,.545],[.37,.55]]},
+  {n:'windowsill',x:.57,y:.33,w:.38,h:.12,accepts:['plant','cactus','candle'],slots:[[.66,.375],[.78,.375],[.89,.375]]},
+  {n:'table',x:.55,y:.55,w:.23,h:.10,accepts:['lamp','mug','notebook'],slots:[[.60,.585],[.685,.585],[.755,.585]]},
+  {n:'rug',x:.52,y:.80,w:.44,h:.16,accepts:['shoe','ball'],slots:[[.62,.865],[.74,.865],[.86,.865]]}
+ ],
+ pool:[['book',3],['pillow',2],['teddy',1],['plant',2],['shoe',2],['lamp',1],['mug',1],['frame',1],['blanket',1],['ball',1],['candle',1],['notebook',1]]
+},
+{
+ name:'Kitchen',em:'🍳',
+ draw(c,W,H){
+   wall(c,W,H,.62,'#E4E7DE','#C4B49A');
+   // upper cabinets
+   rrect(c,W*.04,H*.06,W*.44,H*.20,8,'#DCC9A8');
+   c.strokeStyle='#B08B5E';c.lineWidth=3;c.strokeRect(W*.04,H*.06,W*.44,H*.20);
+   c.beginPath();c.moveTo(W*.26,H*.06);c.lineTo(W*.26,H*.26);c.stroke();
+   // open shelf
+   rrect(c,W*.54,H*.22,W*.42,H*.026,4,'#B08B5E');
+   // counter
+   rrect(c,W*.02,H*.50,W*.96,H*.07,6,'#EFE9DC');
+   rrect(c,W*.02,H*.57,W*.96,H*.22,4,'#C4A87E');
+   c.fillStyle='rgba(0,0,0,.10)';
+   c.fillRect(W*.30,H*.57,W*.012,H*.22);c.fillRect(W*.62,H*.57,W*.012,H*.22);
+   // sink
+   rrect(c,W*.66,H*.515,W*.26,H*.05,5,'#B9BEC4');
+   c.strokeStyle='#9AA1A8';c.lineWidth=3;
+   c.beginPath();c.moveTo(W*.79,H*.515);c.lineTo(W*.79,H*.46);c.lineTo(W*.86,H*.46);c.stroke();
+   // hooks
+   rrect(c,W*.06,H*.34,W*.32,H*.014,3,'#9A7A50');
+   for(let i=0;i<3;i++){rrect(c,W*(.10+i*.10),H*.354,W*.012,H*.03,2,'#9A7A50');}
+ },
+ zones:[
+  {n:'shelf',x:.53,y:.15,w:.44,h:.10,accepts:['jar','seeds','vase'],slots:[[.60,.195],[.70,.195],[.80,.195],[.90,.195]]},
+  {n:'hooks',x:.04,y:.31,w:.36,h:.12,accepts:['towel','mug'],slots:[[.11,.375],[.21,.375],[.31,.375]]},
+  {n:'counter',x:.02,y:.42,w:.42,h:.11,accepts:['kettle','bottle','apple','candle'],slots:[[.09,.465],[.19,.465],[.29,.465],[.38,.465]]},
+  {n:'sink',x:.64,y:.44,w:.30,h:.10,accepts:['plate','mug'],slots:[[.71,.485],[.80,.485],[.88,.485]]},
+  {n:'cabinet',x:.03,y:.05,w:.46,h:.22,accepts:['plate','jar','book'],slots:[[.10,.11],[.19,.11],[.34,.11],[.43,.11]]}
+ ],
+ pool:[['jar',3],['plate',2],['mug',2],['towel',2],['kettle',1],['bottle',2],['apple',2],['vase',1],['seeds',1],['candle',1],['book',1]]
+},
+{
+ name:'Living Room',em:'🛋',
+ draw(c,W,H){
+   wall(c,W,H,.60,'#EBE2D2','#B8956B');
+   // bookshelf
+   rrect(c,W*.03,H*.08,W*.30,H*.50,6,'#A8794E');
+   c.fillStyle='#8E6440';
+   for(let i=0;i<3;i++)c.fillRect(W*.045,H*(.20+i*.13),W*.27,H*.018);
+   // picture wall
+   rrect(c,W*.42,H*.10,W*.20,H*.15,4,'#DCC9A8');
+   rrect(c,W*.66,H*.13,W*.16,H*.12,4,'#DCC9A8');
+   // sofa
+   rrect(c,W*.36,H*.44,W*.60,H*.14,10,'#8FA6A0');
+   rrect(c,W*.36,H*.56,W*.60,H*.14,10,'#7A928C');
+   rrect(c,W*.34,H*.46,W*.06,H*.24,8,'#7A928C');
+   rrect(c,W*.92,H*.46,W*.06,H*.24,8,'#7A928C');
+   // coffee table
+   rrect(c,W*.10,H*.70,W*.44,H*.06,5,'#B08B5E');
+   rrect(c,W*.14,H*.76,W*.03,H*.12,2,'#9A7A50');
+   rrect(c,W*.47,H*.76,W*.03,H*.12,2,'#9A7A50');
+   // corner
+   c.fillStyle='rgba(0,0,0,.07)';c.beginPath();c.ellipse(W*.80,H*.90,W*.16,H*.05,0,0,7);c.fill();
+ },
+ zones:[
+  {n:'shelf',x:.02,y:.10,w:.32,h:.48,accepts:['book','vase','globe','frame'],slots:[[.08,.155],[.16,.155],[.24,.155],[.08,.285],[.16,.285],[.24,.285],[.12,.415],[.24,.415]]},
+  {n:'wall',x:.40,y:.08,w:.44,h:.19,accepts:['frame','clock'],slots:[[.52,.145],[.74,.165]]},
+  {n:'sofa',x:.34,y:.40,w:.62,h:.16,accepts:['cushion','blanket','teddy'],slots:[[.46,.445],[.62,.445],[.78,.445],[.90,.45]]},
+  {n:'table',x:.09,y:.63,w:.46,h:.10,accepts:['mug','remote','book','candle'],slots:[[.16,.675],[.27,.675],[.38,.675],[.48,.675]]},
+  {n:'corner',x:.66,y:.76,w:.30,h:.20,accepts:['plant','cactus','pot'],slots:[[.74,.83],[.86,.83]]}
+ ],
+ pool:[['book',3],['cushion',3],['mug',1],['remote',1],['plant',2],['vase',1],['frame',2],['blanket',1],['candle',1],['globe',1],['teddy',1]]
+},
+{
+ name:'Study',em:'📚',
+ draw(c,W,H){
+   wall(c,W,H,.64,'#E2E5E9','#A88A63');
+   // wall shelf
+   rrect(c,W*.05,H*.14,W*.40,H*.026,4,'#8E6C46');
+   rrect(c,W*.05,H*.30,W*.40,H*.026,4,'#8E6C46');
+   // pinboard
+   rrect(c,W*.55,H*.10,W*.40,H*.26,6,'#C9A87C');
+   c.strokeStyle='#8E6C46';c.lineWidth=4;c.strokeRect(W*.55,H*.10,W*.40,H*.26);
+   // desk
+   rrect(c,W*.06,H*.52,W*.80,H*.055,5,'#B08B5E');
+   rrect(c,W*.10,H*.575,W*.04,H*.24,3,'#9A7A50');
+   rrect(c,W*.78,H*.575,W*.04,H*.24,3,'#9A7A50');
+   rrect(c,W*.10,H*.66,W*.72,H*.02,2,'#9A7A50');
+   // chair
+   rrect(c,W*.36,H*.74,W*.24,H*.05,5,'#7A928C');
+   rrect(c,W*.36,H*.62,W*.05,H*.13,4,'#7A928C');
+   // bin
+   c.fillStyle='#8B8F98';c.beginPath();
+   c.moveTo(W*.88,H*.74);c.lineTo(W*.98,H*.74);c.lineTo(W*.96,H*.94);c.lineTo(W*.90,H*.94);c.closePath();c.fill();
+ },
+ zones:[
+  {n:'shelves',x:.04,y:.08,w:.42,h:.26,accepts:['book','globe','jar'],slots:[[.10,.105],[.18,.105],[.26,.105],[.10,.265],[.18,.265],[.26,.265],[.36,.265]]},
+  {n:'pinboard',x:.54,y:.09,w:.42,h:.28,accepts:['frame','paper','clock'],slots:[[.63,.155],[.78,.15],[.90,.16],[.70,.28]]},
+  {n:'desk',x:.05,y:.42,w:.80,h:.11,accepts:['laptop','notebook','pencup','mug','lamp'],slots:[[.14,.465],[.28,.465],[.40,.465],[.52,.465],[.64,.465],[.76,.465]]},
+  {n:'bin',x:.85,y:.70,w:.15,h:.26,accepts:['paper','ball'],slots:[[.925,.79],[.925,.79],[.925,.79]]},
+  {n:'chair',x:.32,y:.66,w:.30,h:.14,accepts:['hat','cushion','blanket'],slots:[[.42,.70],[.53,.70]]}
+ ],
+ pool:[['book',3],['laptop',1],['notebook',2],['pencup',1],['frame',2],['paper',2],['globe',1],['mug',1],['lamp',1],['hat',1],['cushion',1]]
+},
+{
+ name:'Potting Shed',em:'🪴',
+ draw(c,W,H){
+   wall(c,W,H,.60,'#D6C7A8','#9E8460');
+   c.strokeStyle='rgba(0,0,0,.10)';c.lineWidth=2;
+   for(let i=1;i<8;i++){c.beginPath();c.moveTo(W*i/8,0);c.lineTo(W*i/8,H*.60);c.stroke();}
+   // window
+   rrect(c,W*.62,H*.08,W*.30,H*.24,4,'#CFE3EA');
+   c.strokeStyle='#7A6242';c.lineWidth=4;c.strokeRect(W*.62,H*.08,W*.30,H*.24);
+   // shelf
+   rrect(c,W*.04,H*.16,W*.46,H*.028,3,'#7A6242');
+   // hook rail
+   rrect(c,W*.55,H*.38,W*.40,H*.014,3,'#7A6242');
+   for(let i=0;i<3;i++)rrect(c,W*(.60+i*.11),H*.394,W*.012,H*.032,2,'#7A6242');
+   // bench
+   rrect(c,W*.03,H*.52,W*.62,H*.06,4,'#8E6C46');
+   rrect(c,W*.06,H*.58,W*.05,H*.26,3,'#7A6242');
+   rrect(c,W*.56,H*.58,W*.05,H*.26,3,'#7A6242');
+   // floor patch
+   c.fillStyle='rgba(90,70,45,.25)';c.beginPath();c.ellipse(W*.80,H*.84,W*.18,H*.08,0,0,7);c.fill();
+ },
+ zones:[
+  {n:'shelf',x:.03,y:.10,w:.48,h:.10,accepts:['seeds','jar','pot'],slots:[[.09,.135],[.19,.135],[.29,.135],[.39,.135]]},
+  {n:'hooks',x:.54,y:.35,w:.42,h:.12,accepts:['can','hat','trowel','towel'],slots:[[.62,.415],[.73,.415],[.84,.415]]},
+  {n:'bench',x:.02,y:.44,w:.64,h:.11,accepts:['pot','trowel','cactus','plant'],slots:[[.09,.485],[.20,.485],[.31,.485],[.42,.485],[.53,.485]]},
+  {n:'window',x:.60,y:.08,w:.34,h:.26,accepts:['cactus','plant','candle'],slots:[[.68,.245],[.78,.245],[.88,.245]]},
+  {n:'floor',x:.64,y:.74,w:.34,h:.22,accepts:['ball','pot','bottle'],slots:[[.72,.82],[.82,.82],[.90,.82]]}
+ ],
+ pool:[['pot',3],['seeds',3],['can',1],['trowel',2],['cactus',2],['plant',1],['hat',1],['jar',1],['towel',1],['bottle',1],['candle',1]]
+}];
+
+/* ================= STATE ================= */
+const KEY='tidyup.v1';
+let S={stars:{},items:0,sfx:true};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const $=id=>document.getElementById(id);
+let cur='s-main';
+function go(id){const f=$(cur);if(f)f.classList.remove('on');cur=id;$(id).classList.add('on');
+  $('backBtn').style.visibility=id==='s-main'?'hidden':'visible';
+  if(id==='s-main')refreshMenu(); if(id==='s-rooms')buildRooms(); if(id==='s-game')setTimeout(relayout,40);}
+let tT=null;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),1900);}
+let AC=null;
+function beep(f,d,ty,v){
+  if(!S.sfx)return;
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  if(AC.state==='suspended')AC.resume();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=ty||'sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,AC.currentTime);g.gain.linearRampToValueAtTime(v||.1,AC.currentTime+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(d||.12));
+  o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.12)+.02);
+}
+const sndPick=()=>beep(300,.05,'sine',.05);
+const sndSet=n=>{beep(440+n*18,.09,'sine',.08);setTimeout(()=>beep(660+n*18,.11,'triangle',.05),55);};
+const sndNo=()=>beep(160,.13,'sine',.055);
+const sndDone=()=>{[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.34,'triangle',.085),i*130));};
+
+/* ================= GAME ================= */
+const stage=$('stage'),roomCv=$('room'),rctx=roomCv.getContext('2d');
+const G={room:null,idx:0,items:[],zones:[],placed:0,total:0,mistakes:0,running:false};
+let SW=0,SH=0;
+
+function relayout(){
+  SW=stage.clientWidth;SH=stage.clientHeight;
+  if(!SW||!SH)return;
+  const dpr=Math.min(window.devicePixelRatio||1,2.5);
+  roomCv.width=Math.round(SW*dpr);roomCv.height=Math.round(SH*dpr);
+  rctx.setTransform(dpr,0,0,dpr,0,0);
+  if(G.room)G.room.draw(rctx,SW,SH);
+  const size=Math.max(46,Math.min(SW*.16,76));
+  G.items.forEach(it=>{
+    it.el.style.width=it.el.style.height=size+'px';
+    it.size=size;
+    moveTo(it,it.fx,it.fy,true);
+  });
+  G.zones.forEach(z=>{
+    z.el.style.left=(z.x*SW)+'px';z.el.style.top=(z.y*SH)+'px';
+    z.el.style.width=(z.w*SW)+'px';z.el.style.height=(z.h*SH)+'px';
+  });
+}
+function moveTo(it,fx,fy,instant){
+  it.fx=fx;it.fy=fy;
+  const x=fx*SW-it.size/2, y=fy*SH-it.size/2;
+  if(instant)it.el.style.transition='none';
+  it.el.style.transform='translate('+x+'px,'+y+'px)';
+  if(instant)requestAnimationFrame(()=>{it.el.style.transition='';});
+}
+
+function loadRoom(i){
+  G.idx=i;G.room=ROOMS[i];
+  stage.querySelectorAll('.item,.zone').forEach(e=>e.remove());
+  $('warm').classList.remove('on');
+  $('endOv').classList.remove('on');
+  G.items=[];G.zones=[];G.placed=0;G.mistakes=0;G.running=true;
+
+  G.zones=G.room.zones.map(z=>{
+    const el=document.createElement('div');
+    el.className='zone';el.innerHTML='<b>'+z.n+'</b>';
+    stage.appendChild(el);
+    return Object.assign({},z,{el,used:0});
+  });
+
+  // pick the clutter: everything in the pool, capped by available slots
+  const want=[];
+  G.room.pool.forEach(([t,n])=>{for(let k=0;k<n;k++)want.push(t);});
+  // shuffle, then keep only those that can actually fit somewhere
+  want.sort(()=>Math.random()-.5);
+  const free=G.zones.map(z=>({z,left:z.slots.length}));
+  const chosen=[];
+  for(const t of want){
+    const f=free.find(o=>o.left>0&&o.z.accepts.includes(t));
+    if(f){f.left--;chosen.push(t);}
+  }
+  const maxItems=Math.min(chosen.length,14);
+  chosen.length=maxItems;
+
+  G.total=chosen.length;
+  const size=Math.max(46,Math.min(SW*.16,76));
+  chosen.forEach((t,i)=>{
+    const el=document.createElement('div');
+    el.className='item';el.innerHTML=icon(t);
+    el.style.width=el.style.height=size+'px';
+    el.title=LABEL[t]||t;
+    stage.appendChild(el);
+    const it={type:t,el,size,fx:0,fy:0,placed:false};
+    G.items.push(it);
+    el.addEventListener('pointerdown',e=>grab(e,it));
+  });
+  relayout();   // paints the room and sizes everything to the stage
+  scatter();
+  updateHUD();
+}
+function scatter(){
+  const loose=G.items.filter(it=>!it.placed);
+  const cols=Math.max(4,Math.ceil(loose.length/2));
+  loose.forEach((it,i)=>{
+    const row=Math.floor(i/cols), col=i%cols;
+    const fx=0.08+(col+0.5)/cols*0.84+(Math.random()-.5)*.035;
+    const fy=0.79+row*0.115+(Math.random()-.5)*.025;
+    moveTo(it,Math.min(.94,Math.max(.06,fx)),Math.min(.94,fy),true);
+  });
+}
+function updateHUD(){
+  $('pRoom').textContent=G.room?G.room.name:'—';
+  $('pDone').textContent=G.placed;
+  $('pTot').textContent=G.total;
+}
+
+let drag=null;
+function grab(e,it){
+  if(it.placed||!G.running)return;
+  e.preventDefault();
+  it.el.setPointerCapture(e.pointerId);
+  it.el.classList.add('drag');
+  const r=stage.getBoundingClientRect();
+  drag={it,id:e.pointerId,r,
+    ox:(e.clientX-r.left)-it.fx*SW, oy:(e.clientY-r.top)-it.fy*SH,
+    home:{x:it.fx,y:it.fy}};
+  sndPick();
+  G.zones.forEach(z=>{
+    if(z.accepts.includes(it.type)&&z.used<z.slots.length)z.el.classList.add('live');
+  });
+  it.el.addEventListener('pointermove',onMove);
+  it.el.addEventListener('pointerup',onUp);
+  it.el.addEventListener('pointercancel',onUp);
+}
+function onMove(e){
+  if(!drag||e.pointerId!==drag.id)return;
+  const x=(e.clientX-drag.r.left)-drag.ox, y=(e.clientY-drag.r.top)-drag.oy;
+  moveTo(drag.it,x/SW,y/SH,true);
+  const z=zoneAt(x,y,drag.it.type);
+  G.zones.forEach(q=>q.el.classList.toggle('hot',q===z));
+}
+function zoneAt(x,y,type){
+  const fx=x/SW, fy=y/SH;
+  for(const z of G.zones){
+    if(!z.accepts.includes(type)||z.used>=z.slots.length)continue;
+    if(fx>=z.x&&fx<=z.x+z.w&&fy>=z.y&&fy<=z.y+z.h)return z;
+  }
+  return null;
+}
+function onUp(e){
+  if(!drag||e.pointerId!==drag.id)return;
+  const it=drag.it;
+  it.el.removeEventListener('pointermove',onMove);
+  it.el.removeEventListener('pointerup',onUp);
+  it.el.removeEventListener('pointercancel',onUp);
+  it.el.classList.remove('drag');
+  G.zones.forEach(z=>{z.el.classList.remove('live');z.el.classList.remove('hot');});
+  const z=zoneAt(it.fx*SW,it.fy*SH,it.type);
+  drag=null;
+  if(z){
+    const slot=z.slots[z.used++];
+    it.placed=true;G.placed++;S.items++;save();
+    it.el.classList.add('placed');
+    moveTo(it,slot[0],slot[1],false);
+    it.el.classList.remove('set');void it.el.offsetWidth;it.el.classList.add('set');
+    sndSet(G.placed);
+    updateHUD();
+    if(G.placed===G.total)finish();
+  }else{
+    // does it belong anywhere at all?
+    const anywhere=G.zones.some(q=>q.accepts.includes(it.type));
+    if(anywhere){G.mistakes++;sndNo();
+      it.el.classList.remove('nope');void it.el.offsetWidth;it.el.classList.add('nope');}
+    dropToFloor(it);
+  }
+}
+function dropToFloor(it){ // slide back down to the floor
+  const fx=Math.min(.92,Math.max(.08,it.fx));
+  const fy=Math.min(.93,Math.max(.76,it.fy));
+  moveTo(it,fx,fy,false);
+}
+function finish(){
+  G.running=false;
+  $('warm').classList.add('on');
+  sndDone();
+  const stars=G.mistakes===0?3:(G.mistakes<=2?2:1);
+  const key=G.room.name;
+  if(!S.stars[key]||S.stars[key]<stars){S.stars[key]=stars;save();}
+  setTimeout(()=>{
+    $('endTitle').textContent=G.room.name+' is tidy';
+    $('endStars').textContent='★★★'.slice(0,stars)+'☆☆☆'.slice(0,3-stars);
+    $('endSub').textContent=G.total+' things put away'+(G.mistakes?' · '+G.mistakes+' wrong drop'+(G.mistakes>1?'s':''):' · not one wrong drop');
+    $('nextRoom').textContent=(G.idx+1<ROOMS.length)?'Next room':'Tidy one again';
+    $('endOv').classList.add('on');
+  },1100);
+}
+
+/* ================= WIRING ================= */
+function buildRooms(){
+  const l=$('roomList');l.innerHTML='';
+  ROOMS.forEach((r,i)=>{
+    const st=S.stars[r.name]||0;
+    const d=document.createElement('div');
+    d.className='rl';
+    d.innerHTML='<span class="em">'+r.em+'</span><div><div class="nm">'+r.name+'</div>'+
+      '<div class="dt">'+r.zones.length+' places to put things</div></div>'+
+      '<div class="st">'+('★★★'.slice(0,st)+'☆☆☆'.slice(0,3-st))+'</div>';
+    d.onclick=()=>{go('s-game');setTimeout(()=>{relayout();loadRoom(i);},50);};
+    l.appendChild(d);
+  });
+}
+function nextRoomIdx(){
+  for(let i=0;i<ROOMS.length;i++)if(!S.stars[ROOMS[i].name])return i;
+  return Math.floor(Math.random()*ROOMS.length);
+}
+function refreshMenu(){
+  $('mRooms').textContent=Object.keys(S.stars).length;
+  $('mStars').textContent=Object.values(S.stars).reduce((a,b)=>a+b,0);
+  $('mItems').textContent=S.items;
+}
+$('playBtn').onclick=()=>{go('s-game');setTimeout(()=>{relayout();loadRoom(nextRoomIdx());},50);};
+$('roomsBtn').onclick=()=>go('s-rooms');
+$('helpBtn').onclick=()=>go('s-help');
+$('helpBack').onclick=()=>go('s-main');
+$('backBtn').onclick=()=>go(cur==='s-game'?'s-rooms':'s-main');
+$('resetBtn').onclick=()=>loadRoom(G.idx);
+$('nextRoom').onclick=()=>{
+  $('endOv').classList.remove('on');
+  const n=(G.idx+1<ROOMS.length)?G.idx+1:G.idx;
+  loadRoom(n);
+};
+$('endHome').onclick=()=>{$('endOv').classList.remove('on');go('s-main');};
+$('hintBtn').onclick=()=>{
+  if(!G.running)return;
+  const left=G.items.filter(i=>!i.placed);
+  if(!left.length)return;
+  const it=left[Math.floor(Math.random()*left.length)];
+  const z=G.zones.find(q=>q.accepts.includes(it.type)&&q.used<q.slots.length);
+  if(!z)return;
+  it.el.animate([{transform:it.el.style.transform+' scale(1)'},{transform:it.el.style.transform+' scale(1.35)'},{transform:it.el.style.transform+' scale(1)'}],{duration:900,iterations:2});
+  z.el.classList.add('live','hot');
+  setTimeout(()=>z.el.classList.remove('live','hot'),1900);
+  toast('The '+(LABEL[it.type]||it.type)+' goes on the '+z.n);
+  beep(760,.12,'sine',.07);
+};
+$('sfxBtn').onclick=()=>{S.sfx=!S.sfx;save();$('sfxBtn').classList.toggle('off',!S.sfx);beep(600,.08,'sine',.1);};
+$('sfxBtn').classList.toggle('off',!S.sfx);
+window.addEventListener('resize',relayout);
+new ResizeObserver(relayout).observe(stage);
+refreshMenu();
+</script>
+</body>
+</html>

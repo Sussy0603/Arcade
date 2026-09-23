@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#FFF6E5">
+<title>Stack Slice</title>
+<!--
+════════════════════════════════════════════════════════════════════════
+  STACK SLICE · v1.1.0 · one self-contained file
+  Tap to drop the sliding block. Whatever hangs over the edge gets
+  sliced off. Line up perfects to grow back.
+════════════════════════════════════════════════════════════════════════
+
+  One thumb, one rule, instant restart. Tap to start, tap to play again.
+  Keyboard: Space / Enter act as a tap, Esc pauses.
+
+  Storage: two localStorage keys
+    stws-stack-slice-v1   {sound, best, plays}
+    mosArcadeTheme        shared with the Arcade page, same values
+
+  DESIGN
+  ──────
+  Dressed to match MOS's Arcade listing page (V12/mos-server/arcade):
+  daylight paper, 3px ink borders, hard offset shadows, Nunito, and the
+  same light/dark tokens behind the same theme toggle — so opening a game
+  from that page is not a change of product. The theme key is shared, so
+  a visitor who picked dark there arrives here already dark.
+
+  The screen inside the cabinet stays dark in both themes on purpose.
+  Every one of these games draws light-on-dark — milk-white needles,
+  star fields, translucent white strokes — and would be invisible on
+  paper. A dark screen set into a paper cabinet is also exactly how the
+  Arcade's own cards already show them.
+
+  So the two palettes have one job each: the pastel tint is the chrome
+  (marquee, badge, pills), the game's neon accent is only ever used on
+  the dark screen (confetti on a new best). They never meet.
+════════════════════════════════════════════════════════════════════════
+-->
+<script>
+// Applied before first paint so a returning visitor's saved choice doesn't
+// flash the wrong theme. Nothing stored = follow the OS, handled in CSS by
+// the prefers-color-scheme block below. Same key as the Arcade page, which
+// is the point: one choice covers the listing and every game on it.
+(function(){
+  try{
+    var saved = localStorage.getItem('mosArcadeTheme');
+    if(saved === 'dark' || saved === 'light') document.documentElement.setAttribute('data-theme', saved);
+  }catch(e){}
+})();
+</script>
+<style>
+/* ---------------- Theme tokens ----------------
+   Lifted from the Arcade page so the two stay in step. Every colour is
+   declared twice, once for daylight and once for night, and the rest of
+   the sheet only ever names tokens. */
+:root{
+  color-scheme:light;
+  --sky-a:#FFF6E5; --sky-b:#E4F3FF;
+  --paper:#FFFFFF;
+  --ink:#2A2140; --ink-soft:#6B6188;
+  --line:#2A2140;
+  --shadow:#2A2140;
+  --title-shadow:3px 4px 0 #FFEFC2, 6px 8px 0 rgba(42,33,64,.10);
+  --emoji-shadow:0 3px 0 rgba(42,33,64,.18);
+  --gloss:rgba(255,255,255,.35);
+  --blob-a:#FFD9E8; --blob-b:#D6F3E0; --blob-c:#FFEFC2;
+  --blob-opacity:.5;
+  /* This game's one pastel, picked from the Arcade's eight card tints. */
+  --tint:#FFEFC2;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --sky-a:#241C40; --sky-b:#131A2E;
+    --paper:#2A2348;
+    --ink:#F6F1FF; --ink-soft:#ABA0CF;
+    --line:#EFE6FF;
+    --shadow:#0B0818;
+    --title-shadow:3px 4px 0 #5A4620, 6px 8px 0 rgba(0,0,0,.35);
+    --emoji-shadow:0 3px 0 rgba(0,0,0,.45);
+    --gloss:rgba(255,255,255,.08);
+    --blob-a:#4A2740; --blob-b:#22473A; --blob-c:#4A3A1C;
+    --blob-opacity:.65;
+    --tint:#5A4620;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --sky-a:#241C40; --sky-b:#131A2E;
+  --paper:#2A2348;
+  --ink:#F6F1FF; --ink-soft:#ABA0CF;
+  --line:#EFE6FF;
+  --shadow:#0B0818;
+  --title-shadow:3px 4px 0 #5A4620, 6px 8px 0 rgba(0,0,0,.35);
+  --emoji-shadow:0 3px 0 rgba(0,0,0,.45);
+  --gloss:rgba(255,255,255,.08);
+  --blob-a:#4A2740; --blob-b:#22473A; --blob-c:#4A3A1C;
+  --blob-opacity:.65;
+  --tint:#5A4620;
+}
+/* The one surface that does not flip. See the note in the header. */
+:root{ --screen:#0B0B14; }
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:"Nunito","Quicksand",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:linear-gradient(170deg,var(--sky-a) 0%,var(--sky-b) 100%);
+  background-attachment:fixed;
+  color:var(--ink);
+  overflow:hidden;position:relative;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+  user-select:none;-webkit-user-select:none;
+}
+/* Soft floating shapes in the background — pure decoration. */
+.blob{position:fixed;border-radius:50%;filter:blur(2px);opacity:var(--blob-opacity);pointer-events:none;z-index:0;}
+.blob.a{width:280px;height:280px;background:var(--blob-a);top:-70px;left:-60px;}
+.blob.b{width:220px;height:220px;background:var(--blob-b);bottom:8%;right:-70px;}
+.blob.c{width:150px;height:150px;background:var(--blob-c);top:38%;left:4%;}
+
+/* ---------------- Theme toggle ---------------- */
+.theme-btn{
+  position:fixed;top:16px;right:16px;z-index:6;
+  font:inherit;font-size:13px;font-weight:900;letter-spacing:.04em;
+  color:var(--ink);background:var(--paper);
+  border:3px solid var(--line);border-radius:999px;
+  padding:8px 15px;cursor:pointer;
+  box-shadow:3px 3px 0 var(--shadow);
+  display:flex;align-items:center;gap:6px;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.theme-btn:hover{transform:translate(-1px,-2px);box-shadow:5px 5px 0 var(--shadow);}
+.theme-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
+.theme-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+
+/* ---------------- Page frame ---------------- */
+.wrap{
+  position:relative;z-index:1;
+  height:100dvh;max-width:560px;margin:0 auto;
+  display:flex;flex-direction:column;gap:14px;
+  padding:calc(16px + env(safe-area-inset-top)) 5vmin calc(12px + env(safe-area-inset-bottom));
+}
+header{text-align:center;flex:0 0 auto;padding-top:6px;}
+/* Paper, not tinted — same as the Arcade page's badge. The tint has one
+   home on this page, the marquee, exactly as it has one home on a listing
+   card. */
+.badge{
+  display:inline-block;margin-bottom:12px;
+  background:var(--paper);border:3px solid var(--line);border-radius:999px;
+  padding:7px 18px;font-size:12.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
+  box-shadow:3px 3px 0 var(--shadow);
+  transform:rotate(-2deg);
+}
+h1{
+  margin:0;
+  font-size:clamp(28px,7vmin,46px);font-weight:900;letter-spacing:-.02em;line-height:1.05;
+  color:var(--ink);text-shadow:var(--title-shadow);
+}
+header p{
+  margin:11px auto 0;max-width:38ch;
+  font-size:clamp(13.5px,2.1vmin,16px);line-height:1.45;font-weight:700;color:var(--ink-soft);
+}
+
+/* ---------------- The cabinet ----------------
+   One card, same construction as an Arcade listing card: tinted top strip
+   with a soft highlight arc, 3px rule under it, and the picture below —
+   except here the picture is the live game. */
+.cabinet{
+  flex:1 1 auto;min-height:0;
+  background:var(--paper);
+  border:3px solid var(--line);border-radius:24px;
+  box-shadow:6px 7px 0 var(--shadow);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.marquee{
+  flex:0 0 auto;position:relative;overflow:hidden;
+  background:var(--tint);
+  border-bottom:3px solid var(--line);
+  display:flex;align-items:center;gap:11px;
+  padding:9px 12px;
+}
+.marquee::after{ /* soft highlight arc */
+  content:'';position:absolute;left:-20%;right:-20%;top:-70%;height:120%;
+  background:var(--gloss);border-radius:50%;pointer-events:none;
+}
+.marquee > *{position:relative;z-index:1;}
+.mico{font-size:26px;line-height:1;filter:drop-shadow(var(--emoji-shadow));}
+.counts{display:flex;flex-direction:column;line-height:1;}
+#hudScore{
+  font-size:27px;font-weight:900;color:var(--ink);
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+}
+#hudScore.pop{animation:pop .28s ease;}
+@keyframes pop{40%{transform:scale(1.2);}}
+#hudBest{
+  margin-top:3px;font-size:10.5px;font-weight:900;letter-spacing:.14em;
+  color:var(--ink-soft);font-variant-numeric:tabular-nums;
+}
+.grow{flex:1;}
+.iconbtn{
+  width:38px;height:38px;flex:0 0 auto;
+  font:inherit;font-size:15px;
+  color:var(--ink);background:var(--paper);
+  border:3px solid var(--line);border-radius:999px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:2px 3px 0 var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.iconbtn:hover{transform:translate(-1px,-2px);box-shadow:4px 5px 0 var(--shadow);}
+.iconbtn:active{transform:translate(2px,3px);box-shadow:0 0 0 var(--shadow);}
+.iconbtn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+
+/* The screen. Dark in both themes — see the header note. */
+#stage{position:relative;flex:1 1 auto;min-height:0;background:var(--screen);touch-action:none;}
+#cv{position:absolute;inset:0;display:block;touch-action:none;}
+
+/* ---------------- Overlays ----------------
+   A paper card floating on the dark screen. Only the button takes
+   pointer events, so a tap anywhere else still falls through to the
+   canvas and the game stays a one-thumb game. */
+#ovl{
+  position:absolute;inset:0;z-index:2;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(11,11,20,.55);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  pointer-events:none;
+}
+#ovl[hidden]{display:none;}
+.ovcard{
+  width:100%;max-width:300px;text-align:center;
+  background:var(--paper);border:3px solid var(--line);border-radius:24px;
+  box-shadow:6px 7px 0 var(--shadow);
+  padding:22px 20px;
+  animation:rise .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes rise{from{opacity:0;transform:translateY(12px);}to{opacity:1;}}
+.big-ico{
+  width:76px;height:76px;margin:0 auto 12px;
+  background:var(--tint);border:3px solid var(--line);border-radius:22px;
+  display:flex;align-items:center;justify-content:center;font-size:38px;
+  box-shadow:3px 4px 0 var(--shadow);
+  filter:none;
+}
+.ovcard h2{margin:0;font-size:23px;font-weight:900;letter-spacing:-.01em;}
+.ovcard .tip{margin:9px 0 0;font-size:13px;line-height:1.5;font-weight:700;color:var(--ink-soft);}
+.go-label{
+  font-size:11px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);
+}
+.go-score{
+  font-size:66px;font-weight:900;line-height:1.05;margin-top:2px;
+  color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+}
+.go-best{
+  margin-top:4px;font-size:11.5px;font-weight:900;letter-spacing:.14em;
+  color:var(--ink-soft);font-variant-numeric:tabular-nums;
+}
+.new-best{
+  display:inline-block;margin-top:9px;padding:5px 14px;
+  /* The one colour that never flips, same rule as the Arcade's play
+     button: dark ink on arcade yellow reads the same day or night. */
+  background:#FFD23D;color:#2A2140;
+  border:3px solid var(--line);border-radius:999px;
+  font-size:11px;font-weight:900;letter-spacing:.14em;
+  box-shadow:2px 3px 0 var(--shadow);
+  animation:pop .4s ease;
+}
+.play-btn{
+  pointer-events:auto;
+  display:block;width:100%;margin-top:17px;
+  font:inherit;font-size:14.5px;font-weight:900;letter-spacing:.03em;
+  background:#FFD23D;color:#2A2140;
+  border:3px solid var(--line);border-radius:999px;
+  padding:10px 16px;cursor:pointer;
+  box-shadow:0 4px 0 var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+.play-btn:hover{background:#FFE27A;}
+.play-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow);}
+.play-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+.hint{margin-top:9px;font-size:10.5px;font-weight:800;letter-spacing:.1em;color:var(--ink-soft);opacity:.8;}
+
+footer{
+  flex:0 0 auto;text-align:center;
+  font-size:12px;font-weight:800;color:var(--ink-soft);opacity:.75;
+}
+
+/* On a phone the centred badge and the fixed corner toggle grow into each
+   other. The toggle drops its word rather than the page growing a 50px
+   dead strip above the game — the emoji still says which way it goes, and
+   the aria-label still says it in words. */
+@media (max-width:459px){
+  .theme-btn{padding:8px 11px;}
+  #themeLabel{display:none;}
+}
+
+/* Landscape and short screens: the game keeps the room, the words give it
+   up. Everything hidden here is decoration or a label repeated inside the
+   cabinet — the title stays, because a page still has to say what it is. */
+@media (max-height:620px){
+  .badge,header p,footer{display:none;}
+  .wrap{
+    gap:8px;
+    padding-top:calc(8px + env(safe-area-inset-top));
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  }
+  header{padding-top:0;}
+  h1{font-size:clamp(20px,4.6vmin,28px);}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;}
+  .ovcard,.new-best,#hudScore.pop{animation:none;}
+}
+</style>
+</head>
+<body>
+
+<span class="blob a"></span><span class="blob b"></span><span class="blob c"></span>
+
+<button id="themeBtn" class="theme-btn" type="button"><span id="themeIcon">🌙</span><span id="themeLabel">Dark</span></button>
+
+<div class="wrap">
+
+  <header>
+    <span class="badge">🧱 Arcade game</span>
+    <h1>Stack Slice</h1>
+    <p>Tap to drop the sliding block. Whatever hangs over the edge gets sliced off. Line up perfects to grow back.</p>
+  </header>
+
+  <main class="cabinet">
+    <div class="marquee">
+      <span class="mico">🧱</span>
+      <div class="counts">
+        <span id="hudScore">0</span>
+        <span id="hudBest">BEST 0</span>
+      </div>
+      <span class="grow"></span>
+      <button class="iconbtn" id="btnPause" type="button" aria-label="Pause">⏸</button>
+      <button class="iconbtn" id="btnSnd" type="button" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <div id="ovl" hidden></div>
+    </div>
+  </main>
+
+  <footer>Part of MOS 💛</footer>
+
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ══ tiny helpers ══════════════════════════════════════ */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
+const irnd = (a, b) => Math.floor(rnd(a, b + 1));
+const norm = a => ((a % TAU) + TAU) % TAU;
+const angdiff = (a, b) => { let d = norm(a - b); return d > Math.PI ? d - TAU : d; };
+const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+const $ = s => document.querySelector(s);
+const FONT = '"Nunito","Quicksand",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+
+/* This game, in the facts the shell needs to know about it. */
+const GAME = {
+  id:    'stack',
+  title: 'Stack Slice',
+  icon:  '🧱',
+  /* Neon, and only ever drawn on the dark screen — the page chrome uses
+     the pastel tint instead. */
+  accent:'#FFB03A',
+  tip:   'Tap to drop the sliding block. Whatever hangs over the edge gets sliced off. Line up perfects to grow back.',
+  /* Whether the tap that dismisses the READY card should also count as the
+     first move. True for the games where holding or steering is the whole
+     control — releasing over a card you can no longer see would otherwise
+     drop the ball. */
+  fwd:   false
+};
+
+/* ══ theme ═════════════════════════════════════════════ */
+const THEME_KEY = 'mosArcadeTheme';
+const themeBtn = $('#themeBtn'), themeIcon = $('#themeIcon'), themeLabel = $('#themeLabel');
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+const storedTheme = () => { try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; } };
+const activeTheme = () => document.documentElement.getAttribute('data-theme') || (systemDark.matches ? 'dark' : 'light');
+// The button is labelled with what it will DO, not with what's on screen —
+// in daylight it offers "Dark", at night it offers "Light".
+function syncTheme() {
+  const goingTo = activeTheme() === 'dark' ? 'light' : 'dark';
+  themeIcon.textContent = goingTo === 'dark' ? '🌙' : '☀️';
+  themeLabel.textContent = goingTo === 'dark' ? 'Dark' : 'Light';
+  themeBtn.setAttribute('aria-label', 'Switch to ' + goingTo + ' mode');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', activeTheme() === 'dark' ? '#241C40' : '#FFF6E5');
+}
+themeBtn.addEventListener('click', e => {
+  unfocus(e);
+  const next = activeTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  syncTheme();
+});
+// Follow the OS as it changes, but only for visitors who never picked a
+// side themselves — an explicit choice outranks the system setting.
+systemDark.addEventListener('change', () => { if (!storedTheme()) syncTheme(); });
+syncTheme();
+
+/* ══ storage ═══════════════════════════════════════════ */
+/* ?prefix=<id> namespaces the save, so a shared machine (or a MOS profile
+   embedding this in an iframe) can keep separate bests without separate
+   copies of the file. */
+const QS = new URLSearchParams(location.search);
+const STORE_KEY = 'stws-stack-slice-v1' + (QS.get('prefix') ? ':' + QS.get('prefix') : '');
+const DATA = (() => {
+  try { return Object.assign({ sound: true, best: 0, plays: 0 }, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); }
+  catch (e) { return { sound: true, best: 0, plays: 0 }; }
+})();
+if (QS.get('mute') === '1') DATA.sound = false;
+const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); } catch (e) {} };
+
+/* ══ audio: tiny Web Audio synth, no assets ════════════ */
+const AU = {
+  ctx: null,
+  ensure() {
+    if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(f, d, type = 'sine', g = 0.16, slide = 0, at = 0) {
+    if (!DATA.sound || !this.ctx) return;
+    const t = this.ctx.currentTime + at;
+    const o = this.ctx.createOscillator(), ga = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+    ga.gain.setValueAtTime(g, t);
+    ga.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(ga).connect(this.ctx.destination);
+    o.start(t); o.stop(t + d + 0.02);
+  },
+  noise(d = 0.2, g = 0.22, fq = 900) {
+    if (!DATA.sound || !this.ctx) return;
+    const t = this.ctx.currentTime, n = Math.floor(this.ctx.sampleRate * d);
+    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = fq;
+    const ga = this.ctx.createGain(); ga.gain.value = g;
+    src.connect(f).connect(ga).connect(this.ctx.destination);
+    src.start(t);
+  },
+  play(name, p = 1) {
+    switch (name) {
+      case 'ui':      this.tone(520, 0.07, 'triangle', 0.10); break;
+      case 'tap':     this.tone(300, 0.05, 'square', 0.06); break;
+      case 'tick':    this.tone(230, 0.04, 'square', 0.05); break;
+      case 'ok':      this.tone(540 * p, 0.09, 'triangle', 0.15); this.tone(810 * p, 0.11, 'triangle', 0.11, 0, 0.055); break;
+      case 'perfect': this.tone(660, 0.10, 'triangle', 0.15); this.tone(830, 0.10, 'triangle', 0.13, 0, 0.06); this.tone(990, 0.16, 'triangle', 0.12, 0, 0.12); break;
+      case 'fail':    this.tone(300, 0.38, 'sawtooth', 0.14, -210); this.noise(0.22, 0.12, 500); break;
+      case 'pop':     this.noise(0.14, 0.30, 1500); this.tone(170, 0.09, 'square', 0.14); break;
+      case 'flap':    this.tone(430, 0.08, 'sine', 0.13, 190); break;
+      case 'whoosh':  this.noise(0.09, 0.10, 2200); break;
+      case 'stick':   this.tone(180, 0.06, 'square', 0.18); this.noise(0.05, 0.10, 700); break;
+      case 'bounce':  this.tone(240, 0.14, 'square', 0.14, -110); break;
+      case 'level':   [440, 550, 660, 880].forEach((f, i) => this.tone(f, 0.10, 'triangle', 0.13, 0, i * 0.07)); break;
+      case 'best':    [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tone(f, 0.12, 'triangle', 0.14, 0, i * 0.085)); break;
+    }
+  }
+};
+
+/* ══ canvas ════════════════════════════════════════════ */
+const cv = $('#cv'), g = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const stageEl = $('#stage'), ovl = $('#ovl'),
+      hudScore = $('#hudScore'), hudBest = $('#hudBest');
+
+function resize() {
+  const r = stageEl.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width));
+  H = Math.max(1, Math.round(r.height));
+  DPR = Math.min(2.5, window.devicePixelRatio || 1);
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (S.game && S.game.onResize) S.game.onResize();
+}
+
+/* roundRect polyfill for older mobile WebViews */
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+    return this;
+  };
+}
+
+/* ══ the shell the game talks to ═══════════════════════ */
+const S = {
+  state: 'ready', game: null, score: 0, overAt: 0,
+  keys: { left: false, right: false },
+  fx: { parts: [], shake: 0 },
+
+  snd(n, p) { AU.play(n, p); },
+  shake(n) { this.fx.shake = Math.max(this.fx.shake, n); },
+  burst(x, y, color, n = 12, sp = 220) {
+    for (let i = 0; i < n; i++) {
+      const a = rnd(TAU), s = rnd(sp * 0.3, sp);
+      this.fx.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, g: 420, r: rnd(2, 4.5), c: color, life: rnd(0.4, 0.8) });
+    }
+  },
+
+  addScore(n = 1) {
+    this.score += n;
+    hudScore.textContent = this.score;
+    hudScore.classList.remove('pop'); void hudScore.offsetWidth; hudScore.classList.add('pop');
+  },
+
+  begin(p, forward) {
+    ovl.hidden = true;
+    this.state = 'playing';
+    if (forward && p) this.game.press(p.x, p.y);
+  },
+
+  restart(p) {
+    this.score = 0; this.fx.parts.length = 0; this.fx.shake = 0;
+    hudScore.textContent = '0';
+    hudBest.textContent = 'BEST ' + DATA.best;
+    this.game.reset();
+    this.begin(p, GAME.fwd);
+  },
+
+  endGame() {
+    if (this.state !== 'playing') return;
+    this.state = 'over'; this.overAt = performance.now();
+    const nb = this.score > DATA.best;
+    if (nb) DATA.best = this.score;
+    DATA.plays++; save();
+    if (nb && this.score > 0) {
+      AU.play('best');
+      const cols = [GAME.accent, '#FFFFFF', '#FFD23D'];
+      for (let i = 0; i < 3; i++) this.burst(rnd(W * 0.2, W * 0.8), rnd(H * 0.2, H * 0.5), cols[i % 3], 14, 280);
+    }
+    // A beat of held breath before the card lands, so the last frame of the
+    // failure is something you actually get to see.
+    setTimeout(() => { if (this.state === 'over') showOver(this.score, DATA.best, nb); }, 380);
+  },
+
+  pause() {
+    if (this.state !== 'playing') return;
+    this.state = 'paused';
+    showPaused();
+  }
+};
+
+/* ══ overlays ══════════════════════════════════════════ */
+const card = html => { ovl.innerHTML = '<div class="ovcard">' + html + '</div>'; ovl.hidden = false; };
+// The full rule goes here rather than in the page header: this is the card
+// somebody reads in the second before they start, and the header only has
+// room for a line.
+function showReady() {
+  card(
+    '<div class="big-ico">' + GAME.icon + '</div>' +
+    '<h2>' + GAME.title + '</h2>' +
+    '<p class="tip">' + GAME.tip + '</p>' +
+    '<button class="play-btn" type="button" data-act="go">Play ▶</button>' +
+    '<div class="hint">OR TAP ANYWHERE</div>'
+  );
+}
+function showOver(score, best, nb) {
+  card(
+    '<div class="go-label">Game over</div>' +
+    '<div class="go-score">' + score + '</div>' +
+    (nb ? '<div class="new-best">NEW BEST</div>' : '<div class="go-best">BEST ' + best + '</div>') +
+    '<button class="play-btn" type="button" data-act="go">Play again ▶</button>'
+  );
+}
+function showPaused() {
+  card(
+    '<div class="go-label">Paused</div>' +
+    '<p class="tip">' + GAME.tip + '</p>' +
+    '<button class="play-btn" type="button" data-act="go">Resume ▶</button>'
+  );
+}
+// The button and a tap on the screen are the same gesture, routed the same
+// way, so the deaf spot below applies to both.
+//
+// e.detail is 0 when a click came from the keyboard and non-zero when it
+// came from a pointer. Dropping focus on a pointer click keeps Space
+// playing the game rather than re-firing whichever button was last
+// touched; doing it on a keyboard click would strand a Tab user.
+const unfocus = e => { if (e.detail) e.currentTarget.blur(); };
+ovl.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act="go"]');
+  if (!btn) return;
+  if (e.detail) btn.blur();
+  doPress({ x: W / 2, y: H * 0.7 });
+});
+
+/* ══ input ═════════════════════════════════════════════ */
+const pt = e => {
+  const r = cv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+};
+function doPress(p) {
+  AU.ensure();
+  if (S.state === 'ready') S.begin(p, GAME.fwd);
+  else if (S.state === 'playing') S.game.press(p.x, p.y);
+  // The 450ms deaf spot stops the tap that killed you from also skipping
+  // past your own score.
+  else if (S.state === 'over') { if (performance.now() - S.overAt > 450) S.restart(p); }
+  else if (S.state === 'paused') { S.state = 'playing'; ovl.hidden = true; }
+}
+cv.addEventListener('pointerdown', e => { e.preventDefault(); doPress(pt(e)); }, { passive: false });
+cv.addEventListener('pointerup',   e => { if (S.state === 'playing') S.game.release(pt(e).x, pt(e).y); });
+cv.addEventListener('pointercancel', () => { if (S.state === 'playing') S.game.release(0, 0); });
+cv.addEventListener('pointermove', e => {
+  if ((S.state === 'playing' || S.state === 'ready') && S.game) { const p = pt(e); S.game.move(p.x, p.y); }
+});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'ArrowLeft') S.keys.left = true;
+  if (e.code === 'ArrowRight') S.keys.right = true;
+  // e.repeat guard: a held Space fires keydown ~30×/s, and for a game whose
+  // press() is an impulse that reads as one long rocket burn rather than as
+  // a hold. Holding is expressed by keydown-then-keyup, same as a thumb.
+  if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) {
+    // Let the buttons keep their own keyboard behaviour.
+    if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+    e.preventDefault(); doPress({ x: W / 2, y: H * 0.7 });
+  }
+  if (e.code === 'Escape' && S.state === 'playing') S.pause();
+});
+window.addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft') S.keys.left = false;
+  if (e.code === 'ArrowRight') S.keys.right = false;
+  if ((e.code === 'Space' || e.code === 'Enter') && S.state === 'playing') S.game.release(W / 2, H * 0.7);
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) S.pause(); });
+
+/* ══ main loop ═════════════════════════════════════════ */
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  let dt = (now - last) / 1000; last = now;
+  // Capped so a backgrounded tab doesn't resume with one enormous step that
+  // teleports the player through a wall.
+  dt = Math.min(dt, 0.033);
+  if (!S.game) return;
+  if (S.state === 'playing') S.game.update(dt);
+  g.clearRect(0, 0, W, H);
+  g.save();
+  if (S.fx.shake > 0.3) {
+    g.translate(rnd(-S.fx.shake, S.fx.shake), rnd(-S.fx.shake, S.fx.shake));
+    S.fx.shake *= 0.86;
+  } else S.fx.shake = 0;
+  S.game.draw(g, dt);
+  const ps = S.fx.parts;
+  for (let i = ps.length - 1; i >= 0; i--) {
+    const p = ps[i];
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; p.life -= dt;
+    if (p.life <= 0) { ps.splice(i, 1); continue; }
+    g.globalAlpha = clamp(p.life * 2.2, 0, 1);
+    g.fillStyle = p.c;
+    g.beginPath(); g.arc(p.x, p.y, p.r, 0, TAU); g.fill();
+  }
+  g.globalAlpha = 1;
+  g.restore();
+}
+
+/* ══════════════════════════════════════════════════════
+   STACK SLICE — tap to drop, overhang gets cut
+   ══════════════════════════════════════════════════════ */
+class Stack {
+  constructor(S) { this.S = S; this.reset(); }
+  reset() {
+    this.bh = clamp(H * 0.036, 22, 32);
+    this.baseW = W * 0.6;
+    this.blocks = [{ x: (W - this.baseW) / 2, w: this.baseW, hue: irnd(0, 359) }];
+    this.h0 = this.blocks[0].hue;
+    this.t = rnd(TAU); this.spd = 2.1;
+    this.cam = 0; this.combo = 0; this.debris = []; this.flash = null; this.dying = 0;
+  }
+  onResize() { this.bh = clamp(H * 0.036, 22, 32); }
+  top() { return this.blocks[this.blocks.length - 1]; }
+  y0() { return H * 0.80; }
+  hue() { return (this.h0 + this.blocks.length * 9) % 360; }
+  movY() { return this.y0() - (this.blocks.length + 1) * this.bh + this.cam; }
+  curX() {
+    const bw = this.top().w;
+    const ampl = (W - bw) / 2 + bw * 0.28;
+    return W / 2 - bw / 2 + Math.sin(this.t) * ampl;
+  }
+  camTarget() { return Math.max(0, H * 0.42 - (this.y0() - (this.blocks.length + 1) * this.bh)); }
+  update(dt) {
+    this.t += dt * this.spd;
+    this.cam = lerp(this.cam, this.camTarget(), Math.min(1, dt * 6));
+    if (this.flash) { this.flash.t -= dt; if (this.flash.t <= 0) this.flash = null; }
+    for (const d of this.debris) { d.vy += 1000 * dt; d.y += d.vy * dt; d.rot += d.vr * dt; }
+    this.debris = this.debris.filter(d => d.y < H + 120);
+    if (this.dying > 0) { this.dying -= dt; if (this.dying <= 0) this.S.endGame(); }
+  }
+  press() {
+    if (this.dying > 0) return;
+    const top = this.top(), w = top.w, x = this.curX(), y = this.movY();
+    const nx = Math.max(x, top.x), right = Math.min(x + w, top.x + top.w), ow = right - nx;
+    if (ow <= 4) {
+      this.debris.push({ x, w, y, vy: -60, rot: 0, vr: rnd(-2.5, 2.5), hue: this.hue() });
+      this.S.snd('fail'); this.S.shake(11); this.dying = 0.8;
+      return;
+    }
+    const perfect = Math.abs(x - top.x) < Math.max(4, w * 0.05);
+    let bx = nx, bw = ow;
+    if (perfect) {
+      this.combo++; bx = top.x; bw = top.w;
+      if (this.combo % 3 === 0 && bw < this.baseW) {
+        const grow = Math.min(14, this.baseW - bw); bw += grow; bx -= grow / 2;
+      }
+      this.S.snd('perfect');
+      this.flash = { y, t: 0.35 };
+      this.S.burst(W / 2, y + this.bh / 2, '#FFB03A', 8, 160);
+    } else {
+      this.combo = 0;
+      const cutW = w - ow, cutX = x < top.x ? x : right;
+      this.debris.push({ x: cutX, w: cutW, y, vy: -30, rot: 0, vr: x < top.x ? -2.4 : 2.4, hue: this.hue() });
+      this.S.snd('stick');
+    }
+    this.blocks.push({ x: bx, w: bw, hue: this.hue() });
+    this.S.addScore(1);
+    this.spd = Math.min(4.8, 2.1 + this.blocks.length * 0.06);
+  }
+  release() {} move() {}
+  blockFill(g, x, y, w, h, hue, glow) {
+    if (glow) { g.shadowColor = 'hsl(' + hue + ',80%,60%)'; g.shadowBlur = 16; }
+    g.fillStyle = 'hsl(' + hue + ',68%,56%)';
+    g.fillRect(x, y, w, h);
+    g.shadowBlur = 0;
+    g.fillStyle = 'hsla(' + hue + ',75%,78%,.9)';
+    g.fillRect(x, y, w, 4);
+    g.fillStyle = 'rgba(0,0,0,.22)';
+    g.fillRect(x, y, 5, h);
+  }
+  draw(g) {
+    // ground pedestal
+    const gy = this.y0() + this.cam;
+    g.fillStyle = 'rgba(242,239,255,.06)';
+    g.fillRect(0, gy, W, H - gy);
+    // stack
+    for (let i = 0; i < this.blocks.length; i++) {
+      const b = this.blocks[i];
+      const y = this.y0() - (i + 1) * this.bh + this.cam;
+      if (y > H || y + this.bh < -40) continue;
+      this.blockFill(g, b.x, y, b.w, this.bh, b.hue, false);
+    }
+    // debris
+    for (const d of this.debris) {
+      g.save(); g.translate(d.x + d.w / 2, d.y + this.bh / 2); g.rotate(d.rot);
+      g.globalAlpha = 0.9;
+      g.fillStyle = 'hsl(' + d.hue + ',60%,48%)';
+      g.fillRect(-d.w / 2, -this.bh / 2, d.w, this.bh);
+      g.restore(); g.globalAlpha = 1;
+    }
+    // moving block
+    if (this.dying <= 0) {
+      const top = this.top();
+      this.blockFill(g, this.curX(), this.movY(), top.w, this.bh, this.hue(), true);
+    }
+    // perfect flash
+    if (this.flash) {
+      const p = 1 - this.flash.t / 0.35;
+      g.strokeStyle = 'rgba(255,255,255,' + (0.8 * (1 - p)) + ')';
+      g.lineWidth = 3;
+      g.strokeRect(W / 2 - (this.top().w / 2 + p * 30), this.flash.y - p * 14, this.top().w + p * 60, this.bh + p * 28);
+    }
+    // combo tag
+    if (this.combo >= 2 && this.dying <= 0) {
+      g.fillStyle = '#FFB03A'; g.font = '800 14px ' + FONT; g.textAlign = 'center';
+      g.fillText('PERFECT ×' + this.combo, W / 2, this.movY() - 14);
+    }
+  }
+}
+
+/* ══ buttons ═══════════════════════════════════════════ */
+function syncSound() {
+  const b = $('#btnSnd');
+  b.textContent = DATA.sound ? '🔊' : '🔇';
+  b.setAttribute('aria-label', DATA.sound ? 'Mute' : 'Unmute');
+}
+$('#btnSnd').addEventListener('click', e => {
+  unfocus(e);
+  DATA.sound = !DATA.sound; save(); syncSound();
+  AU.ensure(); AU.play('ui');
+});
+$('#btnPause').addEventListener('click', e => {
+  unfocus(e);
+  if (S.state === 'playing') S.pause();
+  else if (S.state === 'paused') { S.state = 'playing'; ovl.hidden = true; }
+});
+
+/* ══ boot ══════════════════════════════════════════════ */
+syncSound();
+resize();
+window.addEventListener('resize', resize);
+S.game = new Stack(S);
+hudBest.textContent = 'BEST ' + DATA.best;
+showReady();
+requestAnimationFrame(loop);
+
+/* Small hook so a MOS page embedding this in an iframe can read the score
+   without scraping the DOM. */
+window.addEventListener('message', e => {
+  if (e.data === 'stws:best' && e.source) {
+    try { e.source.postMessage({ source: 'stws-game', game: GAME.id, best: DATA.best, plays: DATA.plays }, '*'); } catch (err) {}
+  }
+});
+
+})();
+</script>
+</body>
+</html>

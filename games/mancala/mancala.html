@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mancala</title>
+<style>
+:root{
+  --bg1:#7B4B2A; --bg2:#4E2E17;
+  --wood:#A0653A; --wood-dark:#83502B;
+  --pit:#5C3317; --pit-rim:#C58B57;
+  --ink:#FFF3E3;
+  --panel:#8A5730;
+  --seedA:#3EB489; --seedB:#4DA6FF; --seedC:#FFD93D; --seedD:#FF7B7B; --seedE:#C495FF;
+  --accent:#FFB25C;
+  --shadow:0 6px 0 rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(170deg,var(--bg1),var(--bg2));
+  color:var(--ink);min-height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 10px 24px;user-select:none;-webkit-user-select:none;overflow-x:hidden;
+}
+header{width:100%;max-width:620px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+h1{font-size:clamp(21px,5.5vw,29px);}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.btn.small{padding:6px 10px;font-size:13px;}
+.btn.primary{background:linear-gradient(145deg,#FFB25C,#E8842B);color:#4E2E17;}
+.topbtns{display:flex;gap:6px;}
+.controls{width:100%;max-width:620px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;}
+.seg{display:flex;background:rgba(0,0,0,.2);border-radius:999px;padding:4px;gap:4px;}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 12px;opacity:.6;}
+.seg button.on{background:rgba(255,255,255,.16);opacity:1;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+#status{width:100%;max-width:620px;text-align:center;font-weight:800;font-size:clamp(15px,4.2vw,19px);
+  min-height:32px;margin:2px 0 8px;}
+#status .cap{color:var(--accent);}
+#boardWrap{width:min(96vw,620px);}
+svg{display:block;width:100%;height:auto;}
+.pitbtn{cursor:pointer;}
+.pitbtn.dead{cursor:default;}
+.pitbtn:not(.dead):hover .rim{stroke:var(--accent);stroke-width:5;}
+.count{font-family:inherit;font-weight:800;fill:#FFF3E3;pointer-events:none;}
+.plabel{font-family:inherit;font-weight:800;fill:rgba(255,243,227,.7);font-size:15px;pointer-events:none;}
+.turnGlow{filter:drop-shadow(0 0 8px var(--accent));}
+footer{margin-top:14px;font-size:12px;opacity:.45;font-weight:600;}
+#thinking{display:inline-block;animation:think 1s infinite;}
+@keyframes think{0%,100%{opacity:.3;}50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){#thinking{animation:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌰 <span data-i18n="title">Mancala</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg" id="modeSeg">
+    <button data-mode="1p" class="on">🤖 <span data-i18n="vsBot">vs Bot</span></button>
+    <button data-mode="2p">👥 <span data-i18n="twoP">2 Players</span></button>
+  </div>
+  <div class="seg" id="diffSeg">
+    <button data-diff="easy" class="on" data-i18n="easy">Easy</button>
+    <button data-diff="medium" data-i18n="medium">Medium</button>
+    <button data-diff="hard" data-i18n="hard">Hard</button>
+  </div>
+  <button class="btn primary" id="newBtn" data-i18n="new">New Game</button>
+</div>
+
+<div id="status"></div>
+<div id="boardWrap"><svg id="board" viewBox="0 0 620 300" xmlns="http://www.w3.org/2000/svg"></svg></div>
+<footer>STeamWorkS · Mancala (Kalah)</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Mancala",vsBot:"vs Bot",twoP:"2 Players",easy:"Easy",medium:"Medium",hard:"Hard",new:"New Game",
+      you:"You",bot:"Bot",p1:"Player 1",p2:"Player 2",
+      turnYou:"Your turn — pick one of your pits",turnBot:"Bot is thinking",
+      turnP1:"Player 1's turn",turnP2:"Player 2's turn",
+      again:"Free turn! Play again 🎁",capture:"Capture! +{n} 🌰",
+      winYou:"You win {a}–{b}! 🎉",winBot:"Bot wins {a}–{b} 🤖",winP1:"Player 1 wins {a}–{b}! 🎉",winP2:"Player 2 wins {a}–{b}! 🎉",
+      draw:"Draw {a}–{b}!"},
+  fr:{title:"Awalé",vsBot:"vs Robot",twoP:"2 Joueurs",easy:"Facile",medium:"Moyen",hard:"Difficile",new:"Nouvelle partie",
+      you:"Toi",bot:"Robot",p1:"Joueur 1",p2:"Joueur 2",
+      turnYou:"À toi — choisis un de tes trous",turnBot:"Le robot réfléchit",
+      turnP1:"Au joueur 1",turnP2:"Au joueur 2",
+      again:"Tour gratuit ! Rejoue 🎁",capture:"Capture ! +{n} 🌰",
+      winYou:"Tu gagnes {a}–{b} ! 🎉",winBot:"Le robot gagne {a}–{b} 🤖",winP1:"Joueur 1 gagne {a}–{b} ! 🎉",winP2:"Joueur 2 gagne {a}–{b} ! 🎉",
+      draw:"Égalité {a}–{b} !"}
+};
+/* pits: 0-5 = P1 (bottom, left→right), 6 = P1 store (right),
+         7-12 = P2 (top, right→left visually), 13 = P2 store (left) */
+const SKEY="stws_mancala_v1";
+const P1S=6,P2S=13;
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let mode=save.mode||"1p";
+let diff=save.diff||"easy";
+
+let pits, turn, over, busy=false, msgExtra="";
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.mode=mode;save.diff=diff;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,t,dur,type,vol){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime+t);
+  g.gain.setValueAtTime(0,c.currentTime+t);
+  g.gain.linearRampToValueAtTime(vol||.12,c.currentTime+t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(c.currentTime+t);o.stop(c.currentTime+t+dur+.05);
+}
+const sSow=(i)=>tone(480+((i*57)%220),0,.07,"triangle",.1);
+const sCapture=()=>{tone(523,0,.1);tone(784,.09,.18);};
+const sFree=()=>{tone(659,0,.1);tone(880,.09,.16);};
+const sWin=()=>{[523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.15,"triangle",.13));};
+
+/* ============ pure game logic ============ */
+function newPits(){const p=Array(14).fill(4);p[P1S]=0;p[P2S]=0;return p;}
+function sideEmpty(p,player){
+  const a=player===1?0:7;
+  for(let i=a;i<a+6;i++)if(p[i]>0)return false;
+  return true;
+}
+function legalMovesM(p,player){
+  const a=player===1?0:7,m=[];
+  for(let i=a;i<a+6;i++)if(p[i]>0)m.push(i);
+  return m;
+}
+/* applies a move; returns {pits, extraTurn, captured, lastIdx, sown:[indices]} */
+function applyMove(pIn,player,pit){
+  const p=pIn.slice();
+  const myStore=player===1?P1S:P2S, oppStore=player===1?P2S:P1S;
+  let seeds=p[pit];p[pit]=0;
+  let i=pit;const sown=[];
+  while(seeds>0){
+    i=(i+1)%14;
+    if(i===oppStore)continue;
+    p[i]++;seeds--;sown.push(i);
+  }
+  let captured=0;
+  const ownSide=player===1?(i>=0&&i<=5):(i>=7&&i<=12);
+  if(ownSide&&p[i]===1){
+    const opp=12-i;
+    if(p[opp]>0){
+      captured=p[opp]+1;
+      p[myStore]+=captured;
+      p[opp]=0;p[i]=0;
+    }
+  }
+  const extraTurn=i===myStore;
+  /* end-of-game sweep */
+  let ended=false;
+  if(sideEmpty(p,1)||sideEmpty(p,2)){
+    for(let k=0;k<6;k++){p[P1S]+=p[k];p[k]=0;}
+    for(let k=7;k<13;k++){p[P2S]+=p[k];p[k]=0;}
+    ended=true;
+  }
+  return {pits:p,extraTurn:extraTurn&&!ended,captured,lastIdx:i,sown,ended};
+}
+/* minimax over move sequences; extra turns keep the same player */
+function evalPits(p,player){
+  const my=player===1?P1S:P2S,op=player===1?P2S:P1S;
+  const a=player===1?0:7,b=player===1?7:0;
+  let side=0;for(let i=a;i<a+6;i++)side+=p[i];
+  let oside=0;for(let i=b;i<b+6;i++)oside+=p[i];
+  return (p[my]-p[op])*4+(side-oside);
+}
+function minimaxM(p,player,me,depth,alpha,beta){
+  const moves=legalMovesM(p,player);
+  if(depth===0||moves.length===0)return {score:evalPits(p,me)};
+  const maximizing=player===me;
+  let best=maximizing?-Infinity:Infinity,bestMove=moves[0];
+  for(const m of moves){
+    const r=applyMove(p,player,m);
+    let score;
+    if(r.ended){
+      const d=r.pits[me===1?P1S:P2S]-r.pits[me===1?P2S:P1S];
+      score=d>0?100000+d:d<0?-100000+d:0;
+    }else{
+      const next=r.extraTurn?player:3-player;
+      score=minimaxM(r.pits,next,me,depth-1,alpha,beta).score;
+    }
+    if(maximizing){
+      if(score>best){best=score;bestMove=m;}
+      alpha=Math.max(alpha,best);
+    }else{
+      if(score<best){best=score;bestMove=m;}
+      beta=Math.min(beta,best);
+    }
+    if(alpha>=beta)break;
+  }
+  return {score:best,move:bestMove};
+}
+function botMoveM(p,difficulty){
+  const moves=legalMovesM(p,2);
+  if(difficulty==="easy"){
+    if(Math.random()<.4)return moves[Math.floor(Math.random()*moves.length)];
+    return minimaxM(p,2,2,2,-Infinity,Infinity).move;
+  }
+  if(difficulty==="medium")return minimaxM(p,2,2,5,-Infinity,Infinity).move;
+  return minimaxM(p,2,2,9,-Infinity,Infinity).move;
+}
+
+/* ============ rendering ============ */
+const POS={};// pit index -> {x,y,r}
+function layout(){
+  // stores: P2 store left (x=55), P1 store right (x=565)
+  POS[P2S]={x:52,y:150,rx:38,ry:105,store:true};
+  POS[P1S]={x:568,y:150,rx:38,ry:105,store:true};
+  for(let k=0;k<6;k++){
+    POS[7+k]={x:513-k*77,y:82,r:36};   // top row: 7 at right … 12 at left
+    POS[k]  ={x:127+k*77,y:218,r:36};  // bottom row: 0 at left … 5 at right
+  }
+}
+const SEED_COLORS=["var(--seedA)","var(--seedB)","var(--seedC)","var(--seedD)","var(--seedE)"];
+function seedDots(i,n){
+  if(n===0)return "";
+  const P=POS[i];let s="";
+  const shown=Math.min(n,12);
+  for(let k=0;k<shown;k++){
+    // deterministic pseudo-scatter per pit+k
+    const h=((i*31+k*17)%100)/100, h2=((i*13+k*29)%100)/100;
+    const ang=h*Math.PI*2, rad=(P.store?(14+h2*20):(6+h2*18));
+    const x=P.x+Math.cos(ang)*rad*(P.store?1.4:1);
+    const y=P.y+Math.sin(ang)*rad*(P.store?2.2:1);
+    s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6.5" fill="${SEED_COLORS[(i+k)%5]}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>`;
+  }
+  return s;
+}
+function render(){
+  const svg=document.getElementById("board");
+  let s=`<rect x="4" y="4" width="612" height="292" rx="40" fill="var(--wood)" stroke="var(--wood-dark)" stroke-width="8"/>
+  <rect x="4" y="4" width="612" height="60" rx="40" fill="rgba(255,255,255,.06)"/>`;
+  const S=STR[lang];
+  const topName=mode==="1p"?S.bot:S.p2, botName=mode==="1p"?S.you:S.p1;
+  s+=`<text class="plabel" x="310" y="26" text-anchor="middle">${topName} ⬆</text>`;
+  s+=`<text class="plabel" x="310" y="288" text-anchor="middle">${botName} ⬇</text>`;
+  for(let i=0;i<14;i++){
+    const P=POS[i];
+    const mine=i>=0&&i<=5, isStore=P.store;
+    const clickable=!over&&!busy&&!isStore&&(
+      (turn===1&&mine&&pits[i]>0&&(mode==="2p"||true))||
+      (turn===2&&i>=7&&i<=12&&pits[i]>0&&mode==="2p")
+    );
+    const glow=(!over&&((turn===1&&mine)||(turn===2&&i>=7&&i<=12)))?"turnGlow":"";
+    if(isStore){
+      s+=`<g class="${glow}"><ellipse cx="${P.x}" cy="${P.y}" rx="${P.rx}" ry="${P.ry}" fill="var(--pit)" stroke="var(--pit-rim)" stroke-width="4"/>
+      ${seedDots(i,pits[i])}
+      <text class="count" x="${P.x}" y="${P.y+6}" text-anchor="middle" font-size="26" opacity=".95">${pits[i]}</text></g>`;
+    }else{
+      s+=`<g class="pitbtn ${clickable?"":"dead"} ${glow}" data-pit="${i}">
+      <circle class="rim" cx="${P.x}" cy="${P.y}" r="${P.r}" fill="var(--pit)" stroke="var(--pit-rim)" stroke-width="3.5"/>
+      ${seedDots(i,pits[i])}
+      <text class="count" x="${P.x}" y="${P.y-P.r-8}" text-anchor="middle" font-size="17">${pits[i]}</text></g>`;
+    }
+  }
+  svg.innerHTML=s;
+  svg.querySelectorAll(".pitbtn:not(.dead)").forEach(g=>{
+    g.addEventListener("click",()=>humanPlay(+g.dataset.pit));
+  });
+}
+function setStatus(){
+  const el=document.getElementById("status"),S=STR[lang];
+  if(over){
+    const a=pits[P1S],b=pits[P2S];
+    let t;
+    if(a===b)t=S.draw;
+    else if(mode==="1p")t=a>b?S.winYou:S.winBot;
+    else t=a>b?S.winP1:S.winP2;
+    el.textContent=t.replace("{a}",Math.max(a,b)).replace("{b}",Math.min(a,b));
+    return;
+  }
+  let base;
+  if(mode==="1p")base=turn===1?S.turnYou:S.turnBot+' <span id="thinking">…</span>';
+  else base=turn===1?S.turnP1:S.turnP2;
+  el.innerHTML=(msgExtra?`<span class="cap">${msgExtra}</span> · `:"")+base;
+}
+
+/* ============ flow with sow animation ============ */
+function newGame(){pits=newPits();turn=1;over=false;busy=false;msgExtra="";render();setStatus();}
+function humanPlay(pit){
+  if(over||busy)return;
+  if(turn===1&&!(pit>=0&&pit<=5))return;
+  if(turn===2&&(mode==="1p"||!(pit>=7&&pit<=12)))return;
+  playMove(pit);
+}
+function playMove(pit){
+  busy=true;msgExtra="";
+  const player=turn;
+  const r=applyMove(pits,player,pit);
+  /* animate sowing: reveal seed-by-seed */
+  const anim=pits.slice();anim[pit]=0;
+  let step=0;
+  const iv=setInterval(()=>{
+    if(step<r.sown.length){
+      anim[r.sown[step]]++;sSow(step);
+      pits=anim.slice();render();step++;
+    }else{
+      clearInterval(iv);
+      pits=r.pits;
+      if(r.captured>0){sCapture();msgExtra=STR[lang].capture.replace("{n}",r.captured);}
+      if(r.ended){over=true;sWin();}
+      else if(r.extraTurn){sFree();msgExtra=STR[lang].again;}
+      else turn=3-player;
+      busy=false;render();setStatus();
+      if(!over&&mode==="1p"&&turn===2)queueBot();
+    }
+  },120);
+}
+function queueBot(){
+  busy=true;setStatus();
+  setTimeout(()=>{
+    const m=botMoveM(pits,diff);
+    busy=false;
+    playMove(m);
+  },500);
+}
+
+/* ============ ui ============ */
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");mode=b.dataset.mode;persist();
+  document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+  newGame();
+});
+document.getElementById("diffSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");diff=b.dataset.diff;persist();newGame();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();render();setStatus();});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{if(STR[lang][el.dataset.i18n])el.textContent=STR[lang][el.dataset.i18n];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+document.querySelectorAll("#diffSeg button").forEach(b=>b.classList.toggle("on",b.dataset.diff===diff));
+document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+layout();applyLang();newGame();
+
+window.__test={newPits,applyMove,legalMovesM,sideEmpty,evalPits,minimaxM,botMoveM,P1S,P2S,
+  getState:()=>({pits:pits.slice(),turn,over}),setPits:(p)=>{pits=p;},setTurn:(t)=>{turn=t;},
+  playMove,newGame};
+</script>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Gomoku</title>
+<style>
+:root{
+  --bg1:#3E3229; --bg2:#241C15;
+  --goban:#D9A85C; --goban2:#C8944A;
+  --line:#5A3E1F;
+  --ink:#F5EDE0;
+  --panel:#4A3A2C;
+  --accent:#E8842B;
+  --shadow:0 6px 0 rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(170deg,var(--bg1),var(--bg2));
+  color:var(--ink);min-height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 10px 24px;user-select:none;-webkit-user-select:none;overflow-x:hidden;
+}
+header{width:100%;max-width:540px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+h1{font-size:clamp(21px,5.5vw,29px);}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.btn.small{padding:6px 10px;font-size:13px;}
+.btn.primary{background:linear-gradient(145deg,#E8842B,#C05F14);color:#fff;}
+.topbtns{display:flex;gap:6px;}
+.controls{width:100%;max-width:540px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;}
+.seg{display:flex;background:rgba(0,0,0,.25);border-radius:999px;padding:4px;gap:4px;}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 12px;opacity:.6;}
+.seg button.on{background:rgba(255,255,255,.16);opacity:1;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+#status{width:100%;max-width:540px;text-align:center;font-weight:800;font-size:clamp(15px,4.2vw,19px);
+  min-height:32px;margin:2px 0 8px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.stone-ico{display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:-3px;}
+.stone-ico.black{background:radial-gradient(circle at 35% 30%,#666,#111 70%);}
+.stone-ico.white{background:radial-gradient(circle at 35% 30%,#fff,#cfcfcf 70%);border:1px solid #999;}
+#boardWrap{width:min(94vw,540px);background:linear-gradient(150deg,var(--goban),var(--goban2));
+  border-radius:16px;padding:8px;box-shadow:0 10px 0 rgba(0,0,0,.35), inset 0 2px 8px rgba(255,255,255,.25);}
+svg{display:block;width:100%;height:auto;}
+.hit{fill:transparent;cursor:pointer;}
+.hit:hover{fill:rgba(232,132,43,.25);}
+.lastmove{stroke:var(--accent);stroke-width:3;fill:none;}
+.winmark{stroke:#E8842B;stroke-width:4;fill:none;filter:drop-shadow(0 0 4px #E8842B);}
+.hud{width:100%;max-width:540px;display:flex;justify-content:space-between;margin-top:10px;font-weight:700;font-size:14px;}
+.hud .stat{background:var(--panel);border-radius:14px;padding:7px 13px;box-shadow:var(--shadow);}
+footer{margin-top:14px;font-size:12px;opacity:.4;font-weight:600;}
+#thinking{display:inline-block;animation:think 1s infinite;}
+@keyframes think{0%,100%{opacity:.3;}50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){#thinking{animation:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚫⚪ <span data-i18n="title">Gomoku</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg" id="modeSeg">
+    <button data-mode="1p" class="on">🤖 <span data-i18n="vsBot">vs Bot</span></button>
+    <button data-mode="2p">👥 <span data-i18n="twoP">2 Players</span></button>
+  </div>
+  <div class="seg" id="diffSeg">
+    <button data-diff="easy" class="on" data-i18n="easy">Easy</button>
+    <button data-diff="medium" data-i18n="medium">Medium</button>
+    <button data-diff="hard" data-i18n="hard">Hard</button>
+  </div>
+  <div class="seg" id="sizeSeg">
+    <button data-size="9">9×9</button>
+    <button data-size="13" class="on">13×13</button>
+    <button data-size="15">15×15</button>
+  </div>
+  <button class="btn primary" id="newBtn" data-i18n="new">New Game</button>
+</div>
+
+<div id="status"></div>
+<div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+<div class="hud">
+  <div class="stat"><span class="stone-ico black"></span> <span id="score1">0</span></div>
+  <div class="stat" id="drawStat"><span data-i18n="draws">Draws</span>: <span id="scoreD">0</span></div>
+  <div class="stat"><span class="stone-ico white"></span> <span id="score2">0</span></div>
+</div>
+<footer>STeamWorkS · Gomoku</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Gomoku",vsBot:"vs Bot",twoP:"2 Players",easy:"Easy",medium:"Medium",hard:"Hard",new:"New Game",draws:"Draws",
+      turnYou:"Your turn (black)",turnBot:"Bot is thinking",turnP1:"Black's turn",turnP2:"White's turn",
+      winYou:"Five in a row — you win! 🎉",winBot:"Bot gets five in a row 🤖",winP1:"Black wins! 🎉",winP2:"White wins! 🎉",draw:"Board full — draw!"},
+  fr:{title:"Gomoku",vsBot:"vs Robot",twoP:"2 Joueurs",easy:"Facile",medium:"Moyen",hard:"Difficile",new:"Nouvelle partie",draws:"Nulles",
+      turnYou:"À toi (noir)",turnBot:"Le robot réfléchit",turnP1:"Aux noirs",turnP2:"Aux blancs",
+      winYou:"Cinq alignés — tu gagnes ! 🎉",winBot:"Le robot aligne cinq pions 🤖",winP1:"Les noirs gagnent ! 🎉",winP2:"Les blancs gagnent ! 🎉",draw:"Plateau plein — nulle !"}
+};
+const SKEY="stws_gomoku_v1";
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let mode=save.mode||"1p";
+let diff=save.diff||"easy";
+let N=save.size||13;
+let scores=save.scores||{p1:0,p2:0,d:0};
+
+let board, turn, over, winLine, lastMove, botBusy=false, humanFirst=true;
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.mode=mode;save.diff=diff;save.size=N;save.scores=scores;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,t,dur,type,vol){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime+t);
+  g.gain.setValueAtTime(0,c.currentTime+t);
+  g.gain.linearRampToValueAtTime(vol||.13,c.currentTime+t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(c.currentTime+t);o.stop(c.currentTime+t+dur+.05);
+}
+const sStone=()=>tone(880,0,.06,"triangle",.14);
+const sWin=()=>{[523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.15,"triangle",.13));};
+const sLose=()=>{[392,330,262].forEach((f,i)=>tone(f,i*.14,.2,"sawtooth",.06));};
+
+/* ============ core logic (pure) ============ */
+const DIRS=[[0,1],[1,0],[1,1],[1,-1]];
+function newBoard(n){return Array.from({length:n},()=>Array(n).fill(0));}
+function inB(n,r,c){return r>=0&&r<n&&c>=0&&c<n;}
+function winAt(b,r,c){
+  const p=b[r][c];if(!p)return null;
+  const n=b.length;
+  for(const[dr,dc]of DIRS){
+    const cells=[[r,c]];
+    for(let k=1;k<5;k++){const rr=r+dr*k,cc=c+dc*k;if(!inB(n,rr,cc)||b[rr][cc]!==p)break;cells.push([rr,cc]);}
+    for(let k=1;k<5;k++){const rr=r-dr*k,cc=c-dc*k;if(!inB(n,rr,cc)||b[rr][cc]!==p)break;cells.unshift([rr,cc]);}
+    if(cells.length>=5)return cells.slice(0,5);
+  }
+  return null;
+}
+function boardFull(b){return b.every(row=>row.every(v=>v!==0));}
+/* score of one 5-window for player p */
+const WSCORE=[0,2,24,512,8192,1000000];
+function evalBoard(b,p){
+  const n=b.length,o=3-p;let s=0;
+  const win5=(cells)=>{
+    let cp=0,co=0;
+    for(const v of cells){if(v===p)cp++;else if(v===o)co++;}
+    if(cp&&co)return 0;
+    if(cp)return WSCORE[cp];
+    if(co)return -WSCORE[co]*1.1;
+    return 0;
+  };
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    if(c+4<n)s+=win5([b[r][c],b[r][c+1],b[r][c+2],b[r][c+3],b[r][c+4]]);
+    if(r+4<n)s+=win5([b[r][c],b[r+1][c],b[r+2][c],b[r+3][c],b[r+4][c]]);
+    if(r+4<n&&c+4<n)s+=win5([b[r][c],b[r+1][c+1],b[r+2][c+2],b[r+3][c+3],b[r+4][c+4]]);
+    if(r+4<n&&c-4>=0)s+=win5([b[r][c],b[r+1][c-1],b[r+2][c-2],b[r+3][c-3],b[r+4][c-4]]);
+  }
+  return s;
+}
+/* candidate cells: empty within Chebyshev distance 2 of a stone */
+function candidates(b){
+  const n=b.length,set=new Set(),out=[];
+  let any=false;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(b[r][c]){any=true;
+    for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+      const rr=r+dr,cc=c+dc;
+      if(inB(n,rr,cc)&&b[rr][cc]===0){const k=rr*n+cc;if(!set.has(k)){set.add(k);out.push([rr,cc]);}}
+    }
+  }
+  if(!any)out.push([Math.floor(n/2),Math.floor(n/2)]);
+  return out;
+}
+function immediate(b,p){ // a move that wins right now for p, or null
+  for(const[r,c]of candidates(b)){
+    b[r][c]=p;const w=winAt(b,r,c);b[r][c]=0;
+    if(w)return [r,c];
+  }
+  return null;
+}
+function topK(b,p,k){
+  const scored=candidates(b).map(([r,c])=>{
+    b[r][c]=p;const s=evalBoard(b,p);b[r][c]=0;
+    return {r,c,s};
+  });
+  scored.sort((a,x)=>x.s-a.s);
+  return scored.slice(0,k);
+}
+function minimaxG(b,p,me,depth,alpha,beta,k){
+  const win=immediate(b,p);
+  if(win){
+    // playing it: terminal
+    const sc=(p===me)?(900000+depth*1000):(-900000-depth*1000);
+    return {score:sc,move:win};
+  }
+  if(depth===0)return {score:evalBoard(b,me)};
+  const moves=topK(b,p,k);
+  if(!moves.length)return {score:0};
+  const maximizing=p===me;
+  let best=maximizing?-Infinity:Infinity,bm=[moves[0].r,moves[0].c];
+  for(const m of moves){
+    b[m.r][m.c]=p;
+    const {score}=minimaxG(b,3-p,me,depth-1,alpha,beta,k);
+    b[m.r][m.c]=0;
+    if(maximizing){if(score>best){best=score;bm=[m.r,m.c];}alpha=Math.max(alpha,best);}
+    else{if(score<best){best=score;bm=[m.r,m.c];}beta=Math.min(beta,best);}
+    if(alpha>=beta)break;
+  }
+  return {score:best,move:bm};
+}
+function botMoveG(b,p,difficulty){
+  const o=3-p;
+  const w=immediate(b,p);if(w)return w;          // take the win
+  const blk=immediate(b,o);if(blk)return blk;    // block their win
+  if(difficulty==="easy"){
+    const t=topK(b,p,6);
+    // noisy greedy — picks among top 3
+    const pick=t[Math.floor(Math.random()*Math.min(3,t.length))];
+    return [pick.r,pick.c];
+  }
+  if(difficulty==="medium"){
+    const r=minimaxG(b,p,p,2,-Infinity,Infinity,10);
+    return r.move;
+  }
+  const r=minimaxG(b,p,p,3,-Infinity,Infinity,7);
+  return r.move;
+}
+
+/* ============ rendering ============ */
+const CELL=36,PAD=26;
+function svgSize(){return PAD*2+CELL*(N-1);}
+function render(){
+  const svg=document.getElementById("board");
+  const size=svgSize();
+  svg.setAttribute("viewBox",`0 0 ${size} ${size}`);
+  let s="";
+  for(let i=0;i<N;i++){
+    const q=PAD+i*CELL;
+    s+=`<line x1="${PAD}" y1="${q}" x2="${size-PAD}" y2="${q}" style="stroke:var(--line)" stroke-width="1.6"/>`;
+    s+=`<line x1="${q}" y1="${PAD}" x2="${q}" y2="${size-PAD}" style="stroke:var(--line)" stroke-width="1.6"/>`;
+  }
+  /* star points */
+  const stars=N===9?[2,4,6]:N===13?[3,6,9]:[3,7,11];
+  for(const r of stars)for(const c of stars)
+    s+=`<circle cx="${PAD+c*CELL}" cy="${PAD+r*CELL}" r="4" style="fill:var(--line)"/>`;
+  /* stones */
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const v=board[r][c];
+    if(!v)continue;
+    const x=PAD+c*CELL,y=PAD+r*CELL;
+    s+=`<circle cx="${x}" cy="${y}" r="${CELL*.42}" fill="${v===1?"url(#sb)":"url(#sw)"}" stroke="rgba(0,0,0,.35)" stroke-width="1"/>`;
+  }
+  if(lastMove&&!winLine)
+    s+=`<circle class="lastmove" cx="${PAD+lastMove[1]*CELL}" cy="${PAD+lastMove[0]*CELL}" r="${CELL*.5}"/>`;
+  if(winLine){
+    const a=winLine[0],z=winLine[winLine.length-1];
+    s+=`<line class="winmark" x1="${PAD+a[1]*CELL}" y1="${PAD+a[0]*CELL}" x2="${PAD+z[1]*CELL}" y2="${PAD+z[0]*CELL}"/>`;
+  }
+  /* hit targets */
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!board[r][c]&&!over)
+    s+=`<circle class="hit" data-rc="${r},${c}" cx="${PAD+c*CELL}" cy="${PAD+r*CELL}" r="${CELL*.45}"/>`;
+  svg.innerHTML=`<defs>
+    <radialGradient id="sb" cx="35%" cy="30%"><stop offset="0%" stop-color="#777"/><stop offset="70%" stop-color="#111"/></radialGradient>
+    <radialGradient id="sw" cx="35%" cy="30%"><stop offset="0%" stop-color="#fff"/><stop offset="80%" stop-color="#cfcfcf"/></radialGradient>
+  </defs>`+s;
+  svg.querySelectorAll(".hit").forEach(el=>{
+    el.addEventListener("click",()=>{
+      const[r,c]=el.dataset.rc.split(",").map(Number);
+      humanPlay(r,c);
+    });
+  });
+}
+function setStatus(){
+  const el=document.getElementById("status"),S=STR[lang];
+  if(over){
+    if(winLine){
+      const w=board[winLine[0][0]][winLine[0][1]];
+      if(mode==="1p")el.textContent=w===1?S.winYou:S.winBot;
+      else el.textContent=w===1?S.winP1:S.winP2;
+    }else el.textContent=S.draw;
+    return;
+  }
+  if(mode==="1p")
+    el.innerHTML=turn===1?`<span class="stone-ico black"></span> ${S.turnYou}`:`<span class="stone-ico white"></span> ${S.turnBot} <span id="thinking">…</span>`;
+  else
+    el.innerHTML=turn===1?`<span class="stone-ico black"></span> ${S.turnP1}`:`<span class="stone-ico white"></span> ${S.turnP2}`;
+}
+
+/* ============ flow ============ */
+function newGame(){
+  board=newBoard(N);turn=1;over=false;winLine=null;lastMove=null;botBusy=false;
+  if(mode==="1p"){turn=humanFirst?1:2;humanFirst=!humanFirst;}
+  render();setStatus();
+  if(mode==="1p"&&turn===2)queueBot();
+}
+function humanPlay(r,c){
+  if(over||botBusy)return;
+  if(mode==="1p"&&turn!==1)return;
+  doMove(r,c);
+}
+function doMove(r,c){
+  if(board[r][c])return;
+  board[r][c]=turn;lastMove=[r,c];sStone();
+  const w=winAt(board,r,c);
+  if(w){winLine=w;over=true;
+    if(turn===1)scores.p1++;else scores.p2++;persist();
+    if(mode==="1p")(turn===1?sWin:sLose)();else sWin();
+  }else if(boardFull(board)){over=true;scores.d++;persist();}
+  else{turn=3-turn;if(mode==="1p"&&turn===2)queueBot();}
+  render();setStatus();updateHud();
+}
+function queueBot(){
+  botBusy=true;setStatus();
+  setTimeout(()=>{
+    const m=botMoveG(board,2,diff);
+    botBusy=false;
+    if(m)doMove(m[0],m[1]);
+  },300);
+}
+function updateHud(){
+  document.getElementById("score1").textContent=scores.p1;
+  document.getElementById("score2").textContent=scores.p2;
+  document.getElementById("scoreD").textContent=scores.d;
+}
+
+/* ============ ui ============ */
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");mode=b.dataset.mode;persist();
+  document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+  newGame();
+});
+document.getElementById("diffSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");diff=b.dataset.diff;persist();newGame();
+});
+document.getElementById("sizeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#sizeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");N=+b.dataset.size;persist();newGame();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();setStatus();});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{if(STR[lang][el.dataset.i18n])el.textContent=STR[lang][el.dataset.i18n];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+document.querySelectorAll("#diffSeg button").forEach(b=>b.classList.toggle("on",b.dataset.diff===diff));
+document.querySelectorAll("#sizeSeg button").forEach(b=>b.classList.toggle("on",+b.dataset.size===N));
+document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+applyLang();updateHud();newGame();
+
+window.__test={newBoard,winAt,boardFull,evalBoard,candidates,immediate,topK,minimaxG,botMoveG,
+  getState:()=>({board:board.map(r=>r.slice()),turn,over,N}),doMove,newGame,
+  setBoard:(b)=>{board=b;N=b.length;},setTurn:(t)=>{turn=t;}};
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>BlockJam</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Persistent top-right music toggle, visible on every screen -->
+  <button id="btn-music-fab" class="music-fab" aria-label="Toggle background music">🎵</button>
+
+  <!-- MENU SCREEN -->
+  <div id="menu-screen" class="screen active">
+    <div class="menu-inner">
+      <h1 class="logo">Block<span>Jam</span></h1>
+      <div class="best-score-pill">
+        <span class="label">BEST SCORE</span>
+        <span id="menu-best-score">0</span>
+      </div>
+      <button class="btn btn-primary" id="btn-play">Play</button>
+      <button class="btn btn-secondary" id="btn-profile">Profile</button>
+      <button class="btn btn-secondary" id="btn-achievements">Achievements</button>
+      <button class="btn btn-secondary" id="btn-howto">How to Play</button>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-back-menu" aria-label="Back to menu">←</button>
+      <div class="score-box">
+        <span class="score-label">SCORE</span>
+        <span id="current-score">0</span>
+      </div>
+      <div class="score-box small">
+        <span class="score-label">BEST</span>
+        <span id="game-best-score">0</span>
+      </div>
+    </div>
+
+    <div id="board" class="board"></div>
+
+    <div id="tray" class="tray">
+      <div class="tray-slot" data-slot="0"></div>
+      <div class="tray-slot" data-slot="1"></div>
+      <div class="tray-slot" data-slot="2"></div>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS SCREEN -->
+  <div id="achievements-screen" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-back-from-achievements" aria-label="Back to menu">←</button>
+      <h2>Achievements</h2>
+      <div style="width:40px"></div>
+    </div>
+    <div id="achievements-list" class="achievements-list"></div>
+  </div>
+
+  <!-- HOW TO PLAY SCREEN -->
+  <div id="howto-screen" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-back-from-howto" aria-label="Back to menu">←</button>
+      <h2>How to Play</h2>
+      <div style="width:40px"></div>
+    </div>
+    <div class="howto-body">
+      <p>Drag pieces from the tray onto the 9×9 board.</p>
+      <p>Fill an entire row, column, or 3×3 box to clear it and score points.</p>
+      <p>The game ends when none of your three pieces can fit anywhere on the board.</p>
+      <p>Clear multiple lines at once for bonus points!</p>
+    </div>
+  </div>
+
+  <!-- PROFILE SCREEN -->
+  <div id="profile-screen" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-back-from-profile" aria-label="Back to menu">←</button>
+      <h2>Profile</h2>
+      <div style="width:40px"></div>
+    </div>
+    <div class="profile-body">
+
+      <div class="profile-card">
+        <label class="field-label" for="profile-name-input">Profile Name</label>
+        <input id="profile-name-input" class="text-input" type="text" maxlength="20" placeholder="Player" />
+      </div>
+
+      <div class="profile-card">
+        <span class="field-label">Recent Achievement</span>
+        <div id="recent-achievement" class="recent-achievement">
+          <div class="achievement-icon">🔒</div>
+          <div>
+            <div class="achievement-name">None yet</div>
+            <div class="achievement-desc">Play a game to unlock your first one!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <span class="field-label">Feature Settings</span>
+
+        <div class="toggle-row">
+          <span>Sound Effects</span>
+          <button id="toggle-sfx" class="toggle-switch" role="switch" aria-checked="true"><span class="knob"></span></button>
+        </div>
+        <div class="toggle-row">
+          <span>Background Music</span>
+          <button id="toggle-music" class="toggle-switch" role="switch" aria-checked="true"><span class="knob"></span></button>
+        </div>
+
+        <span class="field-label" style="margin-top:14px;display:block;">Color Theme</span>
+        <div id="theme-picker" class="theme-picker"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- GAME OVER MODAL -->
+  <div id="gameover-modal" class="modal-overlay">
+    <div class="modal">
+      <h2>Game Over</h2>
+      <p class="modal-score-label">Score</p>
+      <p id="final-score" class="modal-score">0</p>
+      <p id="new-best-badge" class="new-best-badge">New Best!</p>
+      <button class="btn btn-primary" id="btn-play-again">Play Again</button>
+      <button class="btn btn-secondary" id="btn-modal-menu">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENT TOAST -->
+  <div id="achievement-toast" class="achievement-toast">
+    <div class="toast-icon">🏆</div>
+    <div>
+      <div class="toast-title">Achievement Unlocked</div>
+      <div id="toast-name" class="toast-name"></div>
+    </div>
+  </div>
+
+  <script src="storage.js"></script>
+  <script src="themes.js"></script>
+  <script src="sound.js"></script>
+  <script src="bgfx.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

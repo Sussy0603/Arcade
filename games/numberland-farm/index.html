@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Numberland Farm</title>
+<style>
+:root{
+  --sky-top:#BFE9FF;
+  --sky-bottom:#EAF8FF;
+  --sun:#FFCA3A;
+  --coral:#FF6B6B;
+  --grass:#6BCB77;
+  --grass-dark:#4FAE5C;
+  --grape:#9B7EDE;
+  --ink:#2B2D42;
+  --cloud:#FFFFFF;
+  --card-shadow:rgba(43,45,66,0.18);
+  --gold:#FFD23F;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Segoe UI Rounded","Helvetica Neue",Arial,sans-serif;
+  background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-bottom) 60%);
+  color:var(--ink);
+  height:100vh;
+  width:100vw;
+  position:fixed;
+  touch-action:manipulation;
+}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:.5px;}
+.outline-text{
+  color:#fff;
+  text-shadow:
+    -2px -2px 0 var(--ink), 2px -2px 0 var(--ink),
+    -2px 2px 0 var(--ink), 2px 2px 0 var(--ink),
+    0 4px 0 rgba(43,45,66,.25);
+}
+button{font-family:inherit;border:none;cursor:pointer;background:none;color:inherit;}
+#app{position:relative;width:100vw;height:100vh;overflow:hidden;}
+
+/* ---------- shared scenery ---------- */
+.scene-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+.sun{position:absolute;top:4%;right:7%;width:11vmin;height:11vmin;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#FFE49A,var(--sun) 70%);
+  box-shadow:0 0 40px rgba(255,202,58,.55);animation:pulse 4s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.cloud{position:absolute;background:var(--cloud);border-radius:50px;opacity:.9;filter:drop-shadow(0 4px 0 rgba(43,45,66,.06));}
+.cloud::before,.cloud::after{content:"";position:absolute;background:var(--cloud);border-radius:50%;}
+.hill{position:absolute;bottom:-6%;left:0;width:100%;border-radius:50% 50% 0 0/18% 18% 0 0;}
+.hill-back{height:26%;background:#9FE2A8;bottom:-8%;}
+.hill-front{height:19%;background:var(--grass);}
+.barn{position:absolute;bottom:12%;right:4%;width:16vmin;height:14vmin;max-width:110px;max-height:96px;z-index:1;filter:drop-shadow(0 4px 0 rgba(43,45,66,.12));}
+.fence{position:absolute;bottom:9%;left:0;width:60%;height:6vmin;max-height:38px;z-index:1;}
+.fence-post{position:absolute;bottom:0;width:1.6vmin;height:100%;max-width:8px;background:#E8D9B8;border:2px solid var(--ink);border-radius:3px;}
+.fence-post::before{content:"";position:absolute;left:-4vmin;top:35%;width:9vmin;max-width:44px;height:1vmin;min-height:5px;background:#E8D9B8;border:2px solid var(--ink);border-radius:2px;}
+
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;z-index:1;display:none;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:2.2vmin 3vmin;position:relative;z-index:3;}
+.iconbtn{width:9vmin;height:9vmin;max-width:56px;max-height:56px;min-width:40px;min-height:40px;border-radius:50%;
+  background:#fff;box-shadow:0 4px 0 var(--card-shadow);display:flex;align-items:center;justify-content:center;font-size:4vmin;transition:transform .12s;}
+.iconbtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--card-shadow);}
+.pill{display:flex;align-items:center;gap:1vmin;background:#fff;border-radius:999px;padding:1vmin 2.6vmin;box-shadow:0 4px 0 var(--card-shadow);font-weight:800;font-size:2.6vmin;}
+.pill .star-ic{color:var(--gold);}
+
+/* ---------- hub ---------- */
+#screen-hub .hub-title{text-align:center;font-size:clamp(24px,6vmin,44px);margin-top:0vmin;}
+.hub-body{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 4vmin;z-index:2;}
+.mascot-wrap{margin:1vmin 0 2vmin;display:flex;justify-content:center;}
+#caterpillar{filter:drop-shadow(0 6px 0 rgba(43,45,66,.12));}
+.seg{transition:transform .3s;}
+.wiggle{animation:wiggle 2.6s ease-in-out infinite;}
+@keyframes wiggle{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-1.2vmin) rotate(-1.5deg)}}
+
+.cards{width:100%;max-width:900px;display:flex;flex-wrap:wrap;gap:2.4vmin;justify-content:center;padding-bottom:3vmin;}
+.card{
+  flex:1 1 240px;max-width:280px;min-width:200px;border-radius:28px;padding:3vmin 2.4vmin;
+  box-shadow:0 8px 0 var(--card-shadow);position:relative;overflow:hidden;text-align:center;
+  transition:transform .12s;color:#fff;
+}
+.card:active{transform:translateY(5px) scale(.98);box-shadow:0 3px 0 var(--card-shadow);}
+.card h3{font-size:clamp(16px,3vmin,22px);margin:1.2vmin 0 .4vmin;}
+.card p{font-size:clamp(11px,2.2vmin,15px);margin:0;opacity:.95;}
+.card .emoji{font-size:8vmin;display:block;}
+.card .stars-row{margin-top:1.4vmin;font-size:3vmin;letter-spacing:2px;}
+.card-critters{background:linear-gradient(160deg,#FF9776,var(--coral));}
+.card-ninja{background:linear-gradient(160deg,#7FE0D6,#3FBFB0);}
+.card-shape{background:linear-gradient(160deg,#B79BF0,var(--grape));}
+.card-hop{background:linear-gradient(160deg,#8FD3F4,#4FA8D8);}
+.card-pattern{background:linear-gradient(160deg,#FFD37A,#FF9F1C);}
+
+/* ---------- generic in-game top bar ---------- */
+.game-top{display:flex;align-items:center;justify-content:space-between;padding:2vmin 3vmin;z-index:3;position:relative;}
+.game-title{font-size:clamp(16px,3.4vmin,26px);}
+.progress-dots{display:flex;gap:1vmin;justify-content:center;padding:1vmin 0;position:relative;z-index:3;}
+.dot{width:2.4vmin;height:2.4vmin;min-width:10px;min-height:10px;border-radius:50%;background:#fff;box-shadow:0 2px 0 var(--card-shadow);}
+.dot.done{background:var(--gold);}
+.dot.now{background:var(--coral);}
+
+/* ---------- counting critters ---------- */
+.critter-field{flex:1;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:1.6vmin;padding:2vmin 6vmin;position:relative;z-index:2;}
+.critter{width:11vmin;height:11vmin;max-width:70px;max-height:70px;filter:drop-shadow(0 3px 0 rgba(43,45,66,.15));animation:hop 1.8s ease-in-out infinite;}
+@keyframes hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-1.4vmin)}}
+.choices-row{display:flex;gap:2.4vmin;justify-content:center;padding:3vmin 2vmin 5vmin;flex-wrap:wrap;position:relative;z-index:2;}
+.choice-bubble{
+  width:15vmin;height:15vmin;max-width:96px;max-height:96px;min-width:64px;min-height:64px;border-radius:50%;
+  background:#fff;box-shadow:0 6px 0 var(--card-shadow);font-size:clamp(20px,5vmin,34px);font-weight:800;
+  display:flex;align-items:center;justify-content:center;transition:transform .12s;color:var(--ink);
+}
+.choice-bubble:active{transform:translateY(4px);box-shadow:0 2px 0 var(--card-shadow);}
+.choice-bubble.correct{background:var(--grass);color:#fff;}
+.choice-bubble.wrong{background:var(--coral);color:#fff;}
+
+/* ---------- number ninja ---------- */
+.ninja-equation{text-align:center;font-size:clamp(24px,6vmin,44px);font-weight:800;padding:1vmin 0 0;position:relative;z-index:2;}
+.ninja-field{flex:1;position:relative;z-index:2;overflow:hidden;}
+.bubble{
+  position:absolute;top:-14vmin;width:16vmin;height:16vmin;max-width:100px;max-height:100px;min-width:66px;min-height:66px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:clamp(18px,4.4vmin,30px);font-weight:800;color:#fff;
+  box-shadow:0 6px 0 var(--card-shadow);transition:transform .1s;
+}
+.bubble:active{transform:scale(.93);}
+.bubble.pop{animation:pop .35s forwards;}
+@keyframes pop{to{transform:scale(1.6);opacity:0;}}
+
+/* ---------- shape match ---------- */
+.shape-stage{flex:1;position:relative;z-index:2;display:flex;flex-direction:column;}
+.targets-row{display:flex;justify-content:center;gap:3vmin;padding:3vmin 2vmin 1vmin;flex-wrap:wrap;}
+.pieces-row{display:flex;justify-content:center;gap:3vmin;padding:1vmin 2vmin 4vmin;flex-wrap:wrap;position:relative;}
+.target-slot{width:16vmin;height:16vmin;max-width:100px;max-height:100px;min-width:70px;min-height:70px;display:flex;align-items:center;justify-content:center;}
+.piece{width:14vmin;height:14vmin;max-width:88px;max-height:88px;min-width:60px;min-height:60px;position:relative;z-index:5;touch-action:none;filter:drop-shadow(0 4px 0 rgba(43,45,66,.18));}
+.target-slot.filled svg .outline-shape{opacity:0;}
+
+/* ---------- number line hop ---------- */
+.hop-field{flex:1;display:flex;flex-direction:column;justify-content:flex-start;position:relative;z-index:2;padding:8vmin 6vmin 2vmin;}
+.hop-bunny-wrap{height:12vmin;position:relative;margin-bottom:1vmin;}
+.hop-bunny{position:absolute;bottom:0;font-size:8vmin;left:0;transition:left .5s cubic-bezier(.34,1.56,.64,1);transform:translateX(-50%);}
+.hop-line-wrap{position:relative;height:16vmin;}
+.hop-line{position:absolute;left:0;right:0;top:50%;height:.8vmin;background:#fff;border-radius:99px;box-shadow:0 2px 0 var(--card-shadow);}
+.hop-num{position:absolute;top:0;width:12vmin;height:12vmin;max-width:74px;max-height:74px;min-width:46px;min-height:46px;
+  border-radius:50%;background:#fff;box-shadow:0 5px 0 var(--card-shadow);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:clamp(13px,3.2vmin,19px);color:var(--ink);transform:translate(-50%,-50%);transition:transform .12s,background .15s,color .15s;}
+.hop-num:active{transform:translate(-50%,-50%) translateY(3px);}
+.hop-num.start-marker{background:var(--gold);}
+.hop-num.correct{background:var(--grass);color:#fff;}
+.hop-num.wrong{background:var(--coral);color:#fff;}
+
+/* ---------- pattern path ---------- */
+.pattern-stage{flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2;}
+.pattern-stones{display:flex;justify-content:center;align-items:center;gap:1.6vmin;flex-wrap:wrap;padding:2vmin 3vmin;}
+.stone{width:14vmin;height:14vmin;max-width:88px;max-height:88px;min-width:56px;min-height:56px;border-radius:20px;
+  background:#fff;box-shadow:0 6px 0 var(--card-shadow);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:clamp(15px,3.8vmin,24px);color:var(--ink);}
+.stone.blank{background:repeating-linear-gradient(45deg,#F6F6FB,#F6F6FB 8px,#EDEDF5 8px,#EDEDF5 16px);border:3px dashed #B9BCD1;}
+.stone-arrow{font-size:4vmin;color:#fff;opacity:.85;}
+
+/* ---------- hub farm reward props (unlocked by total stars) ---------- */
+.hub-reward{position:absolute;z-index:1;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(43,45,66,.12));}
+.reward-chickens{bottom:10%;left:6%;font-size:6vmin;}
+.reward-pond{bottom:7%;left:32%;font-size:7vmin;}
+.reward-sunflowers{bottom:9%;right:22%;font-size:6vmin;letter-spacing:-1vmin;}
+.reward-rainbow{top:0%;left:12%;font-size:15vmin;opacity:.8;z-index:0;}
+
+/* ---------- modal ---------- */
+.modal-overlay{position:absolute;inset:0;background:rgba(43,45,66,.45);z-index:10;display:none;align-items:center;justify-content:center;padding:4vmin;}
+.modal-overlay.active{display:flex;}
+.modal-card{background:#fff;border-radius:28px;padding:5vmin 5vmin 4vmin;max-width:420px;width:100%;text-align:center;box-shadow:0 10px 0 var(--card-shadow);}
+.modal-card h2{font-size:clamp(20px,4.6vmin,30px);margin-bottom:1vmin;}
+.modal-stars{font-size:9vmin;margin:2vmin 0;letter-spacing:1vmin;}
+.modal-star{display:inline-block;transform:scale(0);opacity:0;}
+.modal-star.show{animation:starpop .5s forwards;}
+@keyframes starpop{to{transform:scale(1);opacity:1;}}
+.modal-btns{display:flex;gap:2vmin;justify-content:center;margin-top:2vmin;flex-wrap:wrap;}
+.btn{padding:2vmin 4vmin;border-radius:999px;font-weight:800;font-size:clamp(13px,2.6vmin,17px);box-shadow:0 5px 0 var(--card-shadow);transition:transform .12s;}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--card-shadow);}
+.btn-primary{background:var(--coral);color:#fff;}
+.btn-secondary{background:#EFEFF6;color:var(--ink);}
+
+/* achievements list */
+.ach-list{display:flex;flex-direction:column;gap:1.6vmin;max-height:50vh;overflow:auto;text-align:left;margin-top:2vmin;}
+.ach-item{display:flex;align-items:center;gap:2vmin;background:#F6F6FB;border-radius:16px;padding:1.6vmin 2vmin;}
+.ach-item.locked{opacity:.4;}
+.ach-icon{font-size:5vmin;}
+.ach-name{font-weight:800;font-size:clamp(13px,2.4vmin,16px);}
+.ach-desc{font-size:clamp(10px,1.9vmin,13px);color:#6b6d80;}
+
+/* settings */
+.settings-row{display:flex;align-items:center;justify-content:space-between;background:#F6F6FB;border-radius:16px;padding:2vmin 2.6vmin;margin-top:2vmin;font-weight:700;}
+.toggle{width:12vmin;height:6.6vmin;max-width:64px;max-height:36px;border-radius:999px;background:#ddd;position:relative;transition:background .2s;}
+.toggle.on{background:var(--grass);}
+.toggle .knob{position:absolute;top:3px;left:3px;width:calc(100% - 6px);height:calc(100% - 6px);aspect-ratio:1;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 2px 3px rgba(0,0,0,.2);}
+.toggle.on .knob{transform:translateX(calc(12vmin - 6.6vmin));}
+
+.toast{position:absolute;left:50%;top:8vmin;transform:translate(-50%,-20px);background:#fff;border-radius:16px;padding:1.6vmin 3vmin;
+  box-shadow:0 6px 0 var(--card-shadow);display:flex;align-items:center;gap:1.4vmin;font-weight:800;opacity:0;transition:all .35s;z-index:20;pointer-events:none;}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+
+@media (min-width:700px){
+  .critter{width:8vmin;height:8vmin;}
+  .choice-bubble{width:10vmin;height:10vmin;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== HUB ===================== -->
+  <div class="screen active" id="screen-hub">
+    <div class="scene-bg" id="bg-hub"></div>
+    <div class="topbar">
+      <button class="iconbtn" id="btn-settings" aria-label="Settings">⚙️</button>
+      <div class="pill"><span class="star-ic">★</span><span id="hub-star-count">0</span></div>
+      <button class="iconbtn" id="btn-achievements" aria-label="Achievements">🏅</button>
+    </div>
+    <div class="hub-body">
+      <h1 class="hub-title outline-text">Numberland Farm</h1>
+      <div class="mascot-wrap"><svg id="caterpillar" width="220" height="90" viewBox="0 0 220 90"></svg></div>
+      <div class="cards">
+        <button class="card card-critters" data-game="critters">
+          <span class="emoji">🐣</span>
+          <h3>Counting Critters</h3>
+          <p>Count them up!</p>
+          <div class="stars-row" id="stars-critters">☆☆☆</div>
+        </button>
+        <button class="card card-ninja" data-game="ninja">
+          <span class="emoji">🥷</span>
+          <h3>Number Ninja</h3>
+          <p>Catch the answer!</p>
+          <div class="stars-row" id="stars-ninja">☆☆☆</div>
+        </button>
+        <button class="card card-shape" data-game="shape">
+          <span class="emoji">⭐</span>
+          <h3>Shape Match</h3>
+          <p>Fit the shapes!</p>
+          <div class="stars-row" id="stars-shape">☆☆☆</div>
+        </button>
+        <button class="card card-hop" data-game="hop">
+          <span class="emoji">🐰</span>
+          <h3>Number Line Hop</h3>
+          <p>Hop to the answer!</p>
+          <div class="stars-row" id="stars-hop">☆☆☆</div>
+        </button>
+        <button class="card card-pattern" data-game="pattern">
+          <span class="emoji">🌈</span>
+          <h3>Pattern Path</h3>
+          <p>Spot what's next!</p>
+          <div class="stars-row" id="stars-pattern">☆☆☆</div>
+        </button>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- ===================== COUNTING CRITTERS ===================== -->
+  <div class="screen" id="screen-critters">
+    <div class="scene-bg" id="bg-critters"></div>
+    <div class="game-top">
+      <button class="iconbtn" data-back aria-label="Back to farm">⬅️</button>
+      <h2 class="game-title outline-text">Counting Critters</h2>
+      <button class="iconbtn" id="sound-critters" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="progress-dots" id="dots-critters"></div>
+    <div class="critter-field" id="critter-field"></div>
+    <div class="choices-row" id="critter-choices"></div>
+  </div>
+
+  <!-- ===================== NUMBER NINJA ===================== -->
+  <div class="screen" id="screen-ninja">
+    <div class="scene-bg" id="bg-ninja"></div>
+    <div class="game-top">
+      <button class="iconbtn" data-back aria-label="Back to farm">⬅️</button>
+      <h2 class="game-title outline-text">Number Ninja</h2>
+      <button class="iconbtn" id="sound-ninja" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="progress-dots" id="dots-ninja"></div>
+    <div class="ninja-equation outline-text" id="ninja-equation">2 + 3 = ?</div>
+    <div class="ninja-field" id="ninja-field"></div>
+  </div>
+
+  <!-- ===================== SHAPE MATCH ===================== -->
+  <div class="screen" id="screen-shape">
+    <div class="scene-bg" id="bg-shape"></div>
+    <div class="game-top">
+      <button class="iconbtn" data-back aria-label="Back to farm">⬅️</button>
+      <h2 class="game-title outline-text">Shape Match</h2>
+      <button class="iconbtn" id="sound-shape" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="progress-dots" id="dots-shape"></div>
+    <div class="shape-stage">
+      <div class="targets-row" id="shape-targets"></div>
+      <div class="pieces-row" id="shape-pieces"></div>
+    </div>
+  </div>
+
+  <!-- ===================== NUMBER LINE HOP ===================== -->
+  <div class="screen" id="screen-hop">
+    <div class="scene-bg" id="bg-hop"></div>
+    <div class="game-top">
+      <button class="iconbtn" data-back aria-label="Back to farm">⬅️</button>
+      <h2 class="game-title outline-text">Number Line Hop</h2>
+      <button class="iconbtn" id="sound-hop" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="progress-dots" id="dots-hop"></div>
+    <div class="ninja-equation outline-text" id="hop-equation">Start at 3. Hop +2. Land on?</div>
+    <div class="hop-field" id="hop-field"></div>
+  </div>
+
+  <!-- ===================== PATTERN PATH ===================== -->
+  <div class="screen" id="screen-pattern">
+    <div class="scene-bg" id="bg-pattern"></div>
+    <div class="game-top">
+      <button class="iconbtn" data-back aria-label="Back to farm">⬅️</button>
+      <h2 class="game-title outline-text">Pattern Path</h2>
+      <button class="iconbtn" id="sound-pattern" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="progress-dots" id="dots-pattern"></div>
+    <div class="pattern-stage">
+      <div class="pattern-stones" id="pattern-stones"></div>
+      <div class="choices-row" id="pattern-choices"></div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALS ===================== -->
+  <div class="modal-overlay" id="modal-results">
+    <div class="modal-card">
+      <h2 id="results-title">Great job!</h2>
+      <div class="modal-stars" id="results-stars"></div>
+      <p id="results-sub">You finished the round!</p>
+      <div class="modal-btns">
+        <button class="btn btn-secondary" id="results-menu">Farm</button>
+        <button class="btn btn-primary" id="results-again">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-card">
+      <h2>Settings</h2>
+      <div class="settings-row">
+        <span>Sound Effects</span>
+        <button class="toggle" id="toggle-sound"><span class="knob"></span></button>
+      </div>
+      <div class="settings-row" id="reset-row" style="cursor:pointer;">
+        <span>Reset Progress</span><span>🗑️</span>
+      </div>
+      <div class="modal-btns"><button class="btn btn-primary" id="settings-close">Done</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-reset-confirm">
+    <div class="modal-card">
+      <h2>Reset everything?</h2>
+      <p style="margin:1vmin 0 0;color:#6b6d80;">All your stars and achievements will be lost. This can't be undone.</p>
+      <div class="modal-btns">
+        <button class="btn btn-secondary" id="reset-cancel">Never mind</button>
+        <button class="btn btn-primary" id="reset-confirm-yes">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-achievements">
+    <div class="modal-card">
+      <h2>Achievements</h2>
+      <div class="ach-list" id="ach-list"></div>
+      <div class="modal-btns"><button class="btn btn-primary" id="ach-close">Done</button></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   GAMES — single source of truth for the hub cards, star totals,
+   and achievement checks that need to know "every game."
+============================================================ */
+const GAMES = ["critters","ninja","shape","hop","pattern"];
+
+/* ============================================================
+   STORAGE
+============================================================ */
+const STORAGE_KEY = "numberlandFarmSave_v1";
+function defaultSave(){
+  return {
+    stars:{critters:0,ninja:0,shape:0,hop:0,pattern:0},
+    achievements:{},
+    settings:{sound:true},
+    totalStars:0
+  };
+}
+let save = loadSave();
+function loadSave(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultSave();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultSave(), parsed, {
+      stars:Object.assign(defaultSave().stars, parsed.stars||{}),
+      settings:Object.assign(defaultSave().settings, parsed.settings||{}),
+      achievements:parsed.achievements||{}
+    });
+  }catch(e){ return defaultSave(); }
+}
+function persist(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); }catch(e){}
+}
+
+/* ============================================================
+   AUDIO — procedural Web Audio SFX
+============================================================ */
+let actx = null;
+function ctx(){
+  if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+  if(actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(freq, dur, type, gain, delay){
+  if(!save.settings.sound) return;
+  delay = delay||0;
+  const c = ctx();
+  const t0 = c.currentTime + delay;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = type||"sine";
+  osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain||0.25, t0+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(g); g.connect(c.destination);
+  osc.start(t0); osc.stop(t0+dur+0.02);
+}
+const SFX = {
+  tap(){ tone(520,0.08,"sine",0.2); },
+  correct(){ tone(660,0.12,"triangle",0.25); tone(880,0.16,"triangle",0.22,0.09); },
+  wrong(){ tone(180,0.22,"sawtooth",0.18); },
+  star(){ [523,659,784,1047].forEach((f,i)=>tone(f,0.18,"triangle",0.22,i*0.09)); },
+  whoosh(){ tone(300,0.2,"sine",0.12); tone(200,0.2,"sine",0.1,0.05); },
+  pop(){ tone(700,0.07,"square",0.12); },
+  unlock(){ [440,554,659,880,1108].forEach((f,i)=>tone(f,0.2,"triangle",0.2,i*0.07)); }
+};
+
+/* ============================================================
+   SCENERY — shared decorative background
+============================================================ */
+function paintScenery(el){
+  el.innerHTML = "";
+  const sun = document.createElement("div"); sun.className="sun"; el.appendChild(sun);
+  for(let i=0;i<3;i++){
+    const c = document.createElement("div"); c.className="cloud";
+    const w = 8+Math.random()*6, top = 6+Math.random()*18, left = (i*32)+Math.random()*10;
+    c.style.width=w+"vmin"; c.style.height=(w*0.45)+"vmin";
+    c.style.top=top+"vmin"; c.style.left=left+"vmin";
+    el.appendChild(c);
+  }
+  const back = document.createElement("div"); back.className="hill hill-back"; el.appendChild(back);
+  const barn = document.createElement("div"); barn.className="barn";
+  barn.innerHTML = `<svg viewBox="0 0 100 90" width="100%" height="100%" preserveAspectRatio="xMidYMax meet">
+      <polygon points="10,45 50,10 90,45" fill="#C1443A" stroke="#2B2D42" stroke-width="3"/>
+      <rect x="14" y="45" width="72" height="40" fill="#E4574A" stroke="#2B2D42" stroke-width="3"/>
+      <rect x="34" y="60" width="18" height="25" fill="#5B3A29" stroke="#2B2D42" stroke-width="2.5"/>
+      <rect x="62" y="52" width="14" height="14" fill="#FFE9A8" stroke="#2B2D42" stroke-width="2.5"/>
+      <line x1="69" y1="52" x2="69" y2="66" stroke="#2B2D42" stroke-width="2"/>
+      <line x1="62" y1="59" x2="76" y2="59" stroke="#2B2D42" stroke-width="2"/>
+      <polygon points="10,45 50,10 50,16 16,45" fill="#F2A65A" opacity="0.5"/>
+    </svg>`;
+  el.appendChild(barn);
+  const fence = document.createElement("div"); fence.className="fence";
+  for(let i=0;i<6;i++){
+    const post = document.createElement("div"); post.className="fence-post";
+    post.style.left = (i*15+2)+"%";
+    fence.appendChild(post);
+  }
+  el.appendChild(fence);
+  const front = document.createElement("div"); front.className="hill hill-front"; el.appendChild(front);
+}
+["bg-hub","bg-critters","bg-ninja","bg-shape","bg-hop","bg-pattern"].forEach(id=>paintScenery(document.getElementById(id)));
+
+/* ============================================================
+   ROUTER
+============================================================ */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+// Leaving a game mid-round can strand background work (a still-falling
+// Number Ninja loop, a shape mid-drag reparented onto document.body) since
+// each game's next startX() call throws its old state away rather than
+// resuming it — clean those up explicitly instead of just hiding the screen.
+function stopActiveGames(){
+  stopNinja();
+  stopShapeDrag();
+}
+document.querySelectorAll("[data-back]").forEach(b=>b.addEventListener("click",()=>{
+  SFX.tap(); stopActiveGames(); renderHub(); showScreen("screen-hub");
+}));
+
+/* ============================================================
+   TOAST
+============================================================ */
+let toastTimer=null;
+function showToast(text, emoji){
+  const t = document.getElementById("toast");
+  t.textContent = (emoji?emoji+" ":"")+text;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2400);
+}
+
+/* ============================================================
+   ACHIEVEMENTS
+============================================================ */
+const ACHIEVEMENTS = [
+  {id:"first_count", icon:"🐛", name:"First Count", desc:"Finish a Counting Critters round"},
+  {id:"counting_star", icon:"🐞", name:"Critter Champ", desc:"Earn 3 stars in Counting Critters"},
+  {id:"ninja_first", icon:"🥷", name:"Ninja Novice", desc:"Catch your first falling number"},
+  {id:"ninja_star", icon:"⚔️", name:"Ninja Master", desc:"Earn 3 stars in Number Ninja"},
+  {id:"shape_first", icon:"🔷", name:"Shape Starter", desc:"Finish a Shape Match round"},
+  {id:"shape_star", icon:"🌟", name:"Shape Star", desc:"Earn 3 stars in Shape Match"},
+  {id:"hop_first", icon:"🐇", name:"Hop Along", desc:"Finish a Number Line Hop round"},
+  {id:"hop_star", icon:"🥕", name:"Hop Master", desc:"Earn 3 stars in Number Line Hop"},
+  {id:"pattern_first", icon:"🪨", name:"Path Finder", desc:"Finish a Pattern Path round"},
+  {id:"pattern_star", icon:"🌈", name:"Pattern Pro", desc:"Earn 3 stars in Pattern Path"},
+  {id:"triple_player", icon:"🎪", name:"Farm Explorer", desc:"Play every game on the farm"},
+  {id:"farm_champion", icon:"👑", name:"Farm Champion", desc:"Earn every star in every game"}
+];
+function unlock(id){
+  if(save.achievements[id]) return;
+  save.achievements[id] = Date.now();
+  persist();
+  const a = ACHIEVEMENTS.find(x=>x.id===id);
+  SFX.unlock();
+  showToast("Achievement: "+a.name, a.icon);
+}
+function checkAchievements(game){
+  if(game==="critters"){ unlock("first_count"); if(save.stars.critters>=3) unlock("counting_star"); }
+  if(game==="ninja"){ if(save.stars.ninja>=3) unlock("ninja_star"); }
+  if(game==="shape"){ unlock("shape_first"); if(save.stars.shape>=3) unlock("shape_star"); }
+  if(game==="hop"){ unlock("hop_first"); if(save.stars.hop>=3) unlock("hop_star"); }
+  if(game==="pattern"){ unlock("pattern_first"); if(save.stars.pattern>=3) unlock("pattern_star"); }
+  if(GAMES.every(g=>save.stars[g]>0)) unlock("triple_player");
+  if(GAMES.every(g=>save.stars[g]>=3)) unlock("farm_champion");
+}
+function renderAchievements(){
+  const list = document.getElementById("ach-list");
+  list.innerHTML = "";
+  ACHIEVEMENTS.forEach(a=>{
+    const got = !!save.achievements[a.id];
+    const row = document.createElement("div");
+    row.className = "ach-item"+(got?"":" locked");
+    row.innerHTML = `<span class="ach-icon">${got?a.icon:"🔒"}</span>
+      <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>`;
+    list.appendChild(row);
+  });
+}
+
+/* ============================================================
+   CATERPILLAR MASCOT — grows with total stars
+============================================================ */
+const SEG_COLORS = ["#FF6B6B","#FFCA3A","#6BCB77","#4ECDC4","#9B7EDE","#FF9776","#3FBFB0","#B79BF0","#FFD23F"];
+function renderMascot(){
+  const svg = document.getElementById("caterpillar");
+  const totalStars = GAMES.reduce((s,g)=>s+save.stars[g],0);
+  save.totalStars = totalStars;
+  const maxStars = GAMES.length*3;
+  svg.innerHTML = "";
+  if(totalStars>=maxStars){
+    renderButterfly(svg);
+    return;
+  }
+  const segCount = Math.max(1, totalStars);
+  const spacing = segCount<=9 ? 22 : Math.max(10, 190/segCount);
+  const segR = Math.min(16, spacing*0.7);
+  const startX = 210 - segCount*spacing;
+  for(let i=0;i<segCount;i++){
+    const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+    g.setAttribute("class","seg"+(i===segCount-1?" wiggle":""));
+    const cx = startX + i*spacing, cy = 60 - (i%2===0?4:0);
+    const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    circle.setAttribute("cx",cx); circle.setAttribute("cy",cy); circle.setAttribute("r",segR);
+    circle.setAttribute("fill", SEG_COLORS[i%SEG_COLORS.length]);
+    circle.setAttribute("stroke", "#2B2D42"); circle.setAttribute("stroke-width","2.5");
+    g.appendChild(circle);
+    if(i===segCount-1){
+      // face
+      [-6,6].forEach(dx=>{
+        const eye = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        eye.setAttribute("cx",cx+dx); eye.setAttribute("cy",cy-3); eye.setAttribute("r",2.6);
+        eye.setAttribute("fill","#2B2D42"); g.appendChild(eye);
+      });
+      const mouth = document.createElementNS("http://www.w3.org/2000/svg","path");
+      mouth.setAttribute("d", `M ${cx-6} ${cy+6} Q ${cx} ${cy+11} ${cx+6} ${cy+6}`);
+      mouth.setAttribute("stroke","#2B2D42"); mouth.setAttribute("stroke-width","2.2");
+      mouth.setAttribute("fill","none"); mouth.setAttribute("stroke-linecap","round");
+      g.appendChild(mouth);
+      [ -1,1 ].forEach(dir=>{
+        const antenna = document.createElementNS("http://www.w3.org/2000/svg","line");
+        antenna.setAttribute("x1",cx+dir*8); antenna.setAttribute("y1",cy-14);
+        antenna.setAttribute("x2",cx+dir*13); antenna.setAttribute("y2",cy-22);
+        antenna.setAttribute("stroke","#2B2D42"); antenna.setAttribute("stroke-width","2");
+        g.appendChild(antenna);
+      });
+    } else {
+      const num = document.createElementNS("http://www.w3.org/2000/svg","text");
+      num.setAttribute("x",cx); num.setAttribute("y",cy+4); num.setAttribute("text-anchor","middle");
+      num.setAttribute("font-size","13"); num.setAttribute("font-weight","800"); num.setAttribute("fill","#fff");
+      num.textContent = (i+1);
+      g.appendChild(num);
+    }
+    svg.appendChild(g);
+  }
+}
+// The reward for maxing out every game: the caterpillar becomes a butterfly
+// instead of just capping out at its longest segment count.
+function renderButterfly(svg){
+  svg.innerHTML = `
+    <g class="wiggle">
+      <ellipse cx="90" cy="45" rx="34" ry="22" fill="#FF9776" stroke="#2B2D42" stroke-width="2.5" transform="rotate(-18 90 45)"/>
+      <ellipse cx="130" cy="45" rx="34" ry="22" fill="#9B7EDE" stroke="#2B2D42" stroke-width="2.5" transform="rotate(18 130 45)"/>
+      <ellipse cx="95" cy="66" rx="20" ry="14" fill="#FFD23F" stroke="#2B2D42" stroke-width="2.5" transform="rotate(-14 95 66)"/>
+      <ellipse cx="125" cy="66" rx="20" ry="14" fill="#4ECDC4" stroke="#2B2D42" stroke-width="2.5" transform="rotate(14 125 66)"/>
+      <ellipse cx="110" cy="55" rx="6" ry="24" fill="#2B2D42"/>
+      <circle cx="110" cy="30" r="7" fill="#2B2D42"/>
+      <circle cx="107" cy="28" r="1.6" fill="#fff"/>
+      <circle cx="113" cy="28" r="1.6" fill="#fff"/>
+      <line x1="106" y1="24" x2="100" y2="12" stroke="#2B2D42" stroke-width="2" stroke-linecap="round"/>
+      <line x1="114" y1="24" x2="120" y2="12" stroke="#2B2D42" stroke-width="2" stroke-linecap="round"/>
+    </g>`;
+}
+
+/* ============================================================
+   HUB RENDER
+============================================================ */
+function starsLabel(n){ return "★".repeat(n)+"☆".repeat(3-n); }
+// Farm scenery that unlocks as total stars (across every game) climb —
+// idempotent: clears its own previous props and redraws from scratch each
+// time, so it's safe to call on every trip back to the hub.
+const HUB_REWARD_MILESTONES = [
+  {min:4, html:"🐔", cls:"reward-chickens"},
+  {min:8, html:"🦆", cls:"reward-pond"},
+  {min:12, html:"🌻🌻🌻", cls:"reward-sunflowers"},
+  {min:GAMES.length*3, html:"🌈", cls:"reward-rainbow"}
+];
+function paintHubExtras(totalStars){
+  const el = document.getElementById("bg-hub");
+  el.querySelectorAll(".hub-reward").forEach(n=>n.remove());
+  HUB_REWARD_MILESTONES.forEach(m=>{
+    if(totalStars < m.min) return;
+    const d = document.createElement("div");
+    d.className = "hub-reward "+m.cls;
+    d.textContent = m.html;
+    el.appendChild(d);
+  });
+}
+function renderHub(){
+  const totalStars = GAMES.reduce((s,g)=>s+save.stars[g],0);
+  document.getElementById("hub-star-count").textContent = totalStars;
+  document.getElementById("stars-critters").textContent = starsLabel(save.stars.critters);
+  document.getElementById("stars-ninja").textContent = starsLabel(save.stars.ninja);
+  document.getElementById("stars-shape").textContent = starsLabel(save.stars.shape);
+  document.getElementById("stars-hop").textContent = starsLabel(save.stars.hop);
+  document.getElementById("stars-pattern").textContent = starsLabel(save.stars.pattern);
+  renderMascot();
+  paintHubExtras(totalStars);
+}
+document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>{
+  ctx(); SFX.whoosh();
+  const g = c.dataset.game;
+  if(g==="critters"){ showScreen("screen-critters"); startCritters(); }
+  if(g==="ninja"){ showScreen("screen-ninja"); startNinja(); }
+  if(g==="shape"){ showScreen("screen-shape"); startShape(); }
+  if(g==="hop"){ showScreen("screen-hop"); startHop(); }
+  if(g==="pattern"){ showScreen("screen-pattern"); startPattern(); }
+}));
+
+/* ============================================================
+   PROGRESS DOTS helper
+============================================================ */
+function renderDots(containerId, total, current){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  for(let i=0;i<total;i++){
+    const d = document.createElement("div");
+    d.className = "dot"+(i<current?" done":(i===current?" now":""));
+    el.appendChild(d);
+  }
+}
+
+/* ============================================================
+   RESULTS MODAL
+============================================================ */
+function showResults(game, stars, subtitle, onAgain){
+  save.stars[game] = Math.max(save.stars[game], stars);
+  persist();
+  checkAchievements(game);
+  document.getElementById("results-title").textContent =
+    stars===3?"Amazing!":stars===2?"Great job!":"Nice try!";
+  document.getElementById("results-sub").textContent = subtitle;
+  const starsEl = document.getElementById("results-stars");
+  starsEl.innerHTML = "";
+  for(let i=0;i<3;i++){
+    const s = document.createElement("span");
+    s.className = "modal-star";
+    s.textContent = i<stars ? "⭐" : "☆";
+    starsEl.appendChild(s);
+  }
+  document.getElementById("modal-results").classList.add("active");
+  setTimeout(()=>{
+    Array.from(starsEl.children).forEach((s,i)=>{
+      if(i<stars) setTimeout(()=>{ s.classList.add("show"); SFX.pop(); }, i*180);
+      else s.classList.add("show");
+    });
+    if(stars>0) SFX.star();
+  }, 100);
+  document.getElementById("results-again").onclick = ()=>{
+    SFX.tap();
+    document.getElementById("modal-results").classList.remove("active");
+    onAgain();
+  };
+  document.getElementById("results-menu").onclick = ()=>{
+    SFX.tap();
+    document.getElementById("modal-results").classList.remove("active");
+    renderHub();
+    showScreen("screen-hub");
+  };
+}
+
+/* ============================================================
+   GAME 1: COUNTING CRITTERS
+============================================================ */
+const CRITTER_TYPES = ["chick","piglet","sheep","cow","duck"];
+function critterSVG(type){
+  const parts = {
+    chick: `<ellipse cx="35" cy="40" rx="22" ry="20" fill="#FFCA3A" stroke="#2B2D42" stroke-width="3"/>
+      <circle cx="35" cy="18" r="12" fill="#FFCA3A" stroke="#2B2D42" stroke-width="3"/>
+      <polygon points="35,18 46,16 35,24" fill="#FF9776" stroke="#2B2D42" stroke-width="2"/>
+      <circle cx="31" cy="14" r="2.2" fill="#2B2D42"/>
+      <path d="M22 12 L26 4 L29 12 Z" fill="#FF6B6B" stroke="#2B2D42" stroke-width="1.5"/>
+      <path d="M50 44 Q62 40 60 52 Q52 54 50 44" fill="#FFE49A" stroke="#2B2D42" stroke-width="2"/>`,
+    piglet: `<ellipse cx="35" cy="40" rx="24" ry="19" fill="#FFB3C1" stroke="#2B2D42" stroke-width="3"/>
+      <ellipse cx="21" cy="16" rx="7" ry="7" fill="#FFB3C1" stroke="#2B2D42" stroke-width="2.5"/>
+      <ellipse cx="47" cy="16" rx="7" ry="7" fill="#FFB3C1" stroke="#2B2D42" stroke-width="2.5"/>
+      <ellipse cx="35" cy="42" rx="10" ry="7" fill="#FF8FA3" stroke="#2B2D42" stroke-width="2.5"/>
+      <circle cx="31" cy="41" r="1.6" fill="#2B2D42"/><circle cx="39" cy="41" r="1.6" fill="#2B2D42"/>
+      <circle cx="24" cy="32" r="2.4" fill="#2B2D42"/><circle cx="46" cy="32" r="2.4" fill="#2B2D42"/>`,
+    sheep: `<ellipse cx="35" cy="38" rx="22" ry="18" fill="#F5F5F0" stroke="#2B2D42" stroke-width="3"/>
+      <circle cx="17" cy="30" r="8" fill="#F5F5F0" stroke="#2B2D42" stroke-width="2.5"/>
+      <circle cx="20" cy="20" r="7" fill="#F5F5F0" stroke="#2B2D42" stroke-width="2.5"/>
+      <circle cx="35" cy="18" r="8" fill="#F5F5F0" stroke="#2B2D42" stroke-width="2.5"/>
+      <circle cx="50" cy="22" r="7" fill="#F5F5F0" stroke="#2B2D42" stroke-width="2.5"/>
+      <ellipse cx="35" cy="42" rx="10" ry="8" fill="#5B4636" stroke="#2B2D42" stroke-width="2.5"/>
+      <circle cx="31" cy="40" r="1.8" fill="#fff"/><circle cx="39" cy="40" r="1.8" fill="#fff"/>`,
+    cow: `<ellipse cx="35" cy="40" rx="25" ry="19" fill="#fff" stroke="#2B2D42" stroke-width="3"/>
+      <ellipse cx="24" cy="34" rx="6" ry="8" fill="#2B2D42" opacity="0.85"/>
+      <ellipse cx="46" cy="46" rx="7" ry="6" fill="#2B2D42" opacity="0.85"/>
+      <ellipse cx="18" cy="18" rx="6" ry="5" fill="#fff" stroke="#2B2D42" stroke-width="2.5"/>
+      <ellipse cx="52" cy="18" rx="6" ry="5" fill="#fff" stroke="#2B2D42" stroke-width="2.5"/>
+      <ellipse cx="35" cy="44" rx="11" ry="8" fill="#FFD8DE" stroke="#2B2D42" stroke-width="2.5"/>
+      <circle cx="31" cy="43" r="1.6" fill="#2B2D42"/><circle cx="39" cy="43" r="1.6" fill="#2B2D42"/>`,
+    duck: `<ellipse cx="33" cy="42" rx="23" ry="18" fill="#FFE066" stroke="#2B2D42" stroke-width="3"/>
+      <circle cx="24" cy="20" r="12" fill="#FFE066" stroke="#2B2D42" stroke-width="3"/>
+      <polygon points="12,20 24,17 24,25" fill="#FF9F1C" stroke="#2B2D42" stroke-width="2"/>
+      <circle cx="26" cy="16" r="2" fill="#2B2D42"/>
+      <path d="M48 44 Q62 40 58 54 Q48 54 48 44" fill="#FFEFA6" stroke="#2B2D42" stroke-width="2"/>`
+  };
+  return `<svg viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">${parts[type]}</svg>`;
+}
+let cState = {round:0, mistakes:0, total:5};
+function startCritters(){
+  cState = {round:0, mistakes:0, total:5};
+  nextCritterRound();
+}
+function nextCritterRound(){
+  if(cState.round >= cState.total){
+    const stars = cState.mistakes===0?3:(cState.mistakes<=2?2:1);
+    showResults("critters", stars, `You counted ${cState.total} rounds of critters!`, startCritters);
+    return;
+  }
+  renderDots("dots-critters", cState.total, cState.round);
+  // Starting difficulty nudges up a bit for players who've already 3-starred this game.
+  const maxN = Math.min(16, 10 + save.stars.critters*2);
+  const n = 1 + Math.floor(Math.random()*maxN);
+  const type = CRITTER_TYPES[Math.floor(Math.random()*CRITTER_TYPES.length)];
+  const field = document.getElementById("critter-field");
+  field.innerHTML = "";
+  for(let i=0;i<n;i++){
+    const d = document.createElement("div");
+    d.className = "critter";
+    d.style.animationDelay = (Math.random()*1.5)+"s";
+    d.innerHTML = critterSVG(type);
+    field.appendChild(d);
+  }
+  const choices = new Set([n]);
+  while(choices.size<4){
+    let c = n + (Math.floor(Math.random()*7)-3);
+    if(c>=1 && c<=maxN) choices.add(c);
+  }
+  const arr = Array.from(choices).sort(()=>Math.random()-0.5);
+  const row = document.getElementById("critter-choices");
+  row.innerHTML = "";
+  let answered = false;
+  arr.forEach(val=>{
+    const b = document.createElement("button");
+    b.className = "choice-bubble";
+    b.textContent = val;
+    b.addEventListener("click", ()=>{
+      if(answered) return;
+      answered = true;
+      if(val===n){
+        b.classList.add("correct"); SFX.correct();
+      } else {
+        b.classList.add("wrong"); SFX.wrong(); cState.mistakes++;
+        const correctBtn = Array.from(row.children).find(x=>x.textContent==String(n));
+        if(correctBtn) correctBtn.classList.add("correct");
+      }
+      setTimeout(()=>{ cState.round++; nextCritterRound(); }, 750);
+    });
+    row.appendChild(b);
+  });
+}
+document.getElementById("sound-critters").addEventListener("click", toggleSoundBtn);
+
+/* ============================================================
+   GAME 2: NUMBER NINJA
+============================================================ */
+let nState = {round:0, total:6, caught:0, mistakes:0, active:false, timers:[], raf:null, stopped:false};
+function startNinja(){
+  nState = {round:0, total:6, caught:0, mistakes:0, active:false, timers:[], raf:null, stopped:false};
+  nextNinjaRound();
+}
+function clearNinjaTimers(){
+  nState.timers.forEach(t=>clearTimeout(t));
+  nState.timers = [];
+  if(nState.raf){ cancelAnimationFrame(nState.raf); nState.raf = null; }
+  document.getElementById("ninja-field").innerHTML = "";
+}
+// Called when leaving Number Ninja mid-round (back button) so the falling-
+// bubble loop doesn't keep ticking forever on a screen nobody can see.
+function stopNinja(){
+  nState.stopped = true;
+  clearNinjaTimers();
+}
+function nextNinjaRound(){
+  clearNinjaTimers();
+  if(nState.round >= nState.total){
+    const stars = nState.mistakes===0?3:(nState.mistakes<=2?2:1);
+    showResults("ninja", stars, `You caught ${nState.caught} correct numbers!`, startNinja);
+    return;
+  }
+  renderDots("dots-ninja", nState.total, nState.round);
+  // Starting difficulty nudges up a bit for players who've already 3-starred this game.
+  const level = Math.min(14, 4 + nState.round + save.stars.ninja*2);
+  let a = 1+Math.floor(Math.random()*level);
+  let b = 1+Math.floor(Math.random()*level);
+  let op = Math.random()<0.5 ? "+" : "-";
+  if(op==="-" && a<b){ const tmp=a; a=b; b=tmp; }
+  const answer = op==="+" ? a+b : a-b;
+  document.getElementById("ninja-equation").textContent = `${a} ${op} ${b} = ?`;
+
+  const options = new Set([answer]);
+  while(options.size<4){
+    let c = answer + (Math.floor(Math.random()*7)-3);
+    if(c>=0 && c<=35) options.add(c);
+  }
+  const arr = Array.from(options).sort(()=>Math.random()-0.5);
+  const field = document.getElementById("ninja-field");
+  const fieldW = field.clientWidth || 300;
+  const lanes = arr.length;
+  const colors = ["#FF6B6B","#FFCA3A","#6BCB77","#4ECDC4","#9B7EDE"];
+  let roundDone = false;
+  const bubbles = arr.map((val,i)=>{
+    const el = document.createElement("div");
+    el.className = "bubble";
+    el.textContent = val;
+    el.style.left = ((i+0.5)*(fieldW/lanes) - 40) + "px";
+    el.style.background = colors[i%colors.length];
+    field.appendChild(el);
+    return {el, val, y:-140, popped:false};
+  });
+  nState.active = true;
+  const fieldH = field.clientHeight || 320;
+  const speed = Math.max(0.55, 1.3 - nState.round*0.12);
+  function step(){
+    if(roundDone || nState.stopped) return;
+    let anyAlive = false;
+    bubbles.forEach(bub=>{
+      if(bub.popped) return;
+      bub.y += speed;
+      bub.el.style.top = bub.y + "px";
+      if(bub.y < fieldH) anyAlive = true;
+      else if(!bub.el.dataset.gone){
+        bub.el.dataset.gone = "1";
+        bub.el.style.opacity="0";
+      }
+    });
+    if(anyAlive && !roundDone){ nState.raf = requestAnimationFrame(step); }
+    else if(!roundDone){
+      roundDone = true; nState.mistakes++;
+      const t = setTimeout(()=>{ nState.round++; nextNinjaRound(); }, 500);
+      nState.timers.push(t);
+    }
+  }
+  nState.raf = requestAnimationFrame(step);
+  bubbles.forEach(bub=>{
+    bub.el.addEventListener("click", ()=>{
+      if(roundDone || bub.popped) return;
+      bub.popped = true;
+      if(bub.val===answer){
+        roundDone = true;
+        bub.el.classList.add("pop");
+        SFX.correct(); nState.caught++;
+        if(nState.caught===1) unlock("ninja_first");
+        bubbles.forEach(o=>{ if(o!==bub) o.el.style.opacity="0"; });
+        const t = setTimeout(()=>{ nState.round++; nextNinjaRound(); }, 500);
+        nState.timers.push(t);
+      } else {
+        SFX.wrong();
+        bub.el.style.opacity="0.25";
+      }
+    });
+  });
+}
+document.getElementById("sound-ninja").addEventListener("click", toggleSoundBtn);
+
+/* ============================================================
+   GAME 3: SHAPE MATCH
+============================================================ */
+const SHAPE_DEFS = {
+  circle:{ path:`<circle cx="35" cy="35" r="28"/>` },
+  square:{ path:`<rect x="9" y="9" width="52" height="52" rx="6"/>` },
+  triangle:{ path:`<polygon points="35,8 62,60 8,60"/>` },
+  star:{ path:`<polygon points="35,4 43,26 66,26 47,40 54,62 35,49 16,62 23,40 4,26 27,26"/>` },
+  heart:{ path:`<path d="M35 60 C10 42 6 24 20 14 C29 8 35 16 35 22 C35 16 41 8 50 14 C64 24 60 42 35 60 Z"/>` }
+};
+const SHAPE_COLORS = {circle:"#FF6B6B", square:"#FFCA3A", triangle:"#6BCB77", star:"#FFD23F", heart:"#9B7EDE"};
+let sState = {round:0, total:5, mistakes:0, pieceEls:[]};
+function startShape(){
+  sState = {round:0, total:5, mistakes:0, pieceEls:[]};
+  nextShapeRound();
+}
+function nextShapeRound(){
+  // remove any pieces from the previous round, wherever they ended up
+  // (a piece mid-drag lives on document.body, not inside targets/pieces rows,
+  // so clearing those containers alone can leave it stranded on screen)
+  sState.pieceEls.forEach(p=>{ if(p.parentElement) p.parentElement.removeChild(p); });
+  sState.pieceEls = [];
+  if(sState.round >= sState.total){
+    const stars = sState.mistakes===0?3:(sState.mistakes<=2?2:1);
+    showResults("shape", stars, `You matched ${sState.total} rounds of shapes!`, startShape);
+    return;
+  }
+  renderDots("dots-shape", sState.total, sState.round);
+  const keys = Object.keys(SHAPE_DEFS);
+  // Starting difficulty nudges up a bit for players who've already 3-starred this game.
+  const setSize = Math.min(keys.length, 3 + Math.floor(sState.round/2) + save.stars.shape);
+  const chosen = keys.slice().sort(()=>Math.random()-0.5).slice(0,setSize);
+  const targetsEl = document.getElementById("shape-targets");
+  const piecesEl = document.getElementById("shape-pieces");
+  targetsEl.innerHTML = ""; piecesEl.innerHTML = "";
+  const order = chosen.slice().sort(()=>Math.random()-0.5);
+  let filled = 0;
+
+  const targetMap = {};
+  chosen.forEach(shape=>{
+    const slot = document.createElement("div");
+    slot.className = "target-slot";
+    slot.dataset.shape = shape;
+    slot.innerHTML = `<svg viewBox="0 0 70 70" class="outline-shape-svg">
+      <g class="outline-shape" fill="none" stroke="#B9BCD1" stroke-width="3" stroke-dasharray="6 5">${SHAPE_DEFS[shape].path}</g>
+    </svg>`;
+    targetsEl.appendChild(slot);
+    targetMap[shape] = slot;
+  });
+
+  order.forEach(shape=>{
+    const piece = document.createElement("div");
+    piece.className = "piece";
+    piece.dataset.shape = shape;
+    piece.innerHTML = `<svg viewBox="0 0 70 70"><g fill="${SHAPE_COLORS[shape]}" stroke="#2B2D42" stroke-width="2.5">${SHAPE_DEFS[shape].path}</g></svg>`;
+    piecesEl.appendChild(piece);
+    sState.pieceEls.push(piece);
+    makeDraggable(piece, targetMap, shape, ()=>{
+      filled++;
+      if(filled>=chosen.length){
+        SFX.star();
+        setTimeout(()=>{ sState.round++; nextShapeRound(); }, 600);
+      }
+    });
+  });
+}
+// Tracks whichever piece is currently reparented to document.body mid-drag,
+// so leaving the screen (back button) can clean it up — otherwise it stays
+// stuck floating on top of every other screen forever (its round's state
+// gets thrown away on the next startShape(), losing any other reference to it).
+let activeDragPiece = null;
+function stopShapeDrag(){
+  if(activeDragPiece && activeDragPiece.parentElement){
+    activeDragPiece.parentElement.removeChild(activeDragPiece);
+  }
+  activeDragPiece = null;
+}
+function makeDraggable(piece, targetMap, shape, onMatch){
+  let dragging = false, startX=0, startY=0, origParent=piece.parentElement, placed=false;
+  let offsetX=0, offsetY=0;
+  piece.style.touchAction = "none";
+  piece.addEventListener("pointerdown", (e)=>{
+    if(placed) return;
+    dragging = true;
+    activeDragPiece = piece;
+    piece.setPointerCapture(e.pointerId);
+    const rect = piece.getBoundingClientRect();
+    offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top;
+    piece.style.position = "fixed";
+    piece.style.left = rect.left+"px"; piece.style.top = rect.top+"px";
+    piece.style.width = rect.width+"px"; piece.style.height = rect.height+"px";
+    piece.style.zIndex = 50;
+    document.body.appendChild(piece);
+  });
+  piece.addEventListener("pointermove",(e)=>{
+    if(!dragging) return;
+    piece.style.left = (e.clientX-offsetX)+"px";
+    piece.style.top = (e.clientY-offsetY)+"px";
+  });
+  piece.addEventListener("pointercancel",(e)=>{
+    if(!dragging) return;
+    dragging = false;
+    activeDragPiece = null;
+    piece.style.position = "";
+    piece.style.left = ""; piece.style.top = "";
+    piece.style.width = ""; piece.style.height = "";
+    piece.style.zIndex = "";
+    origParent.appendChild(piece);
+  });
+  piece.addEventListener("pointerup",(e)=>{
+    if(!dragging) return;
+    dragging = false;
+    activeDragPiece = null;
+    const pr = piece.getBoundingClientRect();
+    const pcx = pr.left+pr.width/2, pcy = pr.top+pr.height/2;
+    let bestSlot=null, bestDist=Infinity;
+    Object.values(targetMap).forEach(slot=>{
+      const sr = slot.getBoundingClientRect();
+      const scx = sr.left+sr.width/2, scy = sr.top+sr.height/2;
+      const dist = Math.hypot(pcx-scx, pcy-scy);
+      if(dist<bestDist){ bestDist=dist; bestSlot=slot; }
+    });
+    if(bestSlot && bestDist < 70 && bestSlot.dataset.shape===shape && !bestSlot.classList.contains("filled")){
+      piece.style.position = "";
+      piece.style.left = ""; piece.style.top = "";
+      piece.style.width = ""; piece.style.height = "";
+      piece.style.zIndex = "";
+      piece.style.pointerEvents = "none";
+      bestSlot.appendChild(piece);
+      bestSlot.classList.add("filled");
+      placed = true;
+      SFX.correct();
+      onMatch();
+    } else if(bestSlot && bestDist < 70 && bestSlot.dataset.shape!==shape){
+      SFX.wrong();
+      sState.mistakes++;
+      returnPiece();
+    } else {
+      returnPiece();
+    }
+    function returnPiece(){
+      piece.style.position = "";
+      piece.style.left = ""; piece.style.top = "";
+      piece.style.width = ""; piece.style.height = "";
+      piece.style.zIndex = "";
+      origParent.appendChild(piece);
+    }
+  });
+}
+document.getElementById("sound-shape").addEventListener("click", toggleSoundBtn);
+
+/* ============================================================
+   GAME 4: NUMBER LINE HOP
+============================================================ */
+let hState = {round:0, total:6, mistakes:0};
+function startHop(){
+  hState = {round:0, total:6, mistakes:0};
+  nextHopRound();
+}
+function nextHopRound(){
+  if(hState.round >= hState.total){
+    const stars = hState.mistakes===0?3:(hState.mistakes<=2?2:1);
+    showResults("hop", stars, `You hopped through ${hState.total} number lines!`, startHop);
+    return;
+  }
+  renderDots("dots-hop", hState.total, hState.round);
+  // Starting difficulty nudges up a bit for players who've already 3-starred this game.
+  const range = Math.min(10, 6 + Math.floor(hState.round/2) + save.stars.hop);
+  const start = Math.floor(Math.random()*(range+1));
+  // Pick the direction first, then size the hop to what that direction
+  // actually has room for — sizing hop before direction (and clamping
+  // after) could pick a hop too big for either direction to stay on the
+  // line, e.g. start=3 hop=5 on a 0-6 line has no valid direction at all.
+  const roomForward = range - start, roomBackward = start;
+  const dir = roomForward===0 ? -1 : roomBackward===0 ? 1 : (Math.random()<0.5 ? 1 : -1);
+  const maxHop = Math.min(5, dir===1 ? roomForward : roomBackward);
+  const hop = 1 + Math.floor(Math.random()*maxHop);
+  const answer = start + dir*hop;
+  document.getElementById("hop-equation").innerHTML =
+    `Start at <b>${start}</b>. Hop <b>${dir>0?"+":"−"}${hop}</b>. Land on?`;
+
+  const field = document.getElementById("hop-field");
+  field.innerHTML = "";
+  const bunnyWrap = document.createElement("div"); bunnyWrap.className = "hop-bunny-wrap";
+  const bunny = document.createElement("div"); bunny.className = "hop-bunny"; bunny.textContent = "🐰";
+  bunnyWrap.appendChild(bunny);
+  const lineWrap = document.createElement("div"); lineWrap.className = "hop-line-wrap";
+  const line = document.createElement("div"); line.className = "hop-line";
+  lineWrap.appendChild(line);
+
+  const pct = i => (i/range)*100;
+  bunny.style.left = pct(start)+"%";
+
+  let answered = false;
+  for(let i=0;i<=range;i++){
+    const num = document.createElement("button");
+    num.className = "hop-num"+(i===start?" start-marker":"");
+    num.textContent = i;
+    num.style.left = pct(i)+"%";
+    num.addEventListener("click", ()=>{
+      if(answered) return;
+      if(i===answer){
+        answered = true;
+        num.classList.add("correct");
+        bunny.style.left = pct(answer)+"%";
+        SFX.correct();
+        setTimeout(()=>{ hState.round++; nextHopRound(); }, 700);
+      } else {
+        SFX.wrong(); hState.mistakes++;
+        num.classList.add("wrong");
+        setTimeout(()=>num.classList.remove("wrong"), 350);
+      }
+    });
+    lineWrap.appendChild(num);
+  }
+  field.appendChild(bunnyWrap);
+  field.appendChild(lineWrap);
+}
+document.getElementById("sound-hop").addEventListener("click", toggleSoundBtn);
+
+/* ============================================================
+   GAME 5: PATTERN PATH — skip-counting / sequence recognition
+============================================================ */
+let pState = {round:0, total:5, mistakes:0};
+function startPattern(){
+  pState = {round:0, total:5, mistakes:0};
+  nextPatternRound();
+}
+function nextPatternRound(){
+  if(pState.round >= pState.total){
+    const stars = pState.mistakes===0?3:(pState.mistakes<=2?2:1);
+    showResults("pattern", stars, `You solved ${pState.total} number patterns!`, startPattern);
+    return;
+  }
+  renderDots("dots-pattern", pState.total, pState.round);
+  const mastery = save.stars.pattern;
+  const progress = pState.round + mastery;
+  const ascPool = [2,5,10], descPool = [-2,-5];
+  const pool = progress>=3 ? ascPool.concat(descPool) : progress>=1 ? [2,5] : [2];
+  const step = pool[Math.floor(Math.random()*pool.length)];
+  const stoneCount = 5;
+  const span = Math.abs(step)*(stoneCount-1);
+  const first = step>0 ? Math.floor(Math.random()*10) : span + Math.floor(Math.random()*15);
+  const seq = [];
+  for(let i=0;i<stoneCount;i++) seq.push(first + step*i);
+  // Leave the last stone blank for gentler rounds; once mastered a bit, blank a middle one instead.
+  const blankIndex = progress>=2 ? 1 + Math.floor(Math.random()*(stoneCount-2)) : stoneCount-1;
+  const answer = seq[blankIndex];
+
+  const stonesEl = document.getElementById("pattern-stones");
+  stonesEl.innerHTML = "";
+  seq.forEach((n,i)=>{
+    if(i>0){
+      const arrow = document.createElement("span");
+      arrow.className = "stone-arrow outline-text"; arrow.textContent = "→";
+      stonesEl.appendChild(arrow);
+    }
+    const stone = document.createElement("div");
+    stone.className = "stone"+(i===blankIndex?" blank":"");
+    stone.textContent = i===blankIndex ? "?" : n;
+    stonesEl.appendChild(stone);
+  });
+
+  const options = new Set([answer]);
+  while(options.size<4){
+    const c = answer + step*(Math.floor(Math.random()*5)-2);
+    if(c>=0 && c<=80 && c!==answer) options.add(c);
+  }
+  const arr = Array.from(options).sort(()=>Math.random()-0.5);
+  const row = document.getElementById("pattern-choices");
+  row.innerHTML = "";
+  let answered = false;
+  arr.forEach(val=>{
+    const b = document.createElement("button");
+    b.className = "choice-bubble";
+    b.textContent = val;
+    b.addEventListener("click", ()=>{
+      if(answered) return;
+      answered = true;
+      if(val===answer){
+        b.classList.add("correct"); SFX.correct();
+      } else {
+        b.classList.add("wrong"); SFX.wrong(); pState.mistakes++;
+        const correctBtn = Array.from(row.children).find(x=>x.textContent===String(answer));
+        if(correctBtn) correctBtn.classList.add("correct");
+      }
+      setTimeout(()=>{ pState.round++; nextPatternRound(); }, 750);
+    });
+    row.appendChild(b);
+  });
+}
+document.getElementById("sound-pattern").addEventListener("click", toggleSoundBtn);
+
+/* ============================================================
+   SETTINGS / SOUND TOGGLE
+============================================================ */
+function updateSoundIcons(){
+  const icon = save.settings.sound ? "🔊" : "🔇";
+  ["sound-critters","sound-ninja","sound-shape"].forEach(id=>{
+    document.getElementById(id).textContent = icon;
+  });
+  const t = document.getElementById("toggle-sound");
+  t.classList.toggle("on", save.settings.sound);
+}
+function toggleSoundBtn(){
+  save.settings.sound = !save.settings.sound;
+  persist(); updateSoundIcons();
+  if(save.settings.sound) SFX.tap();
+}
+document.getElementById("toggle-sound").addEventListener("click", toggleSoundBtn);
+
+document.getElementById("btn-settings").addEventListener("click", ()=>{
+  updateSoundIcons();
+  document.getElementById("modal-settings").classList.add("active");
+});
+document.getElementById("settings-close").addEventListener("click", ()=>{
+  document.getElementById("modal-settings").classList.remove("active");
+});
+document.getElementById("reset-row").addEventListener("click", ()=>{
+  SFX.tap();
+  document.getElementById("modal-settings").classList.remove("active");
+  document.getElementById("modal-reset-confirm").classList.add("active");
+});
+document.getElementById("reset-cancel").addEventListener("click", ()=>{
+  SFX.tap();
+  document.getElementById("modal-reset-confirm").classList.remove("active");
+  document.getElementById("modal-settings").classList.add("active");
+});
+document.getElementById("reset-confirm-yes").addEventListener("click", ()=>{
+  save = defaultSave();
+  persist();
+  renderHub();
+  updateSoundIcons();
+  document.getElementById("modal-reset-confirm").classList.remove("active");
+});
+
+document.getElementById("btn-achievements").addEventListener("click", ()=>{
+  renderAchievements();
+  document.getElementById("modal-achievements").classList.add("active");
+});
+document.getElementById("ach-close").addEventListener("click", ()=>{
+  document.getElementById("modal-achievements").classList.remove("active");
+});
+
+/* ============================================================
+   INIT
+============================================================ */
+renderHub();
+updateSoundIcons();
+
+})();
+</script>
+</body>
+</html>

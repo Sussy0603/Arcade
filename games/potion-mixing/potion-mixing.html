@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#191430"/>
+<title>Wickbrew — Potion Mixing</title>
+<style>
+:root{
+  --bg:#120e24; --room:#191430; --panel:#241d42; --panelIn:#2f2653;
+  --line:rgba(255,255,255,.15); --line2:rgba(255,255,255,.3);
+  --text:#efe9ff; --dim:#a99ecb;
+  --violet:#9b7ce0; --violet2:#c4aef5; --moss:#7fd6a5; --amber:#f0b45c;
+  --bad:#e2708f; --gold:#f5d46a;
+  --ui:'Nunito','Segoe UI',system-ui,-apple-system,sans-serif;
+  --dsp:ui-rounded,'SF Pro Rounded','Baloo 2','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  --serif:'Iowan Old Style','Palatino Linotype',Georgia,serif;
+  --mono:'SFMono-Regular',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+body{font-family:var(--ui);background:#0a0718;color:var(--text);display:flex;align-items:center;
+  justify-content:center;user-select:none;-webkit-user-select:none}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+#app{position:relative;width:100%;height:100%;max-width:540px;max-height:100vh;overflow:hidden;
+  background:radial-gradient(110% 55% at 50% 8%,#2c2354 0%,transparent 62%),
+    linear-gradient(180deg,#191430,#120e24 60%,#0d0a1c);
+  box-shadow:0 0 90px rgba(0,0,0,.7);display:flex;flex-direction:column}
+@media(min-width:760px){#app{max-width:min(94vw,620px)}}
+
+.hud{display:flex;gap:5px;align-items:center;padding:calc(9px + env(safe-area-inset-top)) 9px 5px;
+  z-index:20;overflow:hidden}
+.chip{background:rgba(14,10,30,.6);border:1px solid var(--line);border-radius:999px;padding:6px 10px;
+  display:flex;align-items:center;gap:5px;font-weight:800;font-size:13px;white-space:nowrap;flex:none;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.chip b{font-family:var(--mono);letter-spacing:-.3px}
+.chip.coins{color:var(--gold)} .chip.disc{color:var(--violet2)}
+.spacer{flex:1}
+.icbtn{width:35px;height:35px;border-radius:50%;border:1px solid var(--line);flex:none;
+  background:rgba(14,10,30,.6);display:grid;place-items:center;font-size:15px;transition:transform .12s;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative}
+.icbtn:active{transform:scale(.9)}
+.icbtn.off{opacity:.42}
+.dot{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;border-radius:999px;
+  background:var(--bad);font-size:9px;font-weight:900;display:grid;place-items:center;padding:0 3px;
+  color:#2a0713}
+
+/* goal card */
+#goal{margin:2px 11px 4px;display:flex;align-items:center;gap:10px;border-radius:15px;padding:8px 11px;
+  background:linear-gradient(180deg,var(--panel),#1e1838);border:1px solid var(--line);z-index:12}
+#goal .sw{width:44px;height:44px;border-radius:12px;flex:none;border:2px solid rgba(255,255,255,.28);
+  box-shadow:0 4px 14px rgba(0,0,0,.5),inset 0 -8px 14px rgba(0,0,0,.25);position:relative;overflow:hidden}
+#goal .sw::after{content:'';position:absolute;left:14%;top:10%;width:34%;height:26%;border-radius:50%;
+  background:rgba(255,255,255,.4);filter:blur(2px)}
+#goal .tx{flex:1;min-width:0}
+#goal .tx b{display:block;font-family:var(--dsp);font-size:15px;font-weight:900;line-height:1.2}
+#goal .tx small{display:block;font-family:var(--serif);font-style:italic;font-size:11.5px;color:var(--dim);
+  line-height:1.35;margin-top:2px}
+#match{width:52px;flex:none;text-align:center}
+#match .pct{font-family:var(--dsp);font-weight:900;font-size:17px;line-height:1}
+#match .lb{font-size:8px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
+#matchBar{height:4px;border-radius:9px;background:rgba(0,0,0,.45);margin-top:4px;overflow:hidden}
+#matchBar i{display:block;height:100%;background:linear-gradient(90deg,#e2708f,#f0b45c 55%,#7fd6a5);
+  transition:width .25s}
+
+/* cauldron */
+#pot{position:relative;flex:1;min-height:0;margin:0 11px;border-radius:18px;overflow:hidden;
+  background:radial-gradient(80% 60% at 50% 82%,#2b2350,#171130 70%);border:1px solid var(--line)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#potMsg{position:absolute;left:0;right:0;top:8px;text-align:center;font-family:var(--dsp);font-weight:900;
+  font-size:14px;text-shadow:0 2px 8px rgba(0,0,0,.8);pointer-events:none;padding:0 14px;z-index:3}
+#potSub{position:absolute;left:0;right:0;top:28px;text-align:center;font-size:10.5px;font-weight:800;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--violet2);opacity:.9;pointer-events:none;
+  text-shadow:0 2px 6px rgba(0,0,0,.8);z-index:3}
+
+/* slots */
+#slots{display:flex;gap:6px;justify-content:center;padding:7px 11px 3px;min-height:52px;z-index:12}
+.slot{width:44px;height:44px;border-radius:13px;border:1px dashed rgba(255,255,255,.16);
+  display:grid;place-items:center;font-size:20px;position:relative;background:rgba(0,0,0,.2)}
+.slot.full{border:1px solid var(--line2);background:linear-gradient(180deg,#3a2f66,#251e46);
+  animation:pop .26s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{transform:scale(.5);opacity:0}}
+.slot .x{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;
+  background:#3a2246;border:1px solid var(--line);font-size:9px;display:grid;place-items:center;color:#ffb0c4}
+
+/* actions */
+#acts{display:flex;gap:8px;padding:2px 11px 4px;z-index:12}
+.abtn{flex:1;height:44px;border-radius:14px;font-family:var(--dsp);font-weight:900;font-size:14px;
+  background:var(--panelIn);border:1px solid var(--line2);display:flex;align-items:center;
+  justify-content:center;gap:6px;transition:transform .1s}
+.abtn:active{transform:translateY(2px)}
+.abtn.pri{background:linear-gradient(180deg,var(--violet2),var(--violet));color:#1b1233;
+  box-shadow:0 4px 0 #6a4fb0;border-color:rgba(255,255,255,.3)}
+.abtn.pri:active{box-shadow:0 1px 0 #6a4fb0}
+.abtn.warm{background:linear-gradient(180deg,#f5cf8c,var(--amber));color:#3a2409;box-shadow:0 4px 0 #ac7b30}
+.abtn:disabled{opacity:.4;box-shadow:none}
+.abtn.hide{display:none}
+
+/* shelf */
+#shelfWrap{padding:3px 8px calc(9px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(70,55,120,0),rgba(60,46,105,.35) 30%,rgba(35,26,66,.65));
+  border-top:1px solid rgba(255,255,255,.07);z-index:12}
+#shelfLbl{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  padding:3px 4px 2px}
+#shelf{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+#shelf::-webkit-scrollbar{display:none}
+.rg{flex:0 0 auto;width:56px;border-radius:13px;padding:5px 3px 5px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#332a5e,#221b40);display:flex;flex-direction:column;align-items:center;
+  gap:2px;position:relative;transition:transform .12s}
+.rg:active{transform:translateY(2px) scale(.95)}
+.rg .em{font-size:18px;line-height:1}
+.rg .sw{width:26px;height:7px;border-radius:9px;border:1px solid rgba(0,0,0,.4)}
+.rg .nm{font-size:7.5px;font-weight:900;text-align:center;line-height:1.1}
+.rg.locked{opacity:.32;filter:grayscale(.6)}
+.rg .lk{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:900;
+  background:rgba(0,0,0,.45);border-radius:13px}
+
+/* sheets */
+.scrim{position:absolute;inset:0;z-index:60;display:none;background:rgba(8,5,20,.7);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);align-items:center;justify-content:center;padding:14px}
+.scrim.on{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:430px;max-height:88%;background:linear-gradient(180deg,#2c2352,#181231);
+  border:1px solid var(--line2);border-radius:22px;display:flex;flex-direction:column;overflow:hidden;
+  animation:pops .3s cubic-bezier(.2,1.25,.4,1);box-shadow:0 24px 60px rgba(0,0,0,.65)}
+@keyframes pops{from{transform:scale(.88);opacity:0}}
+.shead{padding:15px 18px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.09);display:flex;
+  align-items:center;gap:10px}
+.shead h2{font-family:var(--dsp);font-size:21px;font-weight:900;flex:1}
+.shead p{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--violet2);
+  opacity:.85;margin-top:2px}
+.sbody{padding:12px 16px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sfoot{padding:10px 16px calc(14px + env(safe-area-inset-bottom));flex:none;display:flex;gap:8px;
+  border-top:1px solid rgba(255,255,255,.09)}
+.btn{flex:1;padding:13px 14px;border-radius:14px;font-family:var(--dsp);font-weight:900;font-size:15px;
+  background:var(--panelIn);border:1px solid var(--line2);transition:transform .1s}
+.btn:active{transform:translateY(2px)}
+.btn.pri{background:linear-gradient(180deg,var(--violet2),var(--violet));color:#1b1233;
+  box-shadow:0 4px 0 #6a4fb0;border-color:rgba(255,255,255,.3)}
+
+/* grimoire entries */
+.entry{display:flex;gap:11px;align-items:flex-start;padding:11px 10px;border-radius:14px;margin-bottom:8px;
+  background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.08)}
+.entry.found{background:linear-gradient(180deg,rgba(127,214,165,.11),rgba(0,0,0,.24));
+  border-color:rgba(127,214,165,.28)}
+.entry.goal{box-shadow:0 0 0 2px var(--violet)}
+.entry .sw{width:40px;height:40px;border-radius:11px;flex:none;border:2px solid rgba(255,255,255,.25);
+  position:relative;overflow:hidden;box-shadow:inset 0 -7px 12px rgba(0,0,0,.3)}
+.entry .sw::after{content:'';position:absolute;left:14%;top:10%;width:34%;height:26%;border-radius:50%;
+  background:rgba(255,255,255,.42);filter:blur(2px)}
+.entry .tx{flex:1;min-width:0}
+.entry .tx b{display:block;font-family:var(--dsp);font-size:14.5px;font-weight:900}
+.entry .tx .rid{font-family:var(--serif);font-style:italic;font-size:12px;color:var(--dim);line-height:1.45;
+  margin-top:2px}
+.entry .tx .meta{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--violet2);margin-top:5px;opacity:.85}
+.entry .go{align-self:center;padding:7px 10px;border-radius:11px;background:var(--panelIn);
+  border:1px solid var(--line2);font-size:11px;font-weight:900;white-space:nowrap;flex:none}
+.entry .go.on{background:var(--violet);color:#1b1233}
+
+/* orders */
+.ord{display:flex;gap:10px;align-items:center;padding:11px 10px;border-radius:14px;margin-bottom:8px;
+  background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.08)}
+.ord .who{width:38px;height:38px;border-radius:11px;background:var(--panelIn);display:grid;place-items:center;
+  font-size:19px;flex:none;border:1px solid var(--line)}
+.ord .tx{flex:1;min-width:0}
+.ord .tx b{display:block;font-size:13.5px;font-weight:900}
+.ord .tx small{display:block;font-family:var(--serif);font-style:italic;font-size:11.5px;color:var(--dim);
+  line-height:1.4;margin-top:2px}
+.ord .give{padding:8px 11px;border-radius:11px;font-size:11.5px;font-weight:900;white-space:nowrap;flex:none;
+  background:var(--moss);color:#08281a}
+.ord .give.no{background:rgba(255,255,255,.08);color:var(--dim)}
+.shelfItem{display:flex;gap:9px;align-items:center;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.07)}
+.shelfItem .sw{width:26px;height:34px;border-radius:5px 5px 9px 9px;border:1px solid rgba(255,255,255,.3);
+  flex:none;box-shadow:inset 0 -6px 10px rgba(0,0,0,.35)}
+.shelfItem .tx{flex:1;min-width:0;font-size:13px;font-weight:800}
+.shelfItem .tx small{display:block;font-size:10.5px;color:var(--dim);font-weight:700}
+.shelfItem .sell{padding:6px 10px;border-radius:10px;background:var(--gold);color:#2f2405;font-weight:900;
+  font-size:11px;flex:none}
+.help li{margin:0 0 9px 16px;font-size:13px;line-height:1.5;color:#e4dcf7}
+.help li b{color:var(--violet2)}
+.note{font-size:12.5px;color:var(--dim);line-height:1.55;margin-top:10px}
+
+#toast{position:absolute;left:50%;top:44%;transform:translateX(-50%);z-index:55;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px}
+.tst{background:rgba(12,8,26,.88);border:1px solid var(--line2);border-radius:999px;padding:7px 15px;
+  font-weight:900;font-size:13px;animation:tup 1.6s ease forwards;white-space:nowrap}
+@keyframes tup{0%{transform:translateY(10px) scale(.9);opacity:0}13%{transform:none;opacity:1}
+  74%{opacity:1}100%{transform:translateY(-22px);opacity:0}}
+.tst.good{color:var(--moss)} .tst.bad{color:#ffb0c4} .tst.gold{color:var(--gold)}
+
+#title{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding:26px;text-align:center;
+  background:radial-gradient(90% 60% at 50% 34%,#332a63,#0d0a1c 74%)}
+#title.hide{display:none}
+#title .logo{font-size:60px;filter:drop-shadow(0 10px 20px rgba(155,124,224,.5));
+  animation:bob 3.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-9px)}}
+#title h1{font-family:var(--dsp);font-size:40px;font-weight:900;letter-spacing:-.02em;margin-top:4px}
+#title .tag{color:var(--violet2);font-size:12px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;
+  margin-bottom:20px}
+#title .btns{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+#title .btn{max-width:250px;width:100%;flex:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="chip coins">🪙<b id="hCoins">0</b></div>
+    <div class="chip disc">📖<b id="hDisc">0</b>/<b id="hTot">0</b></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="bGrim">📖</button>
+    <button class="icbtn" id="bOrders">📜<span class="dot" id="ordDot" style="display:none">0</span></button>
+    <button class="icbtn" id="bShelf">🧪</button>
+    <button class="icbtn" id="bHelp">？</button>
+    <button class="icbtn" id="bSound">🔊</button>
+  </div>
+
+  <div id="goal">
+    <div class="sw" id="goalSw"></div>
+    <div class="tx"><b id="goalName">No recipe chosen</b><small id="goalRid">Open the grimoire and pick something to chase.</small></div>
+    <div id="match"><div class="pct" id="matchPct">—</div><div class="lb">match</div>
+      <div id="matchBar"><i style="width:0%"></i></div></div>
+  </div>
+
+  <div id="pot">
+    <canvas id="cv"></canvas>
+    <div id="potMsg"></div>
+    <div id="potSub"></div>
+  </div>
+
+  <div id="slots"></div>
+
+  <div id="acts">
+    <button class="abtn" id="bClear">🫗 Empty</button>
+    <button class="abtn pri" id="bBrew">🔥 Set to boil</button>
+    <button class="abtn warm hide" id="bPour">🍶 Pour</button>
+  </div>
+
+  <div id="shelfWrap">
+    <div id="shelfLbl">Reagents</div>
+    <div id="shelf"></div>
+  </div>
+
+  <div id="toast"></div>
+  <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+  <div id="title">
+    <div class="logo">⚗️</div>
+    <h1>Wickbrew</h1>
+    <div class="tag">Mix by colour</div>
+    <div class="btns">
+      <button class="btn pri" id="tPlay">Light the burner</button>
+      <button class="btn" id="tHelp">How mixing works</button>
+      <button class="btn" id="tReset" style="display:none">Start over</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   Wickbrew — a potion shop built on pigment mixing.
+
+   Colours live in RYB space (red / yellow / blue), the way paint behaves:
+   blue + yellow really does make green, and all three make mud. Each reagent
+   is a point in that space; the cauldron holds their average. Recipes are
+   just colours with riddles attached — hit the colour, and you have it.
+   ========================================================================== */
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const SAVE_KEY = 'wickbrew.save.v1';
+
+/* ---------------------- RYB → RGB (trilinear, paint-like) ---------------------- */
+const CORNERS = [
+  [255,255,255], // 000 nothing → white
+  [255, 39, 42], // 100 red
+  [255,234, 51], // 010 yellow
+  [ 40, 78,220], // 001 blue
+  [255,143, 32], // 110 orange
+  [123, 44,158], // 101 purple
+  [ 22,178, 90], // 011 green
+  [ 58, 40, 36], // 111 near-black mud
+];
+function rybToRgb(r, y, b){
+  const w000=(1-r)*(1-y)*(1-b), w100=r*(1-y)*(1-b), w010=(1-r)*y*(1-b), w001=(1-r)*(1-y)*b,
+        w110=r*y*(1-b),        w101=r*(1-y)*b,     w011=(1-r)*y*b,     w111=r*y*b;
+  const ws=[w000,w100,w010,w001,w110,w101,w011,w111];
+  let R=0,G=0,B=0;
+  for(let i=0;i<8;i++){ R+=CORNERS[i][0]*ws[i]; G+=CORNERS[i][1]*ws[i]; B+=CORNERS[i][2]*ws[i]; }
+  return [R|0, G|0, B|0];
+}
+const cssOf = ryb => { const c = rybToRgb(ryb[0],ryb[1],ryb[2]); return `rgb(${c[0]},${c[1]},${c[2]})`; };
+const dist = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+function mixOf(list){
+  if(!list.length) return null;
+  let r=0,y=0,b=0;
+  list.forEach(id => { const g = REG[id]; r+=g.ryb[0]; y+=g.ryb[1]; b+=g.ryb[2]; });
+  return [r/list.length, y/list.length, b/list.length];
+}
+
+/* ------------------------------ reagents ------------------------------ */
+const REG = {
+  ember:  {n:'Emberroot', em:'🌶️', ryb:[1.00,.18,.00], tags:['fire'],        need:0},
+  sun:    {n:'Sunbloom',  em:'🌻', ryb:[.05,1.00,.00], tags:['light'],       need:0},
+  tide:   {n:'Tidepetal', em:'🌊', ryb:[.00,.05,1.00], tags:['water'],       need:0},
+  moon:   {n:'Moonmilk',  em:'🥛', ryb:[.00,.00,.00], tags:['light','calm'], need:0},
+  night:  {n:'Nightbead', em:'⚫', ryb:[.95,.95,.95], tags:['dark'],         need:0},
+  fern:   {n:'Copperfern',em:'🌿', ryb:[.08,.72,.58], tags:['life'],         need:1},
+  thorn:  {n:'Duskthorn', em:'🍇', ryb:[.72,.02,.70], tags:['dark'],         need:2},
+  marig:  {n:'Marigold',  em:'🔶', ryb:[.72,.86,.02], tags:['fire','sweet'], need:3},
+  frost:  {n:'Frostvine', em:'❄️', ryb:[.02,.34,.82], tags:['water','calm'], need:4},
+  blood:  {n:'Bloodbell', em:'🌺', ryb:[.98,.02,.26], tags:['life'],         need:5},
+  silt:   {n:'River silt',em:'🪨', ryb:[.48,.50,.46], tags:['earth'],        need:6},
+  honey:  {n:'Combhoney', em:'🍯', ryb:[.42,.90,.06], tags:['sweet'],        need:7},
+  glass:  {n:'Sea glass', em:'🫧', ryb:[.02,.46,.62], tags:['water'],        need:8},
+  flax:   {n:'Starflax',  em:'✨', ryb:[.22,.14,.62], tags:['air','calm'],   need:9},
+  rust:   {n:'Rustcap',   em:'🍄', ryb:[.84,.52,.16], tags:['earth','fire'], need:10},
+  ash:    {n:'Palewort',  em:'🌾', ryb:[.26,.24,.22], tags:['air'],          need:11},
+};
+const REG_IDS = Object.keys(REG);
+
+/* ------------------------------ recipes ------------------------------
+   `f` is one formula that reaches the colour — the target is computed from it,
+   never shown. Any mix landing inside `tol` counts, so most potions have
+   several honest answers.                                                */
+const BOOK = [
+  {id:'sleep', n:'Sleeping Draught', em:'😴', f:['tide','moon'],          tol:.15, price:26,
+   rid:'The colour of the hour before dawn, when the sea is still asleep.'},
+  {id:'sun',   n:'Sun Tonic',        em:'☀️', f:['sun','marig'],          tol:.15, price:28,
+   rid:'Bottled noon. It should hurt a little to look at.'},
+  {id:'ivy',   n:'Ivy Elixir',       em:'🌱', f:['sun','tide'],           tol:.14, price:32,
+   rid:'What the yellow field becomes when the rain arrives.'},
+  {id:'ember', n:'Ember Philtre',    em:'🔥', f:['ember','marig'],        tol:.15, price:36, req:'fire',
+   rid:'Coals at the bottom of the grate. Must carry fire.'},
+  {id:'dusk',  n:'Dusk Veil',        em:'🌙', f:['thorn','ember','tide'], tol:.15, price:44, req:'dark',
+   rid:'The last purple minute of evening. Something dark must be in it.'},
+  {id:'brine', n:'Sea Breath',       em:'🐚', f:['tide','glass'],         tol:.14, price:40, req:'water',
+   rid:'Cold green-blue, like breathing under the pier.'},
+  {id:'honey', n:'Honeylight',       em:'🍮', f:['honey','sun','moon'],   tol:.14, price:42, req:'sweet',
+   rid:'Warm and pale and far too sweet.'},
+  {id:'rose',  n:'Rosewater',        em:'🌸', f:['blood','moon','moon'],  tol:.13, price:46,
+   rid:'Red, but shy about it. Mostly nothing at all.'},
+  {id:'ash',   n:'Ash Remedy',       em:'🪶', f:['silt','moon'],          tol:.13, price:38,
+   rid:'The grey of a kettle left out in the weather.'},
+  {id:'ink',   n:'Ink of Night',     em:'🖋️', f:['night','thorn'],        tol:.15, price:52, req:'dark',
+   rid:'So dark it drinks the candle. Nothing pale survives it.'},
+  {id:'sage',  n:'Sage Draught',     em:'🍃', f:['fern','silt','moon'],   tol:.13, price:50,
+   rid:'Green gone quiet. Dusty, like a herb shelf.'},
+  {id:'copper',n:'Copper Sunrise',   em:'🌅', f:['ember','sun','marig'],  tol:.13, price:54, req:'fire',
+   rid:'The exact orange of the first four minutes of the day.'},
+  {id:'void',  n:'Void Tears',       em:'🕳️', f:['night','tide','flax'],  tol:.13, price:62, req:'dark',
+   rid:'Blue that has been somewhere it should not have gone.'},
+  {id:'peach', n:'Peach Cordial',    em:'🍑', f:['marig','moon','blood'], tol:.13, price:58, req:'sweet',
+   rid:'Soft orange, the inside of a good afternoon.'},
+  {id:'thistl',n:'Thistle Tonic',    em:'🪻', f:['thorn','moon','flax'],  tol:.13, price:60,
+   rid:'Mauve and prickly. Faded purple on a chalk hill.'},
+  {id:'gild',  n:'Gilded Marrow',    em:'🏵️', f:['rust','honey','silt'],  tol:.12, price:74, req:'earth',
+   rid:'Old gold gone dusty, with rust in it. Something of the ground must be present.'},
+];
+BOOK.forEach(r => { r.target = mixOf(r.f); r.tags = new Set(r.f.flatMap(id => REG[id].tags)); });
+const bookById = id => BOOK.find(r => r.id === id);
+
+const CUSTOMERS = [
+  {em:'🧙', n:'Ellery the hedge-witch'}, {em:'👵', n:'Nan Boothby'},
+  {em:'🧑‍🌾', n:'Tamsin from the mill'}, {em:'🧜', n:'A visitor, damp'},
+  {em:'🦉', n:'The owl, apparently'},    {em:'🧑‍🎓', n:'A very tired student'},
+  {em:'👨‍🍳', n:'Cook at the Bell'},      {em:'🐈‍⬛', n:'Someone\'s cat'},
+];
+const ASKS = [
+  'I will not ask what is in it.','Same as last time, if you remember.',
+  'It is for my mother. Do not skimp.','Quickly, please, before the tide turns.',
+  'I can pay. I would rather not explain.','The book said you would know the one.',
+  'Something for the noise in my head.','A gift. Wrap it if you can.',
+];
+
+/* ------------------------------ state ------------------------------ */
+let S = {coins:0, found:{}, shelf:[], orders:[], goal:null, sound:true, brews:0, seen:false};
+let C = {slots:[], phase:'mix', stir:0, heat:0, turns:0, need:3, pour:0, quality:null,
+         lastAngle:null, stirScore:[], result:null};
+let running = false, lastT = 0, T = 0;
+
+const discCount = () => Object.keys(S.found).length;
+const regOK = id => discCount() >= REG[id].need;
+
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
+    if(d && typeof d === 'object'){
+      S = Object.assign(S, d);
+      S.found = S.found||{}; S.shelf = S.shelf||[]; S.orders = S.orders||[];
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ------------------------------ audio ------------------------------ */
+let AC = null;
+function beep(f,d,t,v){
+  if(!S.sound) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = t||'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, AC.currentTime);
+    g.gain.linearRampToValueAtTime(v||.07, AC.currentTime+.012);
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime+(d||.15));
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+(d||.15)+.03);
+  }catch(e){}
+}
+const sfx = {
+  plop: ()=>beep(rnd(240,340),.16,'sine',.07),
+  tap:  ()=>beep(520,.06,'triangle',.05),
+  stir: ()=>beep(rnd(170,220),.1,'sine',.035),
+  boil: ()=>beep(90,.4,'sawtooth',.04),
+  pourS:()=>beep(rnd(300,420),.1,'sine',.03),
+  good: ()=>{beep(660,.1,'sine',.06); setTimeout(()=>beep(990,.16,'sine',.06),85);},
+  disc: ()=>{[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>beep(f,.22,'sine',.06),i*90));},
+  bad:  ()=>beep(120,.3,'sawtooth',.05),
+  coin: ()=>beep(1040,.1,'square',.04),
+};
+
+/* ------------------------------ canvas ------------------------------ */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1, bubbles=[], sparks=[];
+function sizeCanvas(){
+  const r = $('#pot').getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1,2);
+  W = Math.max(50,r.width); H = Math.max(50,r.height);
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', sizeCanvas);
+
+function potGeom(){
+  const R = Math.min(W*0.38, H*0.28, 150);
+  return {cx: W/2, cy: H*0.47, R};
+}
+function curColour(){
+  const m = mixOf(C.slots);
+  return m || [.10,.14,.30];
+}
+function drawScene(dt){
+  ctx.clearRect(0,0,W,H);
+  const g = potGeom();
+  const col = curColour();
+  const rgb = rybToRgb(col[0],col[1],col[2]);
+  const base = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  const lit  = `rgb(${Math.min(255,rgb[0]*1.35)|0},${Math.min(255,rgb[1]*1.35)|0},${Math.min(255,rgb[2]*1.35)|0})`;
+  const drk  = `rgb(${rgb[0]*.42|0},${rgb[1]*.42|0},${rgb[2]*.42|0})`;
+  const empty = C.slots.length === 0;
+
+  /* fire under the pot */
+  const heat = C.phase === 'stir' ? clamp(C.heat,0,1) : C.phase === 'pour' ? .5 : .18;
+  for(let i=0;i<7;i++){
+    const fx = g.cx + Math.sin(T*4 + i)*g.R*.42;
+    const fy = g.cy + g.R*.92 + Math.cos(T*3+i)*4;
+    const fr = (8 + Math.sin(T*7+i*2)*4) * (0.6 + heat);
+    const fg = ctx.createRadialGradient(fx,fy,1,fx,fy,fr*2.4);
+    fg.addColorStop(0, `rgba(255,214,120,${.5*(0.4+heat)})`);
+    fg.addColorStop(.5, `rgba(255,130,40,${.28*(0.4+heat)})`);
+    fg.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.arc(fx,fy,fr*2.4,0,6.283); ctx.fill();
+  }
+
+  /* glow */
+  const gg = ctx.createRadialGradient(g.cx, g.cy-g.R*.2, g.R*.1, g.cx, g.cy, g.R*2.4);
+  gg.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${empty?0:.30})`);
+  gg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gg; ctx.fillRect(0,0,W,H);
+
+  /* the bench the whole thing stands on */
+  const benchY = g.cy + g.R*1.34;
+  const bg = ctx.createLinearGradient(0, benchY-6, 0, H);
+  bg.addColorStop(0, 'rgba(58,45,96,.85)'); bg.addColorStop(1, 'rgba(24,18,48,.9)');
+  ctx.fillStyle = bg; ctx.fillRect(0, benchY, W, H-benchY);
+  ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.fillRect(0, benchY, W, 2);
+
+  /* cauldron: three legs, a heavy iron belly, a lip */
+  ctx.save();
+  ctx.fillStyle = '#241c40';
+  [-0.62, 0, 0.62].forEach(o => {
+    ctx.save();
+    ctx.translate(g.cx + o*g.R*0.95, g.cy + g.R*1.02);
+    ctx.rotate(o*0.45);
+    ctx.beginPath(); ctx.ellipse(0, g.R*0.16, g.R*0.10, g.R*0.24, 0, 0, 6.283); ctx.fill();
+    ctx.restore();
+  });
+  const body = ctx.createLinearGradient(g.cx - g.R, g.cy - g.R*.4, g.cx + g.R, g.cy + g.R);
+  body.addColorStop(0, '#3a3062'); body.addColorStop(.45, '#251d43'); body.addColorStop(1, '#150f2c');
+  ctx.beginPath();
+  ctx.ellipse(g.cx, g.cy + g.R*.15, g.R*1.12, g.R*1.0, 0, 0, 6.283);
+  ctx.fillStyle = body; ctx.fill();
+  ctx.strokeStyle = '#0b071a'; ctx.lineWidth = 3; ctx.stroke();
+  // a band around the belly
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.ellipse(g.cx, g.cy + g.R*.42, g.R*1.06, g.R*.86, 0, 0.35, Math.PI-0.35); ctx.stroke();
+  ctx.restore();
+
+  /* liquid */
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(g.cx, g.cy - g.R*.12, g.R*.95, g.R*.42, 0, 0, 6.283);
+  ctx.clip();
+  ctx.fillStyle = empty ? '#221b40' : base;
+  ctx.fillRect(g.cx-g.R, g.cy-g.R, g.R*2, g.R*2);
+  if(!empty){
+    // swirl bands
+    const spin = C.stir;
+    for(let i=0;i<5;i++){
+      ctx.globalAlpha = .16 + .06*Math.sin(T*2+i);
+      ctx.fillStyle = i%2 ? lit : drk;
+      ctx.beginPath();
+      const a = spin*(1+i*.16) + i*1.25;
+      const rx = g.R*(.86 - i*.13), ry = g.R*(.38 - i*.055);
+      ctx.ellipse(g.cx + Math.cos(a)*g.R*.16, g.cy - g.R*.12 + Math.sin(a)*g.R*.05, rx, ry, a*.25, 0, 6.283);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // specular
+    ctx.globalAlpha = .25; ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(g.cx - g.R*.34, g.cy - g.R*.26, g.R*.22, g.R*.08, -.3, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(g.cx, g.cy - g.R*.12, g.R*.95, g.R*.42, 0, 0, 6.283); ctx.stroke();
+
+  /* rim */
+  ctx.strokeStyle = '#3b3168'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.ellipse(g.cx, g.cy - g.R*.12, g.R*1.0, g.R*.45, 0, 0, 6.283); ctx.stroke();
+  ctx.strokeStyle = '#554a8c'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(g.cx, g.cy - g.R*.14, g.R*1.0, g.R*.45, 0, 0, 6.283); ctx.stroke();
+
+  /* bubbles */
+  if(!empty && Math.random() < (C.phase==='stir' ? .5 : .12)){
+    bubbles.push({x: g.cx + rnd(-g.R*.7,g.R*.7), y: g.cy - g.R*.12 + rnd(-6,6),
+      r: rnd(2,6), life:1, vy: rnd(-.5,-.15)});
+  }
+  for(let i=bubbles.length-1;i>=0;i--){
+    const b = bubbles[i];
+    b.life -= dt*1.1; b.y += b.vy*dt*60; b.r += dt*3;
+    if(b.life <= 0){ bubbles.splice(i,1); continue; }
+    ctx.globalAlpha = b.life*.5; ctx.strokeStyle = lit; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.283); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  /* sparks */
+  for(let i=sparks.length-1;i>=0;i--){
+    const p = sparks[i];
+    p.life -= dt*1.2; p.x += p.vx*dt*60; p.y += p.vy*dt*60; p.vy += .04*dt*60;
+    if(p.life <= 0){ sparks.splice(i,1); continue; }
+    ctx.globalAlpha = p.life; ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  /* stir guide */
+  if(C.phase === 'stir'){
+    const prog = clamp(C.turns / C.need, 0, 1);
+    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.ellipse(g.cx, g.cy - g.R*.12, g.R*.72, g.R*.32, 0, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = '#c4aef5'; ctx.lineWidth = 5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.ellipse(g.cx, g.cy - g.R*.12, g.R*.72, g.R*.32, 0, -1.57, -1.57 + prog*6.283); ctx.stroke();
+    // heat ring
+    const hh = clamp(C.heat,0,1);
+    ctx.strokeStyle = hh > .82 ? '#e2708f' : hh > .6 ? '#f0b45c' : 'rgba(255,255,255,.25)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(g.cx, g.cy + g.R*.15, g.R*1.15, g.R*1.03, 0, -1.57, -1.57 + hh*6.283); ctx.stroke();
+  }
+
+  /* pour: vial filling */
+  if(C.phase === 'pour'){
+    const vx = g.cx + g.R*1.05, vy = g.cy - g.R*.5;
+    const vw = 30, vh = 74;
+    ctx.fillStyle = 'rgba(255,255,255,.10)';
+    roundRect(vx-vw/2, vy, vw, vh, 9); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2;
+    roundRect(vx-vw/2, vy, vw, vh, 9); ctx.stroke();
+    const fillH = clamp(C.pour,0,1.25) * vh;
+    ctx.save();
+    roundRect(vx-vw/2, vy, vw, vh, 9); ctx.clip();
+    ctx.fillStyle = base;
+    ctx.fillRect(vx-vw/2, vy + vh - fillH, vw, fillH);
+    ctx.globalAlpha = .3; ctx.fillStyle = '#fff';
+    ctx.fillRect(vx-vw/2, vy + vh - fillH, vw, 3);
+    ctx.restore();
+    // the line to stop at
+    const lineY = vy + vh*(1 - .82);
+    ctx.strokeStyle = '#7fd6a5'; ctx.lineWidth = 2; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(vx-vw/2-6, lineY); ctx.lineTo(vx+vw/2+6, lineY); ctx.stroke();
+    ctx.setLineDash([]);
+    if(C.pouring){
+      ctx.strokeStyle = base; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(g.cx + g.R*.6, g.cy - g.R*.2);
+      ctx.quadraticCurveTo(vx - 14, vy - 16, vx, vy + vh - fillH);
+      ctx.stroke();
+    }
+  }
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function burst(n, col){
+  const g = potGeom();
+  for(let i=0;i<n;i++){
+    const a = rnd(0,6.283), s = rnd(.6,3.2);
+    sparks.push({x:g.cx, y:g.cy-g.R*.12, vx:Math.cos(a)*s, vy:Math.sin(a)*s-1, r:rnd(1.6,3.6),
+      life:1, c:col});
+  }
+}
+
+/* ------------------------------ UI ------------------------------ */
+function say(a,b){ $('#potMsg').textContent = a; $('#potSub').textContent = b||''; }
+
+function renderHUD(){
+  $('#hCoins').textContent = Math.floor(S.coins);
+  $('#hDisc').textContent = discCount();
+  $('#hTot').textContent = BOOK.length;
+  const dot = $('#ordDot');
+  const ready = S.orders.filter(o => S.shelf.some(p => p.id === o.rec)).length;
+  dot.style.display = ready ? 'grid' : 'none';
+  dot.textContent = ready;
+}
+function renderGoal(){
+  const g = S.goal ? bookById(S.goal) : null;
+  if(!g){
+    $('#goalSw').style.background = 'repeating-linear-gradient(45deg,#2c2352 0 6px,#241d42 6px 12px)';
+    $('#goalName').textContent = 'No recipe chosen';
+    $('#goalRid').textContent = 'Open the grimoire and pick something to chase.';
+    $('#matchPct').textContent = '—';
+    $('#matchBar').firstElementChild.style.width = '0%';
+    return;
+  }
+  const found = !!S.found[g.id];
+  $('#goalSw').style.background = cssOf(g.target);
+  $('#goalName').textContent = found ? `${g.em} ${g.n}` : `${g.em} ???`;
+  $('#goalRid').textContent = g.rid;
+  updateMatch();
+}
+function matchOf(g){
+  if(!g || !C.slots.length) return 0;
+  const d = dist(mixOf(C.slots), g.target);
+  return clamp(1 - d / (g.tol*2.6), 0, 1);
+}
+function updateMatch(){
+  const g = S.goal ? bookById(S.goal) : null;
+  if(!g || !C.slots.length){
+    $('#matchPct').textContent = '—';
+    $('#matchBar').firstElementChild.style.width = '0%';
+    return;
+  }
+  const m = matchOf(g);
+  $('#matchPct').textContent = Math.round(m*100) + '%';
+  $('#matchPct').style.color = m > .93 ? '#7fd6a5' : m > .7 ? '#f0b45c' : '#e2708f';
+  $('#matchBar').firstElementChild.style.width = (m*100) + '%';
+}
+function renderSlots(){
+  const el = $('#slots');
+  el.innerHTML = '';
+  for(let i=0;i<4;i++){
+    const id = C.slots[i];
+    const d = document.createElement('div');
+    d.className = 'slot' + (id ? ' full' : '');
+    if(id){
+      d.innerHTML = `<span>${REG[id].em}</span>`;
+      if(C.phase === 'mix'){
+        const x = document.createElement('div');
+        x.className = 'x'; x.textContent = '✕';
+        x.onclick = ev => { ev.stopPropagation(); C.slots.splice(i,1); sfx.tap(); renderSlots(); updateMatch(); };
+        d.appendChild(x);
+      }
+    }else d.textContent = '';
+    el.appendChild(d);
+  }
+}
+function renderShelf(){
+  const el = $('#shelf');
+  el.innerHTML = REG_IDS.map(id => {
+    const g = REG[id], ok = regOK(id);
+    return `<div class="rg ${ok?'':'locked'}" data-r="${id}">
+      <div class="em">${g.em}</div>
+      <div class="sw" style="background:${cssOf(g.ryb)}"></div>
+      <div class="nm">${g.n}</div>
+      ${ok ? '' : `<div class="lk">🔒${g.need}</div>`}</div>`;
+  }).join('');
+  $$('#shelf .rg').forEach(e => e.onclick = () => addReagent(e.dataset.r));
+}
+function addReagent(id){
+  if(C.phase !== 'mix'){ toast('The pot is already working', 'bad'); return; }
+  if(!regOK(id)){ toast(`Unlocks after ${REG[id].need} discoveries`, 'bad'); sfx.bad(); return; }
+  if(C.slots.length >= 4){ toast('The pot is full', 'bad'); sfx.bad(); return; }
+  C.slots.push(id);
+  sfx.plop();
+  burst(9, cssOf(REG[id].ryb));
+  renderSlots(); updateMatch(); updateActions();
+}
+function updateActions(){
+  $('#bBrew').disabled = C.slots.length < 2 || C.phase !== 'mix';
+  $('#bBrew').classList.toggle('hide', C.phase === 'pour');
+  $('#bPour').classList.toggle('hide', C.phase !== 'pour');
+  $('#bClear').disabled = C.phase === 'stir' || C.phase === 'pour';
+}
+
+/* ------------------------------ brewing ------------------------------ */
+$('#bClear').onclick = () => {
+  if(C.phase !== 'mix') return;
+  C.slots = []; sfx.tap(); renderSlots(); updateMatch(); updateActions();
+};
+$('#bBrew').onclick = () => {
+  if(C.slots.length < 2) return;
+  C.phase = 'stir'; C.stir = 0; C.turns = 0; C.heat = 0; C.lastAngle = null; C.stirScore = [];
+  C.need = 2 + C.slots.length*0.5;
+  say('Stir it round', 'drag circles in the pot — steady, not wild');
+  sfx.boil();
+  renderSlots(); updateActions();
+};
+$('#bPour').addEventListener('pointerdown', e => {
+  if(C.phase !== 'pour') return;
+  e.preventDefault(); C.pouring = true;
+});
+const stopPour = () => {
+  if(C.phase !== 'pour' || !C.pouring) return;
+  C.pouring = false;
+  finishPotion();
+};
+window.addEventListener('pointerup', stopPour);
+window.addEventListener('pointercancel', stopPour);
+
+/* stirring: drag around the pot, count the turns */
+let stirring = false;
+cv.addEventListener('pointerdown', e => {
+  if(C.phase !== 'stir') return;
+  cv.setPointerCapture(e.pointerId);
+  stirring = true; C.lastAngle = null;
+});
+cv.addEventListener('pointermove', e => {
+  if(!stirring || C.phase !== 'stir') return;
+  const r = cv.getBoundingClientRect(), g = potGeom();
+  const x = e.clientX - r.left - g.cx, y = (e.clientY - r.top - (g.cy - g.R*.12)) / 0.45;
+  const a = Math.atan2(y, x);
+  if(C.lastAngle !== null){
+    let d = a - C.lastAngle;
+    while(d > Math.PI) d -= 6.283;
+    while(d < -Math.PI) d += 6.283;
+    if(Math.abs(d) < 1.2){
+      C.stir += d;
+      C.turns += Math.abs(d) / 6.283;
+      const speed = Math.abs(d);
+      // a steady hand costs nothing; whipping it round is what boils the pot
+      C.heat += Math.max(0, speed - 0.20) * 0.03;
+      C.stirScore.push(clamp(1 - Math.abs(speed - 0.16)/0.34, 0, 1));
+      if(Math.random() < .18) sfx.stir();
+    }
+  }
+  C.lastAngle = a;
+});
+const stopStir = () => { stirring = false; C.lastAngle = null; };
+cv.addEventListener('pointerup', stopStir);
+cv.addEventListener('pointercancel', stopStir);
+
+function finishPotion(){
+  if(C.finished) return;
+  C.finished = true;
+  const mix = mixOf(C.slots);
+  // which recipe (if any) does this colour actually make?
+  let hit = null, bestD = 1e9;
+  BOOK.forEach(r => {
+    const d = dist(mix, r.target);
+    if(d > r.tol) return;
+    if(r.req && !C.slots.some(id => REG[id].tags.includes(r.req))) return;
+    if(d < bestD){ bestD = d; hit = r; }
+  });
+  const stirAvg = C.stirScore.length
+    ? C.stirScore.reduce((s,v)=>s+v,0)/C.stirScore.length : 0;
+  const turnScore = clamp(1 - Math.abs(C.turns - C.need)/C.need, 0, 1);
+  const pourScore = (() => {
+    const p = C.pour;
+    if(p > 1.0) return clamp(1 - (p-1.0)/0.25, 0, 1) * .6;   // overfilled and spilling
+    return clamp(1 - Math.abs(p - .82)/0.34, 0, 1);
+  })();
+  const boiled = C.heat > 1;
+
+  let quality = 0, potion = null;
+  if(hit && !boiled){
+    const colScore = clamp(1 - bestD/hit.tol, 0, 1);
+    quality = clamp(colScore*0.42 + stirAvg*0.16 + turnScore*0.20 + pourScore*0.22, 0, 1);
+    potion = hit;
+  }
+
+  const wasNew = potion && !S.found[potion.id];
+  if(potion){
+    S.found[potion.id] = Math.max(S.found[potion.id]||0, Math.round(quality*100));
+    S.shelf.push({id:potion.id, q:quality, col:cssOf(potion.target)});
+    S.brews++;
+    if(wasNew){ S.coins += 30; }
+    burst(34, cssOf(potion.target));
+    if(wasNew) sfx.disc(); else sfx.good();
+  }else{
+    S.shelf.push({id:'sludge', q:0.1, col:cssOf(mix)});
+    S.brews++;
+    burst(14, '#6b5f80');
+    sfx.bad();
+  }
+  save(); renderHUD();
+
+  const near = BOOK.filter(r => !S.found[r.id])
+    .map(r => ({r, d: dist(mix, r.target)}))
+    .sort((a,b)=>a.d-b.d)[0];
+  let hintLine = '';
+  if(!potion && near){
+    const rel = near.d / near.r.tol;
+    hintLine = rel < 1.6 ? `Very close to something — a shade off.`
+             : rel < 2.6 ? `It leans near a recipe, but the colour is wrong.`
+             : `Nothing in the book looks like this.`;
+    if(near.d <= near.r.tol && near.r.req)
+      hintLine = `The colour is right for something, but it needs a ${near.r.req} reagent.`;
+  }
+
+  openSheet(`
+    <div class="shead"><div style="width:44px;height:44px;border-radius:12px;flex:none;
+      background:${potion?cssOf(potion.target):cssOf(mix)};border:2px solid rgba(255,255,255,.3)"></div>
+      <div style="flex:1"><h2>${potion ? potion.em + ' ' + potion.n : boiled ? '💥 Boiled over' : '🫗 Murky Draught'}</h2>
+      <p>${wasNew ? 'New discovery' : potion ? 'Bottled' : 'Not in the book'}</p></div></div>
+    <div class="sbody">
+      ${potion ? `<div style="font-family:var(--serif);font-style:italic;color:#a99ecb;font-size:13px;
+          line-height:1.5;margin-bottom:12px">${potion.rid}</div>` : ''}
+      ${boiled ? `<p class="note" style="color:#ffb0c4;margin-top:0">You worked it too hard — the pot
+        went over and took the good out of it.</p>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 4px">
+        ${statBox('Colour', potion ? Math.round(clamp(1-bestD/potion.tol,0,1)*100)+'%' : '—')}
+        ${statBox('Stirring', Math.round(((stirAvg*.45+turnScore*.55))*100)+'%')}
+        ${statBox('Pouring', Math.round(pourScore*100)+'%')}
+        ${statBox('Quality', potion ? Math.round(quality*100)+'%' : '—')}
+      </div>
+      ${potion ? `<p class="note">Into the rack it goes. ${wasNew ? 'The grimoire has filled itself in — and someone left 30🪙 on the counter for the trouble.' : ''}</p>`
+               : `<p class="note">${hintLine} It is still worth a coin or two to somebody.</p>`}
+      <p class="note" style="font-size:11.5px;opacity:.8">Mix used: ${C.slots.map(id=>REG[id].em+' '+REG[id].n).join(' + ')}</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Wipe the bench</button></div>`);
+  $('#sOk').onclick = () => { closeSheet(); resetPot(); };
+}
+function statBox(l, v){
+  return `<div style="background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.12);border-radius:12px;
+    padding:8px 10px"><small style="display:block;font-size:9.5px;font-weight:800;letter-spacing:.12em;
+    text-transform:uppercase;color:#a99ecb">${l}</small>
+    <b style="font-family:var(--dsp);font-size:19px;font-weight:900">${v}</b></div>`;
+}
+function resetPot(){
+  C = {slots:[], phase:'mix', stir:C.stir, heat:0, turns:0, need:3, pour:0,
+       lastAngle:null, stirScore:[], pouring:false};
+  say('', '');
+  renderSlots(); updateMatch(); updateActions();
+  maybeNewOrder();
+}
+
+/* ------------------------------ loop ------------------------------ */
+function loop(now){
+  if(!running) return;
+  const dt = Math.min(.05,(now-lastT)/1000);
+  lastT = now; T += dt;
+  tick(dt); drawScene(dt);
+  requestAnimationFrame(loop);
+}
+function tick(dt){
+  if(C.phase === 'mix'){ C.stir += dt*0.25; }
+  else if(C.phase === 'stir'){
+    C.stir += dt*0.3;
+    C.heat = Math.max(0, C.heat - dt*0.055);       // it cools if you let it
+    const p = clamp(C.turns/C.need, 0, 1);
+    say('Stir it round', `${Math.round(p*100)}% · heat ${Math.round(clamp(C.heat,0,1.2)*100)}%`);
+    if(C.heat > 1.15){
+      C.phase = 'pour'; C.pour = 0;
+      sfx.bad(); toast('It boiled over!', 'bad');
+      finishPotion();
+      return;
+    }
+    if(C.turns >= C.need){
+      C.phase = 'pour'; C.pour = 0; C.pouring = false;
+      say('Fill the vial', 'hold Pour and stop at the green line');
+      sfx.good();
+      updateActions();
+    }
+  }else if(C.phase === 'pour'){
+    if(C.pouring){
+      C.pour += dt*0.62;
+      if(Math.random() < .35) sfx.pourS();
+      if(C.pour > 1.3){ C.pouring = false; finishPotion(); }
+    }
+    const p = clamp(C.pour,0,1.3);
+    say('Fill the vial', p > 1.02 ? 'spilling!' : `${Math.round(p*100)}%`);
+  }
+}
+
+/* ------------------------------ orders ------------------------------ */
+function maybeNewOrder(){
+  if(S.orders.length >= 3) return;
+  if(S.brews < 1) return;
+  if(Math.random() > 0.62 && S.orders.length) return;
+  const known = BOOK.filter(r => S.found[r.id]);
+  const pool = known.length >= 2 ? known : BOOK.slice(0, 3);
+  const r = pick(pool);
+  const c = pick(CUSTOMERS);
+  S.orders.push({rec:r.id, who:c.em, name:c.n, line:pick(ASKS),
+    pay: Math.round(r.price * rnd(1.15, 1.6))});
+  save(); renderHUD();
+  toast('Someone left a note 📜');
+}
+function ordersSheet(){
+  if(!S.orders.length){
+    openSheet(`<div class="shead"><h2>📜 Requests</h2></div>
+      <div class="sbody"><p class="note" style="margin-top:0">Nobody has asked for anything yet.
+      Brew something and word will get round.</p></div>
+      <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+    $('#sOk').onclick = closeSheet; return;
+  }
+  const rows = S.orders.map((o,i) => {
+    const r = bookById(o.rec);
+    const have = S.shelf.some(p => p.id === o.rec);
+    return `<div class="ord"><div class="who">${o.who}</div>
+      <div class="tx"><b>${r.em} ${S.found[r.id] ? r.n : 'something like this'}</b>
+        <small>“${o.line}” — ${o.name}</small>
+        <small style="color:#f5d46a;font-style:normal;font-weight:800">pays ${o.pay}🪙</small></div>
+      <button class="give ${have?'':'no'}" data-i="${i}">${have?'Hand over':'Not brewed'}</button></div>`;
+  }).join('');
+  openSheet(`<div class="shead"><h2>📜 Requests</h2><p>${S.orders.length} waiting</p></div>
+    <div class="sbody">${rows}</div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+  $('#sOk').onclick = closeSheet;
+  $$('#sheet .give').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, o = S.orders[i];
+    const pi = S.shelf.findIndex(p => p.id === o.rec);
+    if(pi < 0){ toast('You have none of that bottled', 'bad'); sfx.bad(); return; }
+    const bottle = S.shelf[pi];
+    const pay = Math.round(o.pay * (0.6 + bottle.q*0.6));
+    S.shelf.splice(pi,1); S.orders.splice(i,1);
+    S.coins += pay; save(); renderHUD(); sfx.coin();
+    toast(`+${pay}🪙 — delivered`, 'gold');
+    ordersSheet();
+  });
+}
+function shelfSheet(){
+  if(!S.shelf.length){
+    openSheet(`<div class="shead"><h2>🧪 Rack</h2></div>
+      <div class="sbody"><p class="note" style="margin-top:0">Empty. Fill a vial and it lands here.</p></div>
+      <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+    $('#sOk').onclick = closeSheet; return;
+  }
+  const rows = S.shelf.map((p,i) => {
+    const r = p.id === 'sludge' ? null : bookById(p.id);
+    const price = r ? Math.round(r.price * (0.4 + p.q*0.8)) : 4;
+    return `<div class="shelfItem"><div class="sw" style="background:${p.col}"></div>
+      <div class="tx">${r ? r.em+' '+r.n : '🫗 Murky Draught'}
+        <small>${r ? Math.round(p.q*100)+'% quality' : 'unidentified'}</small></div>
+      <button class="sell" data-i="${i}">Sell ${price}🪙</button></div>`;
+  }).join('');
+  openSheet(`<div class="shead"><h2>🧪 Rack</h2><p>${S.shelf.length} bottled</p></div>
+    <div class="sbody">${rows}</div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+  $('#sOk').onclick = closeSheet;
+  $$('#sheet .sell').forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, p = S.shelf[i];
+    const r = p.id === 'sludge' ? null : bookById(p.id);
+    const price = r ? Math.round(r.price*(0.4+p.q*0.8)) : 4;
+    S.shelf.splice(i,1); S.coins += price; save(); renderHUD(); sfx.coin();
+    toast(`+${price}🪙`, 'gold');
+    shelfSheet();
+  });
+}
+function grimoire(){
+  const rows = BOOK.map(r => {
+    const found = !!S.found[r.id];
+    const isGoal = S.goal === r.id;
+    return `<div class="entry ${found?'found':''} ${isGoal?'goal':''}">
+      <div class="sw" style="background:${cssOf(r.target)}"></div>
+      <div class="tx"><b>${found ? r.em+' '+r.n : '❔ ' + '·'.repeat(6)}</b>
+        <div class="rid">${r.rid}</div>
+        <div class="meta">${found ? `best ${S.found[r.id]}% · worth ${r.price}🪙` :
+          r.req ? `needs something ${r.req}` : 'undiscovered'}</div></div>
+      <button class="go ${isGoal?'on':''}" data-g="${r.id}">${isGoal?'chasing':'chase'}</button></div>`;
+  }).join('');
+  openSheet(`<div class="shead"><div style="flex:1"><h2>📖 Grimoire</h2>
+      <p>${discCount()} of ${BOOK.length} found</p></div></div>
+    <div class="sbody">
+      <p class="note" style="margin:0 0 12px">Each page shows the colour, not the recipe.
+      Pick one to chase and the match meter will tell you how close the pot is.</p>
+      ${rows}</div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+  $('#sOk').onclick = closeSheet;
+  $$('#sheet .go').forEach(b => b.onclick = () => {
+    S.goal = S.goal === b.dataset.g ? null : b.dataset.g;
+    save(); renderGoal(); sfx.tap(); grimoire();
+  });
+}
+function helpSheet(){
+  openSheet(`<div class="shead"><div style="flex:1"><h2>How mixing works</h2>
+      <p>Colour is the puzzle</p></div></div>
+    <div class="sbody">
+      <ol class="help">
+        <li><b>Colour behaves like paint.</b> Blue and yellow make green, red and blue make purple,
+          all three make mud. Every reagent has a swatch under it — that is all you need.</li>
+        <li><b>Two to four reagents.</b> The pot holds their average, so doubling one pulls the
+          colour towards it. Moonmilk pales everything; Nightbead drowns it.</li>
+        <li><b>Chase a page.</b> Open the grimoire, tap <b>chase</b>, and the meter shows how near
+          the pot is to that colour. Recipes are colours, not fixed lists — several mixes will do.</li>
+        <li><b>Stir steadily.</b> Drag circles in the pot. Whipping it raises the heat, and a boiled
+          pot ruins the brew.</li>
+        <li><b>Pour carefully.</b> Hold <b>Pour</b> and let go at the green line on the vial.</li>
+      </ol>
+      <p class="note">Some pages also demand an <i>essence</i> — a reagent that is fiery, dark, sweet
+      and so on. The riddle always says so.</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Got it</button></div>`);
+  $('#sOk').onclick = closeSheet;
+}
+
+/* ------------------------------ shell ------------------------------ */
+function toast(m,k){
+  const d = document.createElement('div');
+  d.className = 'tst ' + (k||''); d.textContent = m;
+  $('#toast').appendChild(d); setTimeout(()=>d.remove(),1600);
+}
+function openSheet(h){ $('#sheet').innerHTML = h; $('#scrim').classList.add('on'); }
+function closeSheet(){ $('#scrim').classList.remove('on'); }
+$('#scrim').addEventListener('click', e => { if(e.target === $('#scrim')) closeSheet(); });
+$('#bGrim').onclick = grimoire;
+$('#bOrders').onclick = ordersSheet;
+$('#bShelf').onclick = shelfSheet;
+$('#bHelp').onclick = helpSheet;
+$('#bSound').onclick = () => {
+  S.sound = !S.sound; save();
+  $('#bSound').textContent = S.sound ? '🔊' : '🔇';
+  $('#bSound').classList.toggle('off', !S.sound);
+};
+$('#tHelp').onclick = helpSheet;
+$('#tPlay').onclick = () => {
+  $('#title').classList.add('hide');
+  S.seen = true; save();
+  sizeCanvas();
+  if(!S.goal) S.goal = BOOK[0].id;
+  renderGoal();
+  say('Drop in two to four reagents', 'watch the colour');
+  running = true; lastT = performance.now(); requestAnimationFrame(loop);
+};
+$('#tReset').onclick = () => {
+  if(!confirm('Clear the shop and forget every recipe?')) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+};
+
+const had = load();
+$('#bSound').textContent = S.sound ? '🔊' : '🔇';
+$('#bSound').classList.toggle('off', !S.sound);
+if(had && S.brews > 0){ $('#tPlay').textContent = 'Back to the bench'; $('#tReset').style.display = ''; }
+renderHUD(); renderShelf(); renderSlots(); renderGoal(); updateActions();
+sizeCanvas();
+setTimeout(sizeCanvas, 120);
+</script>
+</body>
+</html>

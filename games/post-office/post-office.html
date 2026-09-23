@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#1d2733"/>
+<title>Wickham Post Office</title>
+<style>
+:root{
+  --bg:#141c26; --room:#1d2733; --panel:#26323f; --panelIn:#31404f;
+  --line:rgba(255,255,255,.15); --line2:rgba(255,255,255,.3);
+  --text:#eef2f6; --dim:#9fb0bf;
+  --paper:#f3ead6; --ink:#2b2620;
+  --brass:#e2b562; --teal:#6fb9b0; --good:#84cc9a; --bad:#e07a72; --gold:#f0c24a;
+  --ui:'Nunito','Segoe UI',system-ui,-apple-system,sans-serif;
+  --dsp:ui-rounded,'SF Pro Rounded','Baloo 2','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  --serif:'Iowan Old Style','Palatino Linotype',Georgia,'Times New Roman',serif;
+  --hand:'Segoe Script','Bradley Hand','Snell Roundhand',cursive;
+  --mono:'SFMono-Regular',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+body{font-family:var(--ui);background:#0d131a;color:var(--text);display:flex;align-items:center;
+  justify-content:center;user-select:none;-webkit-user-select:none}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+#app{position:relative;width:100%;height:100%;max-width:560px;max-height:100vh;overflow:hidden;
+  background:radial-gradient(120% 55% at 50% 0%,#2b3846 0%,transparent 62%),
+    linear-gradient(180deg,#1d2733,#141c26 62%,#101720);
+  box-shadow:0 0 90px rgba(0,0,0,.65);display:flex;flex-direction:column}
+@media(min-width:780px){#app{max-width:min(94vw,640px)}}
+
+.hud{display:flex;gap:5px;align-items:center;padding:calc(9px + env(safe-area-inset-top)) 9px 6px;
+  z-index:20;overflow:hidden}
+.chip{background:rgba(12,20,28,.55);border:1px solid var(--line);border-radius:999px;padding:6px 10px;
+  display:flex;align-items:center;gap:5px;font-weight:800;font-size:13px;white-space:nowrap;flex:none;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+@media(max-width:410px){.chip.acc{display:none}}
+.chip b{font-family:var(--mono);letter-spacing:-.3px}
+.chip.coins{color:var(--gold)} .chip.acc{color:var(--teal)}
+.spacer{flex:1}
+.icbtn{width:35px;height:35px;border-radius:50%;border:1px solid var(--line);flex:none;
+  background:rgba(12,20,28,.55);display:grid;place-items:center;font-size:15px;transition:transform .12s;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative}
+.icbtn:active{transform:scale(.9)}
+.icbtn.off{opacity:.42}
+.dot{position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:var(--bad);
+  border:2px solid #1d2733}
+
+/* progress strip */
+#strip{display:flex;align-items:center;gap:9px;margin:0 12px 5px;z-index:12}
+#stripBar{flex:1;height:7px;border-radius:9px;background:rgba(0,0,0,.4);overflow:hidden;
+  border:1px solid rgba(0,0,0,.4)}
+#stripBar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--good));
+  transition:width .25s}
+#stripLbl{font-size:9.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  white-space:nowrap}
+
+/* ---------------- SORTING ---------------- */
+#stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+#sortView{position:absolute;inset:0;display:none;flex-direction:column}
+#sortView.on{display:flex}
+#peek{display:flex;justify-content:center;gap:5px;height:34px;align-items:flex-end;padding:0 12px}
+.peekCard{width:38px;height:26px;border-radius:3px;background:var(--paper);opacity:.72;
+  box-shadow:0 3px 8px rgba(0,0,0,.45);transform-origin:50% 100%;position:relative;overflow:hidden}
+.peekCard::after{content:'';position:absolute;left:0;right:0;top:0;height:100%;
+  background:linear-gradient(135deg,transparent 46%,rgba(120,100,70,.28) 50%,transparent 54%)}
+.peekCard:nth-child(2){opacity:.5;transform:scale(.94) rotate(-2.5deg)}
+.peekCard:nth-child(3){opacity:.32;transform:scale(.88) rotate(3deg)}
+
+#letterWrap{flex:1;min-height:0;display:grid;place-items:center;padding:8px 14px}
+#letter{width:min(330px,86vw);background:var(--paper);color:var(--ink);border-radius:5px;
+  padding:14px 15px 12px;position:relative;box-shadow:0 14px 34px rgba(0,0,0,.55);
+  animation:inFly .3s cubic-bezier(.2,1.2,.4,1);touch-action:none;cursor:grab}
+#letter.gone{animation:outFly .26s ease forwards}
+@keyframes inFly{from{transform:translateY(-38px) rotate(-4deg);opacity:0}}
+@keyframes outFly{to{transform:translateY(26px) scale(.86);opacity:0}}
+#letter::before{content:'';position:absolute;inset:0;border-radius:5px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(0,0,0,.05) 0 46%,rgba(0,0,0,.09) 50%,rgba(0,0,0,.03) 54%)}
+.stamp{position:absolute;top:9px;right:10px;width:40px;height:46px;border-radius:2px;
+  background:linear-gradient(150deg,#d0776a,#b25a50);
+  border:3px solid var(--paper);outline:1px dashed rgba(90,60,50,.45);outline-offset:-4px;
+  display:grid;place-items:center;font-size:17px;
+  box-shadow:0 2px 6px rgba(0,0,0,.28);transform:rotate(2.5deg)}
+.stamp.none{background:repeating-linear-gradient(45deg,#ded2ba 0 5px,#d0c3a8 5px 10px);
+  outline-color:rgba(120,110,90,.4);color:#8b8069}
+.cancel{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%) rotate(-9deg);
+  font-size:7px;font-weight:900;color:#6d3a33;opacity:.75;letter-spacing:.1em;white-space:nowrap;
+  background:rgba(243,234,214,.75);padding:0 2px;border-radius:2px}
+.toLbl{font-size:8.5px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#8a7f6c}
+.toName{font-family:var(--hand);font-size:21px;line-height:1.15;margin:2px 0 5px;padding-right:46px}
+.toAddr{font-family:var(--hand);font-size:15.5px;line-height:1.45;color:#3d362c;padding-right:46px}
+.smudge{background:linear-gradient(90deg,#3d362c 60%,rgba(61,54,44,.15));-webkit-background-clip:text;
+  background-clip:text;color:transparent;filter:blur(.2px)}
+.blot{display:inline-block;background:rgba(60,72,88,.45);border-radius:40% 60% 55% 45%;
+  color:transparent;padding:0 4px;filter:blur(1.4px)}
+.sticker{margin-top:9px;background:#e2b562;color:#3a2a08;border-radius:4px;padding:5px 8px;
+  font-size:11px;font-weight:900;letter-spacing:.04em;transform:rotate(-1.6deg);
+  box-shadow:0 3px 7px rgba(0,0,0,.28);display:inline-block}
+.parcelTag{position:absolute;bottom:9px;right:10px;font-size:22px}
+.letterBar{height:5px;border-radius:9px;background:rgba(0,0,0,.14);margin-top:11px;overflow:hidden}
+.letterBar i{display:block;height:100%;background:#84cc9a;transition:width .12s linear}
+.letterBar.warn i{background:#e2b562} .letterBar.crit i{background:#e07a72}
+
+#bins{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 11px calc(10px + env(safe-area-inset-bottom))}
+.bin{border-radius:12px;padding:7px 4px 6px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#33424f,#243039);display:flex;flex-direction:column;align-items:center;
+  gap:2px;transition:transform .1s,box-shadow .15s;position:relative;min-height:56px;justify-content:center}
+.bin:active{transform:translateY(2px) scale(.97)}
+.bin.hot{box-shadow:0 0 0 2px var(--brass),0 6px 18px rgba(0,0,0,.4)}
+.bin .em{font-size:18px;line-height:1}
+.bin .nm{font-size:8.5px;font-weight:900;text-align:center;line-height:1.12;letter-spacing:.02em}
+.bin .cl{position:absolute;left:5px;top:5px;width:7px;height:7px;border-radius:50%}
+.bin.flashGood{animation:fg .4s} .bin.flashBad{animation:fb .4s}
+@keyframes fg{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 3px var(--good)}}
+@keyframes fb{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 3px var(--bad)}}
+
+/* ---------------- ROUTE ---------------- */
+#routeView{position:absolute;inset:0;display:none;flex-direction:column}
+#routeView.on{display:flex}
+#satchel{display:flex;align-items:center;gap:8px;padding:4px 12px 6px}
+#satchel .satLbl{font-size:9px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--dim);flex:none;writing-mode:horizontal-tb}
+#satChips{display:flex;gap:5px;overflow-x:auto;flex:1;min-width:0;padding:2px 0;scrollbar-width:none}
+#satChips::-webkit-scrollbar{display:none}
+.sc{flex:0 0 auto;background:var(--paper);color:var(--ink);border-radius:4px;padding:5px 9px 4px;
+  box-shadow:0 4px 10px rgba(0,0,0,.4);position:relative;text-align:center;min-width:42px}
+.sc .no{font-family:var(--dsp);font-weight:900;font-size:16px;line-height:1}
+.sc .nm{font-size:7px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#8a7f6c;
+  max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc .st{position:absolute;top:-3px;right:-3px;width:6px;height:6px;border-radius:50%;background:#c96a5e}
+.sc.done{opacity:.28;box-shadow:none}
+.sc.done .st{background:var(--good)}
+.sc.hit{animation:scHit .45s}
+@keyframes scHit{40%{transform:translateY(-7px) scale(1.12)}}
+#satchel .left{font-size:11px;font-weight:900;color:var(--dim);white-space:nowrap;flex:none}
+#street{flex:1;min-height:0;position:relative}
+#streetCv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#routeMsg{position:absolute;left:0;right:0;top:9px;text-align:center;font-family:var(--dsp);font-weight:900;
+  font-size:13px;text-shadow:0 2px 8px rgba(0,0,0,.8);pointer-events:none;z-index:3;padding:0 16px}
+#dropBtn{margin:0 12px calc(11px + env(safe-area-inset-bottom));height:54px;flex:none;border-radius:18px;
+  background:linear-gradient(180deg,#8fd6cc,var(--teal));color:#0d2a26;font-family:var(--dsp);
+  font-weight:900;font-size:17px;box-shadow:0 6px 0 #3f8880;display:flex;align-items:center;
+  justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.28)}
+#dropBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #3f8880}
+
+/* ---------------- LOBBY ---------------- */
+#lobby{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:22px;text-align:center}
+#lobby.on{display:flex}
+#lobby .day{font-size:11px;font-weight:900;letter-spacing:.24em;text-transform:uppercase;color:var(--brass)}
+#lobby h2{font-family:var(--dsp);font-size:30px;font-weight:900;letter-spacing:-.02em}
+#lobby .wx{font-family:var(--serif);font-style:italic;color:var(--dim);font-size:14px;line-height:1.6;
+  max-width:330px;margin:6px 0 18px}
+#lobby .btns{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+#lobby .btn{max-width:260px;width:100%;flex:none}
+#lobbyArt{font-size:56px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));animation:bob 3.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+
+/* sheets */
+.scrim{position:absolute;inset:0;z-index:60;display:none;background:rgba(8,13,19,.7);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);align-items:center;justify-content:center;padding:14px}
+.scrim.on{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:430px;max-height:90%;background:linear-gradient(180deg,#2b3846,#161e28);
+  border:1px solid var(--line2);border-radius:22px;display:flex;flex-direction:column;overflow:hidden;
+  animation:pops .3s cubic-bezier(.2,1.25,.4,1);box-shadow:0 24px 60px rgba(0,0,0,.65)}
+@keyframes pops{from{transform:scale(.9);opacity:0}}
+.shead{padding:15px 18px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.09)}
+.shead h2{font-family:var(--dsp);font-size:21px;font-weight:900}
+.shead p{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--brass);
+  opacity:.85;margin-top:2px}
+.sbody{padding:14px 18px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sfoot{padding:10px 16px calc(14px + env(safe-area-inset-bottom));flex:none;display:flex;gap:8px;
+  border-top:1px solid rgba(255,255,255,.09)}
+.btn{flex:1;padding:13px 14px;border-radius:15px;font-family:var(--dsp);font-weight:900;font-size:15px;
+  background:var(--panelIn);border:1px solid var(--line2);transition:transform .1s}
+.btn:active{transform:translateY(2px)}
+.btn.pri{background:linear-gradient(180deg,#f0cc8a,var(--brass));color:#3a2a08;box-shadow:0 4px 0 #a37c33;
+  border-color:rgba(255,255,255,.3)}
+.btn.pri:active{box-shadow:0 1px 0 #a37c33}
+.btn.quiet{background:transparent;border-color:rgba(255,255,255,.16);color:var(--dim)}
+.row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.row:last-child{border-bottom:none}
+.row .ic{width:40px;height:40px;border-radius:12px;background:var(--panelIn);display:grid;place-items:center;
+  font-size:19px;flex:none;border:1px solid var(--line)}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-size:14px;font-weight:900}
+.row .tx small{display:block;font-size:11px;color:var(--dim);line-height:1.35;margin-top:1px}
+.row .buy{padding:8px 12px;border-radius:11px;background:var(--gold);color:#31240a;font-weight:900;
+  font-size:12px;white-space:nowrap;flex:none}
+.row .buy.no{background:rgba(255,255,255,.09);color:var(--dim)}
+.row .buy.max{background:rgba(132,204,154,.2);color:var(--good)}
+.statGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 12px}
+.stat{background:rgba(0,0,0,.26);border:1px solid var(--line);border-radius:13px;padding:9px 11px}
+.stat small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stat b{font-size:20px;font-family:var(--dsp);font-weight:900}
+.note{font-size:12.5px;color:var(--dim);line-height:1.6;margin-top:10px}
+.help li{margin:0 0 9px 16px;font-size:13px;line-height:1.5;color:#dfe7ee}
+.help li b{color:var(--brass)}
+
+/* the story letter */
+.storyPaper{background:var(--paper);color:var(--ink);border-radius:4px;padding:20px 20px 16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);position:relative}
+.storyPaper::after{content:'';position:absolute;left:0;right:0;top:0;height:5px;border-radius:4px 4px 0 0;
+  background:repeating-linear-gradient(90deg,#c96a5e 0 10px,#4d6f8f 10px 20px);opacity:.8}
+.storyFrom{font-size:9.5px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#8a7f6c;
+  margin-bottom:8px}
+.storyBody{font-family:var(--serif);font-size:15.5px;line-height:1.72;white-space:pre-wrap}
+.storySign{font-family:var(--hand);font-size:20px;margin-top:14px;color:#3d362c}
+.lbItem{display:flex;gap:11px;align-items:center;padding:10px 6px;border-bottom:1px solid rgba(255,255,255,.07)}
+.lbItem .ic{width:34px;height:34px;border-radius:10px;background:var(--panelIn);display:grid;place-items:center;
+  font-size:16px;flex:none;border:1px solid var(--line)}
+.lbItem .tx{flex:1;min-width:0}
+.lbItem .tx b{display:block;font-size:13px;font-weight:900}
+.lbItem .tx small{display:block;font-size:11px;color:var(--dim);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--serif);font-style:italic}
+.lbItem.locked{opacity:.35}
+
+#toast{position:absolute;left:50%;top:38%;transform:translateX(-50%);z-index:55;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px}
+.tst{background:rgba(10,16,24,.88);border:1px solid var(--line2);border-radius:999px;padding:7px 15px;
+  font-weight:900;font-size:13px;animation:tup 1.5s ease forwards;white-space:nowrap}
+@keyframes tup{0%{transform:translateY(10px) scale(.9);opacity:0}14%{transform:none;opacity:1}
+  72%{opacity:1}100%{transform:translateY(-22px);opacity:0}}
+.tst.good{color:var(--good)} .tst.bad{color:#ffa79a} .tst.gold{color:var(--gold)}
+
+#title{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding:26px;text-align:center;
+  background:radial-gradient(90% 60% at 50% 34%,#33465a,#0f161e 74%)}
+#title.hide{display:none}
+#title .logo{font-size:58px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6));animation:bob 3.4s ease-in-out infinite}
+#title h1{font-family:var(--dsp);font-size:34px;font-weight:900;letter-spacing:-.02em;margin-top:6px}
+#title .tag{color:var(--brass);font-size:11.5px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;
+  margin-bottom:22px}
+#title .btns{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+#title .btn{max-width:260px;width:100%;flex:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="chip coins">🪙<b id="hCoins">0</b></div>
+    <div class="chip">📅<b id="hDay">1</b></div>
+    <div class="chip acc">🎯<b id="hAcc">—</b></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="bBook">📬<span class="dot" id="bookDot" style="display:none"></span></button>
+    <button class="icbtn" id="bShop">🛒</button>
+    <button class="icbtn" id="bHelp">？</button>
+    <button class="icbtn" id="bSound">🔊</button>
+  </div>
+
+  <div id="strip"><div id="stripLbl">Wickham Post Office</div><div id="stripBar"><i style="width:0%"></i></div></div>
+
+  <div id="stage">
+    <!-- sorting -->
+    <div id="sortView">
+      <div id="peek"></div>
+      <div id="letterWrap"><div id="letter"></div></div>
+      <div id="bins"></div>
+    </div>
+
+    <!-- route -->
+    <div id="routeView">
+      <div id="satchel">
+        <div class="satLbl">Satchel</div>
+        <div id="satChips"></div>
+        <div class="left" id="satLeft"></div>
+      </div>
+      <div id="street"><canvas id="streetCv"></canvas><div id="routeMsg"></div></div>
+      <button id="dropBtn">📮 Post it</button>
+    </div>
+
+    <!-- lobby -->
+    <div id="lobby">
+      <div id="lobbyArt">🏤</div>
+      <div class="day" id="lobbyDay">Day 1</div>
+      <h2 id="lobbyTitle">Morning</h2>
+      <div class="wx" id="lobbyWx"></div>
+      <div class="btns">
+        <button class="btn pri" id="lobbyGo">Open the sorting room</button>
+        <button class="btn quiet" id="lobbyBook">📬 Read the letters</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+  <div id="title">
+    <div class="logo">📮</div>
+    <h1>Wickham Post Office</h1>
+    <div class="tag">Sort · deliver · read</div>
+    <div class="btns">
+      <button class="btn pri" id="tPlay">Unlock the door</button>
+      <button class="btn quiet" id="tHelp">How the job works</button>
+      <button class="btn quiet" id="tReset" style="display:none">Start over</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   Wickham Post Office.
+
+   Two rounds a day: sort the morning post into the right pigeonholes, then
+   walk the route and put each letter in the right box. In between, one letter
+   is for you to read — a correspondence that runs the length of the game.
+   ========================================================================== */
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const SAVE_KEY = 'wickhampost.save.v1';
+
+/* ------------------------------ world ------------------------------ */
+const DISTRICTS = [
+  {id:'fern',  n:'Ferny Hollow', em:'🌿', c:'#7fb87a', tail:'Hollow'},
+  {id:'salt',  n:'Saltmarsh',    em:'⚓', c:'#6a9fd0', tail:'marsh'},
+  {id:'kest',  n:'Kestrel Hill', em:'🪶', c:'#e2b562', tail:'Hill'},
+  {id:'quar',  n:'Old Quarry',   em:'🪨', c:'#a9b0b8', tail:'Quarry'},
+  {id:'light', n:'The Light',    em:'🗼', c:'#f0ece0', tail:'Light'},
+];
+const SPECIAL = [
+  {id:'return', n:'Return',  em:'↩️', c:'#e07a72'},
+  {id:'parcel', n:'Parcels', em:'📦', c:'#c99a6a'},
+  {id:'hold',   n:'To hold', em:'🗄️', c:'#9d8fd0'},
+];
+const STREETS = {
+  fern:  ['Bracken Row','Milkwood Lane','Nettle Walk','Fernwood Rise'],
+  salt:  ['Harbour Steps','Eelgrass Way','Tide Cottages','Netmender\'s Row'],
+  kest:  ['Windward Terrace','Chalk Lane','Beacon Road','Skylark Close'],
+  quar:  ['Grit Row','Hammer Yard','Slate Cottages','Quarrymans Rest'],
+  light: ['The Lighthouse','Keeper\'s Cottage'],
+};
+const FIRST = ['Alma','Bertie','Cordelia','Dunstan','Edith','Fenwick','Gwen','Harold','Ivy','Jonty',
+  'Kit','Lorna','Merrick','Nesta','Osbert','Pearl','Quill','Rosalind','Sam','Tabitha','Ursula','Vann',
+  'Winifred','Yates'];
+const LAST = ['Ashcombe','Bell','Corrigan','Dunmore','Eddowes','Fairweather','Garrick','Hallow','Innes',
+  'Jarvis','Kettle','Lowry','Marchetti','Nunn','Ostler','Prewitt','Quayle','Rooke','Sennet','Thrale',
+  'Vance','Wickens'];
+
+const WEATHER = [
+  {id:'clear', n:'Clear',       line:'A dry morning. The good kind for a bicycle.', smudge:0,   speed:1.00},
+  {id:'drizz', n:'Drizzle',     line:'Drizzle on the window since four. Some of the ink has run.', smudge:.22, speed:.95},
+  {id:'fog',   n:'Sea fog',     line:'Fog off the water. You can hear the light but not see it.',  smudge:.16, speed:.88},
+  {id:'wind',  n:'A hard wind', line:'Wind straight off the marsh. Hold on to the sack.',         smudge:.10, speed:1.12},
+  {id:'rain',  n:'Steady rain', line:'Steady rain. Half of Saltmarsh is unreadable.',             smudge:.32, speed:.90},
+];
+
+const UPGRADES = [
+  {id:'glass', n:'Reading glasses', em:'👓', max:2, cost:l=>70*(l+1),
+   d:l=>`Smudged addresses keep ${(l+1)*2} more letters legible.`},
+  {id:'satch', n:'Bigger satchel',  em:'🎒', max:3, cost:l=>90*(l+1),
+   d:l=>`Carry ${6+l*2} → ${6+(l+1)*2} letters on the route.`},
+  {id:'bike',  n:'Post bicycle',    em:'🚲', max:2, cost:l=>120*(l+1),
+   d:()=>'A wider window at each mailbox, and a longer look ahead.'},
+  {id:'clock', n:'Wall clock',      em:'🕰️', max:3, cost:l=>60*(l+1),
+   d:l=>`${2+l} → ${3+l} extra seconds on every letter in the sorting room.`},
+];
+
+/* ------------------------------ the correspondence ------------------------------ */
+const STORY = [
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'A. Quayle, Seedsman',
+   t:`I am told you have my catalogue.\n\nIt went out to twelve addresses on Tuesday and came back to me with eleven, which is the sort of arithmetic that keeps a man awake. The postmaster says the twelfth went to the light.\n\nKeep it. It is a year out of date and the beans in it are all wrong. But if you have it open, tell me: what grows out there? I have never had a customer on a rock and I find I want to know.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'W. Ostler, Keeper',
+   t:`Nothing grows here.\n\nThat is not quite true. Lichen grows here, in six colours, and something yellow on the north wall that I have never identified and no longer wish to. Grass gets a foot in and then the salt has it.\n\nI kept your catalogue because it was the only new thing to arrive in nine weeks. I have read the potato section twice. I could describe your Pink Fir Apple to you in the dark.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'A.Q.',
+   t:`Enclosed: sea thrift, which likes a rock and does not mind salt, and samphire, which positively asks for it.\n\nAlso a third packet with no label. I am not being mysterious — the label came off in the shop and I have four possibilities and no way of telling. Plant it and we shall both find out. Consider it a gamble at my expense.\n\nA biscuit tin will do for a pot. Punch the bottom.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'W.O.',
+   t:`Three biscuit tins, punched, on the south side of the lamp room where the wind comes over rather than through.\n\nWhat soil? I have sand, and what the gulls leave, and I once found a handful of proper earth in the bilge of the relief boat and I have been saving it like money.\n\nThe postmaster brought your packets out in a swell that had him green. He would not take anything for it. I mention it because you should know your seeds are carried by better men than they are paid to be.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'Alder',
+   t:`Sand is fine. Thrift is a miser and prefers to be neglected — you may find you have a talent for that.\n\nEnclosed a trowel. It was my aunt's. She left me the shop, the trowel, and a note that said "the corner cabinet sticks, mind your thumb", which was the longest thing she said to me in nine years and I have thought about it every day since.\n\nDon't save the earth. Use it. Saved things go sour.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'Wren',
+   t:`The thrift is up.\n\nSix of them, no bigger than a shirt button, in a row like they were told to be. I went down at two in the morning with a lamp to look at them, which is not a thing I will be admitting to anyone but you.\n\nThe routine here is: wind the weight, trim the wick, keep the glass, write the log, watch the water. It has been the same for eleven years. Today it was: wind, trim, glass, log, water, and go and look at the thrift.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'Alder',
+   t:`Six is a garden. I will not hear otherwise.\n\nI shall be plain with you, since you have been plain with me. The shop is not well. They have opened a place on the bypass that sells seed in a rack by the door, forty varieties, all of them the same four. I have three hundred and one and nobody to sell them to.\n\nI am not asking for anything. I have simply run out of people to say it to before Thursday.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'Wren',
+   t:`Enclosed a drawing of the tins. I am no artist. The thing on the left is the samphire and the thing on the right is a gull who would not move.\n\nAbout the shop. I know nothing about shops. I know that a rack by the door has forty kinds of seed and no answer to the question "what will grow on a rock", and you had one, and it was correct, and it cost you a stamp.\n\nThat is worth something. It is only that nobody has worked out how to charge for it yet.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'A.',
+   t:`They are forecasting a bad one for Thursday night. Force nine, backing westerly.\n\nBring the tins in. I am aware you have kept a light through worse than I have ever stood outside in, and I am telling you to bring in three biscuit tins, and I am aware of how that sounds.\n\nWrite when it has gone through. Not urgently. Only when you can.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'Wren',
+   t:`Through it.\n\nI brought the tins into the lamp room and set them by the door and by three in the morning I had them on the table where I could see them, which I mention only for the sake of an honest record.\n\nThe thrift is fine. The samphire is gone — pot and all, over the rail, halfway to Norway. The unlabelled gamble has put out a leaf shaped like a spade and I have no idea what it is.\n\nThe postmaster came on Saturday, first boat out, soaked to the collar, with your letter and a bill for coal. I gave him tea. He said it was his job. It was not his job. It was Saturday.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'Alder',
+   t:`A leaf like a spade will be the black-podded bean, which means the label that came off in March has been solved by a lighthouse. I have written it in the book: identified, W. Ostler, by storm.\n\nEnclosed: more samphire, and a strip of woven willow. Stake it on the weather side. It does not stop the wind, it only makes it think twice.\n\nThe shop shuts Mondays and Tuesdays now. I tell people it is to catch up on the ordering. There is no ordering.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'Wren',
+   t:`They are automating the light.\n\nA man came out with a clipboard and a folding rule and was gone in two hours. There will be a machine where I am, and it will be better at this than I am, and it will not need a cottage or coal or a boat on a Saturday.\n\nI am to be out by spring.\n\nEleven years. I find I do not know how to end this letter, so I will simply stop.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'Alder',
+   t:`Come and work in the shop.\n\nI am not asking. I am offering, which is a different thing and easier to refuse.\n\nThere is a room over the back with a window facing the wrong way, and a wage I am ashamed of, and three hundred and one kinds of seed that need somebody who can say what will grow where. You have been doing that by post for a year and a half without noticing.\n\nThink about it for as long as you need. But do write, either way.`},
+  {from:'Wren Ostler', to:'Quayle & Son, Seedsmen', sign:'Wren',
+   t:`I have thought about it for eleven days, which is nine more than I needed.\n\nYes.\n\nI can come the second week of April. I have a sea chest, a trowel that is not mine, and three biscuit tins that will be travelling on my knee whatever the driver says.\n\nOne honest line, and then I will not be soft again in writing: this is the first year since I came out here that I have known what day it was, and it is because Thursdays have had something in them.`},
+  {from:'Alder Quayle', to:'The Lighthouse', sign:'Alder',
+   t:`April, then.\n\nThe room over the back is aired. The window still faces the wrong way. I have put a shelf on the south wall of the yard where three tins will sit in the sun, which I did before your letter came, which I would rather you had not worked out.\n\nYou will not need to write after Thursday, and I find I am not entirely glad about that. It has been the best post I have ever had.`},
+  {from:'Wren & Alder', to:'Wickham Post Office', sign:'W. & A.',
+   t:`To the postmaster —\n\nThis is the last one, and it is for you.\n\nYou carried a catalogue to the wrong address and did not simply take it back. You went out on a Saturday in a swell that had you green, and you would not take a shilling for it, and when the light went automatic you carried the letter that said so, and you will have known what was in it, because everybody does.\n\nThere is a shop on Bell Street with a bench outside it. There is tea at eleven. Come whenever you like; you needn't write first.\n\nWith every thanks two people can fit in an envelope —`},
+];
+
+/* ------------------------------ state ------------------------------ */
+let S = {coins:0, day:1, up:{}, read:0, sortedOK:0, sortedTot:0, deliv:0, delivTot:0,
+         sound:true, seen:false, bestDay:0};
+let R = null;              // the running round
+let running = false, lastT = 0, T = 0;
+
+const lv = id => S.up[id] || 0;
+const satchelSize = () => 6 + lv('satch')*2;
+const extraTime   = () => 2 + lv('clock');
+const legibleBoost= () => lv('glass')*2;
+const boxWindow   = () => 46 + lv('bike')*22;
+
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
+    if(d && typeof d === 'object'){ S = Object.assign(S, d); S.up = S.up||{}; return true; }
+  }catch(e){}
+  return false;
+}
+const accuracy = () => {
+  const t = S.sortedTot + S.delivTot;
+  return t ? Math.round((S.sortedOK + S.deliv)/t*100) : null;
+};
+
+/* ------------------------------ audio ------------------------------ */
+let AC = null;
+function beep(f,d,t,v){
+  if(!S.sound) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = t||'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, AC.currentTime);
+    g.gain.linearRampToValueAtTime(v||.06, AC.currentTime+.012);
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime+(d||.14));
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+(d||.14)+.03);
+  }catch(e){}
+}
+const sfx = {
+  slot: ()=>beep(430,.08,'triangle',.05),
+  good: ()=>{beep(700,.07,'sine',.055); setTimeout(()=>beep(1050,.11,'sine',.05),60);},
+  bad:  ()=>beep(140,.26,'sawtooth',.045),
+  post: ()=>{beep(300,.09,'square',.04); setTimeout(()=>beep(480,.13,'sine',.05),70);},
+  bell: ()=>{beep(880,.16,'sine',.05); setTimeout(()=>beep(660,.3,'sine',.045),140);},
+  coin: ()=>beep(1040,.1,'square',.04),
+  page: ()=>beep(240,.2,'triangle',.035),
+};
+
+/* ------------------------------ scenes ------------------------------ */
+function show(which){
+  $('#sortView').classList.toggle('on', which === 'sort');
+  $('#routeView').classList.toggle('on', which === 'route');
+  $('#lobby').classList.toggle('on', which === 'lobby');
+}
+function renderHUD(){
+  $('#hCoins').textContent = Math.floor(S.coins);
+  $('#hDay').textContent = S.day;
+  const a = accuracy();
+  $('#hAcc').textContent = a === null ? '—' : a + '%';
+  $('#bookDot').style.display = S.read < Math.min(STORY.length, S.day-1) ? 'block' : 'none';
+}
+function strip(lbl, frac){
+  $('#stripLbl').textContent = lbl;
+  $('#stripBar').firstElementChild.style.width = clamp(frac,0,1)*100 + '%';
+}
+function toast(m,k){
+  const d = document.createElement('div');
+  d.className = 'tst ' + (k||''); d.textContent = m;
+  $('#toast').appendChild(d); setTimeout(()=>d.remove(), 1500);
+}
+function openSheet(h){ $('#sheet').innerHTML = h; $('#scrim').classList.add('on'); }
+function closeSheet(){ $('#scrim').classList.remove('on'); }
+$('#scrim').addEventListener('click', e => { if(e.target === $('#scrim')) closeSheet(); });
+
+/* ------------------------------ the day ------------------------------ */
+function weatherFor(day){
+  if(day === 1) return WEATHER[0];
+  return WEATHER[Math.floor(Math.abs(Math.sin(day*12.9898)*43758.5453) % WEATHER.length)];
+}
+function lobby(){
+  show('lobby');
+  const wx = weatherFor(S.day);
+  $('#lobbyDay').textContent = `Day ${S.day} · ${wx.n}`;
+  $('#lobbyTitle').textContent = S.day === 1 ? 'Your first morning' : 'Morning';
+  $('#lobbyWx').textContent = wx.line;
+  $('#lobbyGo').textContent = 'Open the sorting room';
+  strip('Wickham Post Office', 0);
+  renderHUD();
+}
+$('#lobbyGo').onclick = () => startSort();
+$('#lobbyBook').onclick = () => letterbook();
+
+/* ---------------- sorting round ---------------- */
+function makeLetter(day, wx){
+  const d = pick(DISTRICTS.filter(x => x.id !== 'light' || Math.random() < .18));
+  const street = pick(STREETS[d.id]);
+  const no = 1 + Math.floor(Math.random()*48);
+  const name = `${pick(FIRST)} ${pick(LAST)}`;
+  const L = {name, dist:d.id, street, no, kind:'plain', want:d.id,
+             smudged:false, redirect:null, stamped:true, parcel:false};
+
+  const roll = Math.random();
+  const smudgeChance = Math.max(0, wx.smudge - legibleBoost()*0.045);
+  if(day >= 2 && roll < 0.10){ L.stamped = false; L.want = 'return'; }
+  else if(day >= 3 && roll < 0.22){ L.parcel = true; L.want = 'parcel'; }
+  else if(day >= 5 && roll < 0.34){
+    const r = pick(DISTRICTS.filter(x => x.id !== d.id));
+    L.redirect = r.id; L.want = r.id;
+  }
+  else if(day >= 6 && roll < 0.40){ L.hold = true; L.want = 'hold'; }
+  if(Math.random() < smudgeChance) L.smudged = true;
+  return L;
+}
+function startSort(){
+  const wx = weatherFor(S.day);
+  const n = Math.min(8 + S.day*2, 20);
+  R = {
+    mode:'sort', wx, queue: Array.from({length:n}, () => makeLetter(S.day, wx)),
+    cur:null, total:n, done:0, ok:0, time:0, maxTime:0, coins:0, mistakes:[],
+  };
+  show('sort');
+  renderBins();
+  nextLetter();
+  if(!running){ running = true; lastT = performance.now(); requestAnimationFrame(loop); }
+}
+function activeBins(){
+  const list = DISTRICTS.slice();
+  if(S.day >= 2) list.push(SPECIAL[0]);
+  if(S.day >= 3) list.push(SPECIAL[1]);
+  if(S.day >= 6) list.push(SPECIAL[2]);
+  return list;
+}
+function renderBins(){
+  const el = $('#bins');
+  const bins = activeBins();
+  el.style.gridTemplateColumns = `repeat(${bins.length > 6 ? 4 : 3},1fr)`;
+  el.innerHTML = bins.map(b =>
+    `<div class="bin" data-b="${b.id}"><span class="cl" style="background:${b.c}"></span>
+      <div class="em">${b.em}</div><div class="nm">${b.n}</div></div>`).join('');
+  $$('#bins .bin').forEach(e => e.onclick = () => sortInto(e.dataset.b, e));
+}
+function nextLetter(){
+  if(!R.queue.length){ endSort(); return; }
+  R.cur = R.queue.shift();
+  R.maxTime = Math.max(4, 11 + extraTime() - S.day*0.35);
+  R.time = R.maxTime;
+  renderLetter();
+  renderPeek();
+}
+function renderPeek(){
+  $('#peek').innerHTML = R.queue.slice(0,3).map(()=>'<div class="peekCard"></div>').join('');
+}
+function renderLetter(){
+  const L = R.cur, el = $('#letter');
+  if(!L){ el.innerHTML = ''; return; }
+  const d = DISTRICTS.find(x => x.id === L.dist);
+  let addr = `${L.no} ${L.street}`;
+  let town = d.n;
+  if(L.smudged){
+    // the district word survives; the rest runs into the paper
+    town = `<span class="blot">${d.n.replace(d.tail,'')}</span>${d.tail}`;
+    addr = `${L.no} <span class="blot">${L.street.slice(0, Math.max(2,L.street.length-6))}</span>${L.street.slice(-5)}`;
+  }
+  const r = L.redirect ? DISTRICTS.find(x => x.id === L.redirect) : null;
+  el.className = '';
+  el.innerHTML =
+    `<div class="stamp ${L.stamped?'':'none'}">${L.stamped ? '👑' : '✎'}
+       ${L.stamped ? '<div class="cancel">WICKHAM</div>' : ''}</div>` +
+    `<div class="toLbl">${L.parcel ? 'Parcel — to' : 'To'}</div>` +
+    `<div class="toName">${L.name}</div>` +
+    `<div class="toAddr">${addr}<br>${town}</div>` +
+    (L.stamped ? '' : `<div class="sticker">NO STAMP · POSTAGE DUE</div>`) +
+    (r ? `<div class="sticker">REDIRECT → ${r.n}</div>` : '') +
+    (L.hold ? `<div class="sticker">CALLER TO COLLECT — HOLD</div>` : '') +
+    (L.parcel ? `<div class="parcelTag">📦</div>` : '') +
+    `<div class="letterBar"><i style="width:100%"></i></div>`;
+  // highlight nothing — the player decides
+  $$('#bins .bin').forEach(b => b.classList.remove('hot'));
+}
+function sortInto(binId, el){
+  if(!R || R.mode !== 'sort' || !R.cur) return;
+  const L = R.cur;
+  const right = binId === L.want;
+  R.done++; S.sortedTot++;
+  if(right){
+    R.ok++; S.sortedOK++;
+    const speed = clamp(R.time / R.maxTime, 0, 1);
+    R.coins += 3 + Math.round(speed*3);
+    el.classList.remove('flashBad'); void el.offsetWidth; el.classList.add('flashGood');
+    sfx.good();
+  }else{
+    const want = [...DISTRICTS, ...SPECIAL].find(x => x.id === L.want);
+    R.mistakes.push(`${L.name} → ${want ? want.n : L.want}`);
+    el.classList.remove('flashGood'); void el.offsetWidth; el.classList.add('flashBad');
+    sfx.bad();
+    toast(`That was for ${want ? want.n : '?'}`, 'bad');
+  }
+  $('#letter').classList.add('gone');
+  strip(`Sorting · ${R.done}/${R.total}`, R.done/R.total);
+  setTimeout(nextLetter, 180);
+}
+/* drag the letter onto a bin as an alternative to tapping */
+(function letterDrag(){
+  const el = $('#letter');
+  let st = null;
+  el.addEventListener('pointerdown', e => {
+    if(!R || R.mode !== 'sort' || !R.cur) return;
+    st = {x:e.clientX, y:e.clientY};
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if(!st) return;
+    const dx = e.clientX-st.x, dy = e.clientY-st.y;
+    el.style.transform = `translate(${dx}px,${dy}px) rotate(${dx*0.03}deg)`;
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    const bin = over && over.closest ? over.closest('.bin') : null;
+    $$('#bins .bin').forEach(b => b.classList.toggle('hot', b === bin));
+  });
+  const up = e => {
+    if(!st) return;
+    st = null;
+    el.style.transform = '';
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    const bin = over && over.closest ? over.closest('.bin') : null;
+    $$('#bins .bin').forEach(b => b.classList.remove('hot'));
+    if(bin) sortInto(bin.dataset.b, bin);
+  };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', () => { st = null; el.style.transform = ''; });
+})();
+
+function endSort(){
+  R.mode = 'done';
+  S.coins += R.coins;
+  save(); renderHUD();
+  const pct = R.total ? Math.round(R.ok/R.total*100) : 0;
+  sfx.bell();
+  openSheet(`
+    <div class="shead"><h2>Sorting done</h2><p>Day ${S.day} · ${R.wx.n}</p></div>
+    <div class="sbody">
+      <div class="statGrid">
+        <div class="stat"><small>Correct</small><b>${R.ok}/${R.total}</b></div>
+        <div class="stat"><small>Accuracy</small><b>${pct}%</b></div>
+      </div>
+      ${R.mistakes.length ? `<p class="note" style="margin-top:0">Wrongly filed: ${R.mistakes.slice(0,4).join(', ')}${R.mistakes.length>4?'…':''}</p>` : `<p class="note" style="margin-top:0">Not a single one in the wrong hole.</p>`}
+      <p class="note">Now load the satchel and walk the route. ${R.wx.id==='rain'||R.wx.id==='drizz'?'Take the cape.':''}</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sGo">🎒 Load the satchel</button></div>`);
+  $('#sGo').onclick = () => { closeSheet(); startRoute(R.ok); };
+}
+
+/* ---------------- route round ---------------- */
+const scv = $('#streetCv');
+const sctx = scv.getContext('2d');
+const UI_FONT = getComputedStyle(document.body).fontFamily;
+let SW=0, SH=0, SDPR=1;
+function sizeStreet(){
+  const r = $('#street').getBoundingClientRect();
+  SDPR = Math.min(window.devicePixelRatio||1, 2);
+  SW = Math.max(50, r.width); SH = Math.max(50, r.height);
+  scv.width = SW*SDPR; scv.height = SH*SDPR;
+  scv.style.width = SW+'px'; scv.style.height = SH+'px';
+  sctx.setTransform(SDPR,0,0,SDPR,0,0);
+}
+window.addEventListener('resize', () => { if(R && R.mode === 'route') sizeStreet(); });
+
+function startRoute(sortedOK){
+  show('route');
+  sizeStreet();                       // the canvas has no size until the view is on screen
+  const wx = weatherFor(S.day);
+  const count = clamp(Math.min(satchelSize(), Math.max(3, sortedOK)), 3, 12);
+
+  /* every house number on the street is unique, so a letter has exactly one door */
+  const numbers = [];
+  while(numbers.length < Math.round(count*2.3)){
+    const n = 2 + Math.floor(Math.random()*40)*2;
+    if(!numbers.includes(n)) numbers.push(n);
+  }
+  // the satchel takes a scattered handful of them
+  const idxs = numbers.map((_,i)=>i);
+  for(let i=idxs.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [idxs[i],idxs[j]]=[idxs[j],idxs[i]]; }
+  const bag = idxs.slice(0, count).map(i => {
+    const d = pick(DISTRICTS.filter(x => x.id !== 'light'));
+    return {no: numbers[i], name:`${pick(FIRST)} ${pick(LAST)}`, street: pick(STREETS[d.id]),
+            c: d.c, done:false};
+  });
+
+  R = {
+    mode:'route', wx, bag, delivered:0, missed:0, coins:0, total:count,
+    houses: numbers.map((no,i) => ({no, x: SW + 110 + i*152,
+      h: 0.42 + (i%4)*0.05, lit: Math.random()<.7, done:false})),
+    speed: 92 * wx.speed * (1 + S.day*0.03), t:0, msg:'', msgT:0,
+    rain: wx.id==='rain'||wx.id==='drizz', drops: [],
+  };
+  renderSatchel();
+  strip(`Route · 0/${count}`, 0);
+  $('#routeMsg').textContent = 'Post any letter whose number reaches the lamp';
+  if(!running){ running = true; lastT = performance.now(); requestAnimationFrame(loop); }
+}
+function renderSatchel(){
+  const left = R.bag.filter(b => !b.done).length;
+  $('#satChips').innerHTML = R.bag.map((b,i) =>
+    `<div class="sc ${b.done?'done':''}" data-i="${i}"><span class="st"></span>
+      <div class="no">${b.no}</div><div class="nm">${esc(b.name.split(' ')[1] || b.name)}</div></div>`).join('');
+  $('#satLeft').textContent = left ? `${left} left` : 'empty';
+}
+const MB_DX = 46;                       // where a mailbox sits relative to its house centre
+function houseMetrics(){
+  const pavement = SH*0.72;             // the line the houses stand on
+  const unit = clamp(SH*0.30, 86, 200); // and how tall they are, independent of canvas height
+  return {pavement, unit};
+}
+function drawStreet(dt){
+  const wx = R.wx;
+  sctx.clearRect(0,0,SW,SH);
+  const {pavement, unit} = houseMetrics();
+  const horizon = pavement;
+  // sky
+  const g = sctx.createLinearGradient(0,0,0,horizon);
+  const top = wx.id === 'fog' ? '#38434e' : wx.id === 'clear' ? '#2c4258' : '#26313d';
+  g.addColorStop(0, top); g.addColorStop(1, wx.id === 'fog' ? '#55606a' : '#3d4b59');
+  sctx.fillStyle = g; sctx.fillRect(0,0,SW,horizon);
+
+  // early-morning sky: a low moon and a few stars that have not gone out yet
+  if(wx.id !== 'fog' && wx.id !== 'rain'){
+    const mx = SW*0.76, my = horizon*0.24;
+    const mg = sctx.createRadialGradient(mx,my,2,mx,my,52);
+    mg.addColorStop(0,'rgba(255,248,224,.22)'); mg.addColorStop(1,'rgba(255,248,224,0)');
+    sctx.fillStyle = mg; sctx.beginPath(); sctx.arc(mx,my,52,0,6.283); sctx.fill();
+    sctx.fillStyle = 'rgba(246,240,220,.7)';
+    sctx.beginPath(); sctx.arc(mx,my,15,0,6.283); sctx.fill();
+    sctx.fillStyle = top;
+    sctx.beginPath(); sctx.arc(mx+7,my-4,14,0,6.283); sctx.fill();
+    sctx.fillStyle = 'rgba(255,255,255,.5)';
+    for(let i=0;i<18;i++){
+      const sx = ((i*137.5) % SW), sy = ((i*79.3) % (horizon*0.62));
+      sctx.globalAlpha = .18 + .3*Math.abs(Math.sin(R.t*0.7 + i));
+      sctx.beginPath(); sctx.arc(sx, sy, i%4 ? .9 : 1.5, 0, 6.283); sctx.fill();
+    }
+    sctx.globalAlpha = 1;
+  }
+  // far hills
+  sctx.fillStyle = 'rgba(20,28,38,.75)';
+  sctx.beginPath(); sctx.moveTo(0,horizon);
+  for(let x=0;x<=SW;x+=12){
+    const wxp = (x + R.t*8)*0.008;
+    sctx.lineTo(x, horizon - 26 - Math.sin(wxp)*14 - Math.cos(wxp*0.7)*9);
+  }
+  sctx.lineTo(SW,horizon); sctx.closePath(); sctx.fill();
+
+  // road
+  sctx.fillStyle = '#232c34'; sctx.fillRect(0, horizon, SW, SH-horizon);
+  sctx.fillStyle = '#2c363f'; sctx.fillRect(0, horizon, SW, 10);
+  sctx.strokeStyle = 'rgba(255,255,255,.10)'; sctx.lineWidth = 3; sctx.setLineDash([22,26]);
+  sctx.lineDashOffset = R.t*R.speed*0.6;
+  sctx.beginPath(); sctx.moveTo(0, SH-16); sctx.lineTo(SW, SH-16); sctx.stroke();
+  sctx.setLineDash([]);
+
+  // the delivery zone: a lamp post at the left third
+  const zx = SW*0.32, win = boxWindow();
+  const lampTop = pavement - Math.min(96, SH*0.16);
+  sctx.fillStyle = 'rgba(226,181,98,.09)';
+  sctx.fillRect(zx - win/2, lampTop, win, SH-lampTop);
+  sctx.strokeStyle = 'rgba(226,181,98,.4)'; sctx.lineWidth = 1.5;
+  sctx.beginPath(); sctx.moveTo(zx-win/2, lampTop); sctx.lineTo(zx-win/2, SH);
+  sctx.moveTo(zx+win/2, lampTop); sctx.lineTo(zx+win/2, SH); sctx.stroke();
+  // lamp
+  sctx.strokeStyle = '#3b4652'; sctx.lineWidth = 4;
+  sctx.beginPath(); sctx.moveTo(zx, SH-10); sctx.lineTo(zx, lampTop); sctx.stroke();
+  const lg = sctx.createRadialGradient(zx, lampTop-4, 2, zx, lampTop-4, 72);
+  lg.addColorStop(0,'rgba(255,214,140,.5)'); lg.addColorStop(1,'rgba(255,214,140,0)');
+  sctx.fillStyle = lg; sctx.beginPath(); sctx.arc(zx, lampTop-4, 72, 0, 6.283); sctx.fill();
+  sctx.fillStyle = '#ffe0a4'; sctx.beginPath(); sctx.arc(zx, lampTop-4, 6, 0, 6.283); sctx.fill();
+
+  // houses, standing on the pavement with their own mailbox in front
+  R.houses.forEach(h => {
+    if(h.x < -160 || h.x > SW+160) return;
+    const hh = unit * (0.78 + h.h*0.55);
+    const y = pavement - hh;
+    sctx.fillStyle = h.done ? '#2b3a33' : '#333f4b';
+    sctx.fillRect(h.x-52, y, 104, hh);
+    sctx.fillStyle = 'rgba(0,0,0,.18)'; sctx.fillRect(h.x+22, y, 30, hh);
+    // roof
+    sctx.fillStyle = h.done ? '#22302a' : '#28323d';
+    sctx.beginPath();
+    sctx.moveTo(h.x-60, y); sctx.lineTo(h.x, y-Math.min(30, hh*0.26)); sctx.lineTo(h.x+60, y);
+    sctx.closePath(); sctx.fill();
+    // windows
+    const winY = y + Math.min(20, hh*0.16);
+    sctx.fillStyle = h.lit ? 'rgba(255,214,140,.78)' : 'rgba(255,255,255,.07)';
+    sctx.fillRect(h.x-34, winY, 24, 21); sctx.fillRect(h.x+10, winY, 24, 21);
+    sctx.strokeStyle = 'rgba(0,0,0,.3)'; sctx.lineWidth = 1;
+    sctx.strokeRect(h.x-34, winY, 24, 21); sctx.strokeRect(h.x+10, winY, 24, 21);
+    // door
+    const dh = Math.min(42, hh*0.36);
+    sctx.fillStyle = '#1c242c'; sctx.fillRect(h.x-12, pavement-dh, 24, dh);
+    // number plaque beside the door
+    sctx.fillStyle = h.done ? '#3f6b52' : '#f3ead6';
+    sctx.fillRect(h.x-19, pavement-dh-25, 38, 20);
+    sctx.fillStyle = h.done ? '#dff3e6' : '#2b2620';
+    sctx.font = '900 14px ' + UI_FONT;
+    sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+    sctx.fillText(String(h.no), h.x, pavement-dh-14);
+    // mailbox on the kerb
+    const mx = h.x + MB_DX;
+    sctx.fillStyle = '#3b4652'; sctx.fillRect(mx-2, pavement, 5, 20);
+    sctx.fillStyle = h.done ? '#4e8a68' : '#8b3f3a';
+    sctx.beginPath();
+    sctx.moveTo(mx-9, pavement-2); sctx.lineTo(mx-9, pavement-14);
+    sctx.arc(mx, pavement-14, 9, Math.PI, 0);
+    sctx.lineTo(mx+9, pavement-2); sctx.closePath(); sctx.fill();
+    if(h.done){
+      sctx.fillStyle = '#f3ead6';
+      sctx.fillRect(mx-4, pavement-30, 9, 12);
+      sctx.fillStyle = '#8b3f3a'; sctx.fillRect(mx-4, pavement-30, 9, 3);
+    }
+  });
+
+  // rain
+  if(R.rain){
+    if(R.drops.length < 90) for(let i=0;i<4;i++)
+      R.drops.push({x:rnd(-40,SW+40), y:rnd(-30,SH), v:rnd(420,700)});
+    sctx.strokeStyle = 'rgba(190,215,235,.35)'; sctx.lineWidth = 1;
+    sctx.beginPath();
+    R.drops.forEach(d => {
+      d.y += d.v*dt; d.x -= 40*dt;
+      if(d.y > SH){ d.y = -10; d.x = rnd(-40,SW+40); }
+      sctx.moveTo(d.x, d.y); sctx.lineTo(d.x-3, d.y+11);
+    });
+    sctx.stroke();
+  }
+  if(R.wx.id === 'fog'){
+    sctx.fillStyle = 'rgba(190,205,215,.13)'; sctx.fillRect(0,0,SW,SH);
+  }
+}
+function postIt(){
+  if(!R || R.mode !== 'route') return;
+  if(!R.bag.some(b => !b.done)) return;
+  const zx = SW*0.32, win = boxWindow();
+  // whichever mailbox is nearest the lamp is the one you can reach
+  let best = null, bd = 1e9;
+  R.houses.forEach(h => {
+    if(h.done) return;
+    const d = Math.abs((h.x + MB_DX) - zx);
+    if(d < bd){ bd = d; best = h; }
+  });
+  if(!best || bd > win){
+    R.msg = 'Nothing in reach'; R.msgT = 1.1; sfx.bad(); return;
+  }
+  const li = R.bag.findIndex(b => !b.done && b.no === best.no);
+  if(li < 0){
+    R.msg = `Nothing for number ${best.no}`; R.msgT = 1.3;
+    R.missed++; S.delivTot++;
+    sfx.bad();
+    return;
+  }
+  best.done = true;
+  R.bag[li].done = true;
+  const acc = clamp(1 - bd/win, 0, 1);
+  R.delivered++; S.deliv++; S.delivTot++;
+  R.coins += 4 + Math.round(acc*4);
+  R.msg = acc > .72 ? `Straight in — ${best.no}` : `Posted — ${best.no}`;
+  R.msgT = 1.1;
+  sfx.post();
+  renderSatchel();
+  const chip = $('#satChips').children[li];
+  if(chip) chip.classList.add('hit');
+  strip(`Route · ${R.delivered}/${R.total}`, R.delivered/R.total);
+  if(!R.bag.some(b => !b.done)) setTimeout(endRoute, 800);
+}
+$('#dropBtn').onclick = postIt;
+scv.addEventListener('pointerdown', e => { e.preventDefault(); postIt(); });
+
+function endRoute(){
+  if(!R || R.mode !== 'route') return;
+  R.mode = 'done';
+  S.coins += R.coins;
+  S.delivTot += Math.max(0, R.total - R.delivered);   // letters still in the sack count against you
+  const pct = R.total ? Math.round(R.delivered/R.total*100) : 0;
+  const dayCoins = R.coins;
+  save(); renderHUD();
+  sfx.bell();
+  openSheet(`
+    <div class="shead"><h2>Route walked</h2><p>Day ${S.day}</p></div>
+    <div class="sbody">
+      <div class="statGrid">
+        <div class="stat"><small>Delivered</small><b>${R.delivered}/${R.total}</b></div>
+        <div class="stat"><small>Wrong box</small><b>${R.missed}</b></div>
+        <div class="stat"><small>Earned today</small><b>${dayCoins}🪙</b></div>
+        <div class="stat"><small>On the round</small><b>${pct}%</b></div>
+      </div>
+      <p class="note" style="margin-top:0">${
+        pct === 100 ? 'Every one of them where it belonged.' :
+        pct > 70 ? 'A good round. One or two will be walked back tomorrow.' :
+        'A slow round. The sack is lighter than it should be.'}</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sGo">Back to the counter</button></div>`);
+  $('#sGo').onclick = () => { closeSheet(); evening(); };
+}
+
+/* ---------------- evening: the letter that is for you ---------------- */
+function evening(){
+  show('lobby');
+  strip('Evening', 1);
+  const idx = S.day - 1;
+  if(idx < STORY.length){
+    $('#lobbyArt').textContent = '✉️';
+    $('#lobbyDay').textContent = `Day ${S.day} · Evening`;
+    $('#lobbyTitle').textContent = 'One left over';
+    $('#lobbyWx').textContent = 'There is always one that nobody comes for. You may as well read it.';
+    $('#lobbyGo').textContent = '✉️ Read it';
+    $('#lobbyGo').onclick = () => readStory(idx, true);
+  }else{
+    $('#lobbyArt').textContent = '🏤';
+    $('#lobbyDay').textContent = `Day ${S.day} · Evening`;
+    $('#lobbyTitle').textContent = 'Locking up';
+    $('#lobbyWx').textContent = 'The correspondence has finished, but the post has not.';
+    $('#lobbyGo').textContent = 'Turn the sign';
+    $('#lobbyGo').onclick = () => nextDay();
+  }
+  renderHUD();
+}
+function readStory(idx, advance){
+  const s = STORY[idx];
+  if(!s) return nextDay();
+  sfx.page();
+  if(idx + 1 > S.read){ S.read = idx + 1; save(); }
+  openSheet(`
+    <div class="shead"><h2>Letter ${idx+1}</h2><p>${esc(s.from)} → ${esc(s.to)}</p></div>
+    <div class="sbody">
+      <div class="storyPaper">
+        <div class="storyFrom">From ${esc(s.from)}</div>
+        <div class="storyBody">${esc(s.t)}</div>
+        <div class="storySign">${esc(s.sign)}</div>
+      </div>
+      ${idx === STORY.length-1 ? `<p class="note">That is the last of them. The rounds carry on —
+        the post does not stop because a story does.</p>` : ''}
+    </div>
+    <div class="sfoot">
+      ${advance ? `<button class="btn pri" id="sGo">Lock up · Day ${S.day+1}</button>`
+                : `<button class="btn pri" id="sGo">Close</button>`}
+    </div>`);
+  $('#sGo').onclick = () => { closeSheet(); if(advance) nextDay(); else letterbook(); };
+  renderHUD();
+}
+function nextDay(){
+  S.day++;
+  save(); renderHUD();
+  $('#lobbyArt').textContent = '🏤';
+  $('#lobbyGo').onclick = () => startSort();
+  lobby();
+}
+function letterbook(){
+  const rows = STORY.map((s,i) => {
+    const got = i < S.read;
+    return `<div class="lbItem ${got?'':'locked'}" data-i="${i}">
+      <div class="ic">${got ? '✉️' : '🔒'}</div>
+      <div class="tx"><b>${got ? esc(s.from) : 'Not yet delivered'}</b>
+        <small>${got ? esc(s.t.split('\n')[0].slice(0,58)) + '…' : `arrives on day ${i+1}`}</small></div>
+    </div>`;
+  }).join('');
+  openSheet(`
+    <div class="shead"><h2>📬 Kept letters</h2><p>${S.read} of ${STORY.length}</p></div>
+    <div class="sbody">
+      <p class="note" style="margin-top:0">Letters nobody came for. You have read them all, of course.
+      Everybody does.</p>
+      ${rows}
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+  $('#sOk').onclick = closeSheet;
+  $$('#sheet .lbItem').forEach(e => e.onclick = () => {
+    const i = +e.dataset.i;
+    if(i >= S.read){ toast('Not delivered yet', 'bad'); return; }
+    readStory(i, false);
+  });
+}
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ------------------------------ loop ------------------------------ */
+function loop(now){
+  if(!running) return;
+  const dt = Math.min(.05,(now-lastT)/1000);
+  lastT = now; T += dt;
+  if(R && R.mode === 'sort' && R.cur){
+    R.time -= dt;
+    const f = clamp(R.time/R.maxTime, 0, 1);
+    const bar = $('#letter').querySelector('.letterBar');
+    if(bar){
+      bar.className = 'letterBar' + (f < .22 ? ' crit' : f < .5 ? ' warn' : '');
+      bar.firstElementChild.style.width = (f*100) + '%';
+    }
+    if(R.time <= 0){
+      R.done++; S.sortedTot++;
+      const want = [...DISTRICTS, ...SPECIAL].find(x => x.id === R.cur.want);
+      R.mistakes.push(`${R.cur.name} (missed)`);
+      toast(`Too slow — that was ${want ? want.n : '?'}`, 'bad');
+      sfx.bad();
+      $('#letter').classList.add('gone');
+      strip(`Sorting · ${R.done}/${R.total}`, R.done/R.total);
+      R.cur = null;
+      setTimeout(nextLetter, 180);
+    }
+  }
+  if(R && R.mode === 'route'){
+    R.t += dt;
+    R.houses.forEach(h => { h.x -= R.speed*dt; });
+    if(R.msgT > 0){ R.msgT -= dt; $('#routeMsg').textContent = R.msg; }
+    else $('#routeMsg').textContent = R.bag.some(b => !b.done)
+      ? 'Post any letter whose number reaches the lamp' : 'Sack empty — walk back';
+    drawStreet(dt);
+    const last = R.houses[R.houses.length-1];
+    if(last && last.x < -160 && R.mode === 'route'){ endRoute(); }
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------ shop & help ------------------------------ */
+function openShop(){
+  const rows = UPGRADES.map(u => {
+    const l = lv(u.id), maxed = l >= u.max, cost = u.cost(l), afford = S.coins >= cost;
+    return `<div class="row"><div class="ic">${u.em}</div>
+      <div class="tx"><b>${u.n} ${l?'· Lv'+l:''}</b><small>${maxed?'Fully upgraded.':u.d(l)}</small></div>
+      <button class="buy ${maxed?'max':afford?'':'no'}" data-u="${u.id}">${maxed?'MAX':cost+'🪙'}</button></div>`;
+  }).join('');
+  openSheet(`
+    <div class="shead"><h2>Requisitions</h2><p>${Math.floor(S.coins)} coins</p></div>
+    <div class="sbody">${rows}<p class="note">The Royal Mail will not pay for any of this, so you do.</p></div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+  $('#sOk').onclick = closeSheet;
+  $$('#sheet .buy').forEach(b => b.onclick = () => {
+    const u = UPGRADES.find(x => x.id === b.dataset.u), l = lv(u.id);
+    if(l >= u.max) return;
+    const cost = u.cost(l);
+    if(S.coins < cost){ toast('Not enough', 'bad'); sfx.bad(); return; }
+    S.coins -= cost; S.up[u.id] = l+1; save(); sfx.coin(); toast(u.n+' ✓','good');
+    renderHUD(); openShop();
+  });
+}
+function helpSheet(){
+  openSheet(`
+    <div class="shead"><h2>How the job works</h2><p>Two rounds, then a read</p></div>
+    <div class="sbody">
+      <ol class="help">
+        <li><b>Sorting.</b> Tap the pigeonhole — or drag the letter into it. Go by the town on the
+          bottom line of the address.</li>
+        <li><b>Rules that beat the address:</b> no stamp goes to <b>Return</b>, a parcel goes to
+          <b>Parcels</b>, a <b>REDIRECT</b> sticker sends it wherever the sticker says, and
+          <b>HOLD</b> means the caller is coming for it.</li>
+        <li><b>Weather smudges the ink.</b> Some of the address will blot out — the town's last word
+          usually survives. Reading glasses help.</li>
+        <li><b>The route.</b> Houses pass the lamp post. When a plaque matches <i>any</i> number in
+          your satchel, tap <b>Post it</b> — or tap the street itself. Dead centre pays best, and
+          posting at a house you have nothing for costs you.</li>
+        <li><b>The evening.</b> One letter is always left over. It is bad practice and everybody
+          does it.</li>
+      </ol>
+      <p class="note">Coins come from speed and accuracy, and go on kit that makes both easier.</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Right you are</button></div>`);
+  $('#sOk').onclick = closeSheet;
+}
+
+/* ------------------------------ boot ------------------------------ */
+$('#bBook').onclick = letterbook;
+$('#bShop').onclick = openShop;
+$('#bHelp').onclick = helpSheet;
+$('#bSound').onclick = () => {
+  S.sound = !S.sound; save();
+  $('#bSound').textContent = S.sound ? '🔊' : '🔇';
+  $('#bSound').classList.toggle('off', !S.sound);
+};
+$('#tHelp').onclick = helpSheet;
+$('#tPlay').onclick = () => {
+  $('#title').classList.add('hide');
+  S.seen = true; save();
+  sizeStreet();
+  lobby();
+  if(!running){ running = true; lastT = performance.now(); requestAnimationFrame(loop); }
+};
+$('#tReset').onclick = () => {
+  if(!confirm('Clear the post office and start at Day 1?')) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+};
+
+const had = load();
+$('#bSound').textContent = S.sound ? '🔊' : '🔇';
+$('#bSound').classList.toggle('off', !S.sound);
+if(had && S.day > 1){ $('#tPlay').textContent = `Back to Day ${S.day}`; $('#tReset').style.display = ''; }
+renderHUD();
+setTimeout(sizeStreet, 100);
+</script>
+</body>
+</html>

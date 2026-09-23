@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#101425">
+<title>Typing Sprint</title>
+<style>
+/* ============================================================
+   TYPING SPRINT — theme tokens
+   4 seasonal + 9 mood themes. 7 have ambient particles.
+   ============================================================ */
+:root{
+  --bg:#101425; --bg2:#1a2038; --panel:#1c2340; --panel2:#242c4e;
+  --text:#eef1ff; --dim:#98a1c8; --line:#333c66;
+  --accent:#5cc8ff; --accent2:#b48cff; --good:#4ce0a4; --bad:#ff6b7a; --warn:#ffcc55;
+  --hit:#4ce0a4; --fall:#eef1ff;
+  --radius:16px;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono","Courier New",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+[data-theme="ete"]{--bg:#fdf3dc;--bg2:#ffe9b8;--panel:#fffaf0;--panel2:#ffeecb;--text:#4a3411;--dim:#9a7a44;--line:#efd9a8;--accent:#1fb6c9;--accent2:#ff9f43;--good:#28a86b;--bad:#e2564d;--warn:#e8a020;--hit:#1fb6c9;--fall:#4a3411}
+[data-theme="printemps"]{--bg:#fdf1f6;--bg2:#ffe3ef;--panel:#fffafc;--panel2:#ffeaf3;--text:#4d2b45;--dim:#a2708f;--line:#f4d0e2;--accent:#e75fa2;--accent2:#7ac74f;--good:#4aa84f;--bad:#dd4a68;--warn:#e6a533;--hit:#e75fa2;--fall:#4d2b45}
+[data-theme="automne"]{--bg:#2a1a12;--bg2:#3a251a;--panel:#38241a;--panel2:#472e21;--text:#ffeeda;--dim:#c39c7c;--line:#5a3a29;--accent:#ff9f2e;--accent2:#e2622b;--good:#b7c94a;--bad:#ff6b52;--warn:#ffb845;--hit:#ffb845;--fall:#ffeeda}
+[data-theme="hiver"]{--bg:#0e1a2b;--bg2:#16283f;--panel:#16273c;--panel2:#1f3550;--text:#e8f4ff;--dim:#8fb0cf;--line:#2c4a6b;--accent:#6fd6ff;--accent2:#b9e6ff;--good:#63e0c0;--bad:#ff7a8a;--warn:#ffd97a;--hit:#6fd6ff;--fall:#e8f4ff}
+[data-theme="nature"]{--bg:#12211a;--bg2:#1a3026;--panel:#1a2f24;--panel2:#234030;--text:#e7f6e9;--dim:#93b79d;--line:#2f5540;--accent:#6ede8a;--accent2:#d3b56a;--good:#6ede8a;--bad:#ff7f6b;--warn:#f0c56a;--hit:#6ede8a;--fall:#e7f6e9}
+[data-theme="calme"]{--bg:#f4ece2;--bg2:#e9dccb;--panel:#fdf8f2;--panel2:#f0e5d7;--text:#4a3c2e;--dim:#96826c;--line:#e0d0bb;--accent:#a9744a;--accent2:#7d9a86;--good:#5c9673;--bad:#c9584f;--warn:#d19a3d;--hit:#a9744a;--fall:#4a3c2e}
+[data-theme="creativite"]{--bg:#1b1030;--bg2:#2a1a4a;--panel:#261747;--panel2:#332059;--text:#f3ecff;--dim:#a894cf;--line:#453070;--accent:#ffb03a;--accent2:#b06bff;--good:#57e0b0;--bad:#ff5f8d;--warn:#ffd166;--hit:#ffb03a;--fall:#f3ecff}
+[data-theme="energie"]{--bg:#1d0f10;--bg2:#31171a;--panel:#2b1517;--panel2:#3d1e21;--text:#fff0ec;--dim:#cf9a92;--line:#5c2a2d;--accent:#ff4d3d;--accent2:#ffd23f;--good:#5fe08a;--bad:#ff2d55;--warn:#ffd23f;--hit:#ffd23f;--fall:#fff0ec}
+[data-theme="minimaliste"]{--bg:#f6f6f6;--bg2:#ebebeb;--panel:#ffffff;--panel2:#f1f1f1;--text:#1c1c1c;--dim:#7d7d7d;--line:#e0e0e0;--accent:#1c1c1c;--accent2:#8a8a8a;--good:#2e7d55;--bad:#b4342f;--warn:#9a7620;--hit:#1c1c1c;--fall:#1c1c1c}
+[data-theme="romantique"]{--bg:#2a0f1c;--bg2:#3d1729;--panel:#391627;--panel2:#4b1e34;--text:#ffeaf1;--dim:#cf94ac;--line:#5e2740;--accent:#ff7aa8;--accent2:#ffc46b;--good:#78dcae;--bad:#ff5470;--warn:#ffbd59;--hit:#ff7aa8;--fall:#ffeaf1}
+[data-theme="ocean"]{--bg:#04202f;--bg2:#073349;--panel:#07314a;--panel2:#0b4260;--text:#e3f7ff;--dim:#84b7cd;--line:#125b78;--accent:#2fd6d0;--accent2:#6ea8ff;--good:#4be0b2;--bad:#ff7b7b;--warn:#ffd166;--hit:#2fd6d0;--fall:#e3f7ff}
+[data-theme="neon"]{--bg:#07060f;--bg2:#12102a;--panel:#100e22;--panel2:#191634;--text:#eaf6ff;--dim:#8b86c9;--line:#2c2757;--accent:#00f5d4;--accent2:#ff2bd6;--good:#00f5d4;--bad:#ff2b6b;--warn:#ffe066;--hit:#00f5d4;--fall:#eaf6ff}
+[data-theme="fancy"]{--bg:#0d1120;--bg2:#151b32;--panel:#141a30;--panel2:#1d2442;--text:#f6f0e2;--dim:#b3a887;--line:#33406b;--accent:#d9b86a;--accent2:#8fa9d8;--good:#7fd6a6;--bad:#e0657a;--warn:#e2bb63;--hit:#d9b86a;--fall:#f6f0e2}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--sans);
+  display:flex; align-items:center; justify-content:center;
+  transition:background .35s ease,color .35s ease;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#particles{position:fixed;inset:0;pointer-events:none;z-index:0}
+#app{position:relative;z-index:1;width:100%;height:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column}
+
+/* ---------- shared bits ---------- */
+.screen{display:none;flex-direction:column;height:100%;padding:14px;gap:12px;overflow:hidden}
+.screen.on{display:flex}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;padding-right:2px}
+.topbar{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.topbar h2{margin:0;font-size:19px;letter-spacing:.02em;flex:1}
+.iconbtn{
+  background:var(--panel);border:1px solid var(--line);color:var(--text);
+  width:40px;height:40px;border-radius:12px;font-size:17px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:transform .1s,background .2s
+}
+.iconbtn:active{transform:scale(.93)}
+.iconbtn.off{opacity:.4}
+.btn{
+  background:var(--panel);color:var(--text);border:1px solid var(--line);
+  border-radius:14px;padding:14px 18px;font-size:15px;font-weight:600;font-family:var(--sans);
+  cursor:pointer;transition:transform .1s,background .2s,border-color .2s;text-align:left;width:100%
+}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);color:var(--bg);border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.row{display:flex;align-items:center;gap:12px}
+.btn .ico{font-size:22px;line-height:1}
+.btn .tt{font-size:16px;font-weight:700}
+.btn .sub{font-size:12px;color:var(--dim);font-weight:500;margin-top:2px}
+.btn.primary .sub{color:var(--bg);opacity:.75}
+.grid{display:grid;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.muted{color:var(--dim);font-size:13px;line-height:1.5}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600}
+h3{margin:0 0 8px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+
+/* ---------- home ---------- */
+.logo{text-align:center;padding:6px 0 2px;flex:0 0 auto}
+.logo .word{
+  font-family:var(--mono);font-size:clamp(30px,9vw,46px);font-weight:700;letter-spacing:.04em;
+  display:inline-block
+}
+.logo .word i{font-style:normal;color:var(--accent)}
+.logo .caret{display:inline-block;width:3px;height:1em;background:var(--accent2);vertical-align:-.13em;margin-left:3px;animation:blink 1.05s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.logo .tag{font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--dim);margin-top:4px}
+.statstrip{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* ---------- game ---------- */
+#game{padding:0}
+.hud{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;flex:0 0 auto}
+.hud .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 10px;min-width:60px;text-align:center}
+.hud .box .k{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.hud .box .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.hud .spacer{flex:1}
+#combobox.hot .v{color:var(--warn)}
+#lives{letter-spacing:2px;font-size:15px}
+.field{
+  position:relative;flex:1;min-height:0;margin:0 10px;border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden;background:
+    linear-gradient(180deg,color-mix(in srgb,var(--panel) 60%,transparent),transparent 45%),var(--bg2)
+}
+.field .deadline{position:absolute;left:0;right:0;top:97.5%;border-top:2px dashed color-mix(in srgb,var(--bad) 60%,transparent);opacity:.75}
+.field .lanes{position:absolute;inset:0;opacity:.35;pointer-events:none}
+.field .lanes i{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.wordbox{
+  position:absolute;transform:translate(-50%,0);white-space:nowrap;
+  font-family:var(--mono);font-size:clamp(15px,4.4vw,22px);font-weight:600;letter-spacing:.02em;
+  padding:5px 10px;border-radius:10px;color:var(--fall);
+  background:color-mix(in srgb,var(--panel) 80%,transparent);
+  border:1px solid var(--line);will-change:transform,top
+}
+.wordbox.active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
+.wordbox.danger{border-color:var(--bad);animation:shiver .35s ease-in-out infinite alternate}
+@keyframes shiver{from{transform:translate(-50%,0) rotate(-.7deg)}to{transform:translate(-50%,0) rotate(.7deg)}}
+.wordbox b{color:var(--hit);font-weight:700}
+.wordbox.bonus{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 22%,var(--panel))}
+.pop{
+  position:absolute;transform:translate(-50%,-50%);font-weight:800;font-size:15px;pointer-events:none;
+  animation:pop .75s ease-out forwards;font-variant-numeric:tabular-nums
+}
+@keyframes pop{0%{opacity:1;scale:.7}30%{scale:1.1}100%{opacity:0;translate:0 -34px}}
+.typedbar{
+  flex:0 0 auto;margin:8px 10px 10px;padding:11px 14px;border-radius:14px;background:var(--panel);
+  border:1px solid var(--line);font-family:var(--mono);font-size:16px;min-height:44px;
+  display:flex;align-items:center;gap:2px;overflow:hidden
+}
+.typedbar .ph{color:var(--dim);font-family:var(--sans);font-size:13px}
+.typedbar.err{border-color:var(--bad);animation:shake .18s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#hiddenInput{position:absolute;opacity:0;pointer-events:none;height:1px;width:1px;left:-100px}
+.flash{position:absolute;inset:0;background:var(--bad);opacity:0;pointer-events:none}
+.flash.go{animation:fl .4s ease-out}
+@keyframes fl{0%{opacity:.32}100%{opacity:0}}
+.countdown{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:64px;font-weight:700;color:var(--accent);
+  background:color-mix(in srgb,var(--bg) 72%,transparent);z-index:5
+}
+
+/* ---------- results / lists ---------- */
+.big{font-size:44px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv b{font-variant-numeric:tabular-nums}
+.ach{display:flex;gap:11px;align-items:center;padding:10px;border-radius:12px;background:var(--panel);border:1px solid var(--line);margin-bottom:8px;opacity:.5}
+.ach.got{opacity:1;border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.ach .ico{font-size:22px;width:30px;text-align:center}
+.ach .t{font-weight:700;font-size:14px}
+.ach .d{font-size:12px;color:var(--dim)}
+.themegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.swatch{border:2px solid var(--line);border-radius:12px;padding:9px;cursor:pointer;text-align:left;font-size:11px;font-weight:700;color:#fff;position:relative;overflow:hidden}
+.swatch::after{content:'';position:absolute;right:-14px;top:-14px;width:34px;height:34px;border-radius:50%;background:currentColor;opacity:.14}
+.swatch.sel{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.swatch .dots{display:flex;gap:4px;margin-top:7px}
+.swatch .dots i{width:11px;height:11px;border-radius:50%;display:block}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;background:transparent;border:0;color:var(--dim);padding:9px 4px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--sans)}
+.seg button.sel{background:var(--accent);color:var(--bg)}
+input.txt{
+  width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  border-radius:12px;padding:12px;font-size:15px;font-family:var(--sans)
+}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;
+  background:var(--panel);border:1px solid var(--accent);border-radius:14px;padding:11px 16px;
+  display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35);
+  animation:toast 3.4s ease forwards;max-width:88vw
+}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,18px)}10%,88%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-8px)}}
+.toast .t{font-size:13px;font-weight:700}
+.toast .d{font-size:11px;color:var(--dim)}
+.sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.sheet .inner{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:380px;width:100%}
+.hint{font-size:12px;color:var(--dim);text-align:center;padding:2px 0 0}
+.bar{height:7px;border-radius:6px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .3s}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:420px){.hud .box{min-width:52px;padding:5px 7px}.hud .box .v{font-size:15px}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<div id="app"></div>
+<input id="hiddenInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="text">
+<script>
+/* ==========================================================================
+   TYPING SPRINT — core engine (pure logic, no DOM)
+   Runs identically in the browser and in Node for the test harness.
+   ========================================================================== */
+
+/* ---------------- word bank ---------------- */
+const WORDBANK = (
+  // 3-4 letters
+  "ace act add age aim air ant arc arm art ash ask bag bat bay bee bid bin bit "+
+  "bow box bud bug bus buy cab cap car cat cod cog cow cry cub cue cup cut dam "+
+  "day den dew dig dim dip dog dot dry dub due dye ear eat eel egg elf elk elm "+
+  "end era eve eye fan far fax fig fin fit fix fly fog fox fun fur gap gas gem "+
+  "gel gin gum gut gym hat hay hen hip hit hop hub hug hum hut ice ink inn ivy "+
+  "jam jar jaw jet jig job jog joy jug keg key kid kit lab lap law lay leg lid "+
+  "lip log lot low mad map mat mix mob mop mud mug nap net new nod nut oak oar "+
+  "oat oil orb owl pad pan paw pea peg pen pet pie pig pin pit pod pop pot pub "+
+  "pug pun rag ram rat raw ray red rib rim rip rob rod rot row rub rug run rye "+
+  "sad sap saw sea set sew shy sip sit ski sky sly sob sow soy spy sum sun tab "+
+  "tag tan tap tar tax tea tie tin tip toe ton top tow toy try tub tug urn van "+
+  "vat vet vow wag war wax web wet wig win wok wolf yak yam yap yen yes zip zoo "+
+  "able acid aged aids ally alto arch area army atom aunt avid axle baby bake "+
+  "bald ball band bank bare bark barn base bath bead beam bean bear beat beef "+
+  "beer bell belt bend best bike bill bird bite blot blue blur boat body boil "+
+  "bold bolt bomb bone book boot bore born boss both bowl brew brim buck bulk "+
+  "bulb bump bunk burn bush busy cage cake calf call calm camp cane cape card "+
+  "care cart case cash cast cave cell chef chin chip chop city clam clan clap "+
+  "claw clay clip club clue coal coat code coil coin cold colt comb cone cook "+
+  "cool cope copy cord core cork corn cost cove crab crew crib crop crow cube "+
+  "cuff curl cute dark dart dash data date dawn deal dean dear debt deck deed "+
+  "deep deer desk dial dice dime dine dirt dish dive dock does dome done doom "+
+  "door dose dove down drag draw drew drip drop drum dual duck dude duel dull "+
+  "dune dusk dust duty each earn ease east easy echo edge edit exam exit face "+
+  "fact fade fair fall fame farm fast fate fawn feat feed feel fern fest file "+
+  "fill film find fine fire fish fist five flag flap flat flaw fled flew flip "+
+  "flow foam fold folk font food fool foot fork form fort foul four free fret "+
+  "frog from fuel full fund fuse gain gale game gate gave gaze gear gift girl "+
+  "give glad glow glue goal goat gold golf gone good gown grab gram gray grew "+
+  "grid grim grin grip grit grow gulf gull hail hair half hall halt hand hang "+
+  "harm harp hawk haze head heal heap hear heat heel held helm help herb herd "+
+  "hero hide high hike hill hint hive hold hole holy home honk hood hoof hook "+
+  "hoop hope horn hose host hour huge hull hump hunt hurl hurt hush icon idea "+
+  "idle inch iron item jade jail jazz jeep jest jolt jump junk jury just keel "+
+  "keen keep kelp kick kind king kiss kite knee knew knit knob knot lace lack "+
+  "lake lamb lamp land lane lash last late lava lawn lazy leaf leak lean leap "+
+  "left lend lens lick life lift like limb lime line link lion list live load "+
+  "loaf loan lock loft logo lone long look loom loop lord lose loss loud love "+
+  "luck lump lung lure lush lynx made mail main make male mall malt many maple "+
+  "mare mark mask mass mast mate math maze meal mean meat meet melt memo mend "+
+  "menu mesh mess mice mild mile milk mill mind mine mint miss mist mode mold "+
+  "mole monk mood moon moss most moth move much mule muse mush must myth nail "+
+  "name nape navy near neat neck need neon nest news next nice nine node none "+
+  "noon norm nose note noun nova numb oath odds oily omen once only onto open "+
+  "oval oven over pace pack pact page paid pail pain pair pale palm park part "+
+  "pass past path pave peak pearl peat peck peel peer pest pick pier pike pile "+
+  "pill pine pink pint pipe pity plan play plea plot plow plug plum plus poem "+
+  "poet pole poll pond pony pool poor pore pork port pose post pour pray prey "+
+  "prim prop puff pull pulp pump pure push quit quiz race rack raft rage raid "+
+  "rail rain rake ramp rank rare rash rate rave read real reap rear reed reef "+
+  "reel rely rent rest rice rich ride rift ring riot ripe rise risk road roam "+
+  "roar robe rock rode role roll roof room root rope rose rosy ruby rude ruin "+
+  "rule rush rust sack safe sage said sail sake salt same sand sang sank save "+
+  "scan scar seal seam seat seed seek seem seen self sell send sent shed ship "+
+  "shoe shop shot show shut sick side sigh sign silk sill silo sing sink site "+
+  "size skew skid skim skin skip slab slam slap sled slid slim slip slot slow "+
+  "slug smog snap snip snow soak soap sock soda sofa soft soil sold sole solo "+
+  "some song soon sore sort soul soup sour span spar spin spit spot spun spur "+
+  "stab stag star stay stem step stew stir stop stow stub stun such suit sung "+
+  "sunk sure surf swam swan swap sway swim tack tail take tale talk tall tame "+
+  "tank tape task team tear tech teem tell tend tent term test text than that "+
+  "thaw them then they thin this thud thus tick tide tidy tier tile till tilt "+
+  "time tiny toad toil told toll tomb tone tool torn toss tour town trap tray "+
+  "tree trek trim trip trot true tube tuck tuna tune turf turn twig twin type "+
+  "ugly undo unit upon urge used user vain vane vase vast veil vent verb very "+
+  "vest veto vial vibe view vine visa void volt vote wade wage wait wake walk "+
+  "wall wand want ward ware warm warn wash wasp watt wave weak wear weed week "+
+  "weep well went were west what when whim whip whom wide wife wild will wind "+
+  "wine wing wink wipe wire wise wish with wolf wood wool word wore work worm "+
+  "worn wrap wren yard yarn yawn year yell yoga yolk your zeal zero zest zinc "+
+  "zone zoom "+
+  // 5-7 letters
+  "about above abuse actor adapt admit adobe adopt adult after again agent agree "+
+  "ahead alarm album alert alien align alive alley allow alloy alone along alpha "+
+  "altar amber amend among ample angel anger angle ankle apart apple apply april "+
+  "apron arena argue arise armor aroma array arrow aside asset atlas audio audit "+
+  "avoid awake award aware badge baker bacon badly bagel baton beach beard beast "+
+  "begin being belly below bench berry birch birth black blade blame bland blank "+
+  "blast blaze bleak blend bless blind blink bliss block bloom blues bluff blunt "+
+  "board boast bonus boost booth bound brace brain brake branch brand brass brave "+
+  "bread break breed brick bride brief bring brink brisk broad broke bronze brook "+
+  "broom brown brush buddy budge buggy build built bunch bunny burst buyer cabin "+
+  "cable cadet camel canal candy canoe canon cargo carol carry carve catch cause "+
+  "cedar chain chair chalk charm chart chase cheap cheat check cheek cheer chess "+
+  "chest chief child chill china choir choke chord chose chunk cider cigar civic "+
+  "civil claim clash clasp class clean clear clerk click cliff climb cling cloak "+
+  "clock close cloth cloud clown coach coast cobra cocoa color comet comic coral "+
+  "corner couch cough could count court cover crack craft crane crank crash crate "+
+  "crawl crazy cream creek creep crest cried crime crisp cross crowd crown crumb "+
+  "crush crust curve cycle daily dairy daisy dance dandy dealt debut decal decay "+
+  "decoy defer delay delta dense depot depth derby diary digit dimly diner dingo "+
+  "ditch diver dizzy dodge doing donor donut dough dozen draft drain drama drank "+
+  "dream dress dried drift drill drink drive drone drove drown drums dryer dwell "+
+  "dwarf eager eagle early earth easel eaten ebony edict eight elbow elder elect "+
+  "elite email ember empty enact enemy enjoy enter entry equal equip erase error "+
+  "essay ether ethic event every exact excel exist extra fable facet faint fairy "+
+  "faith false fancy fatal fault favor feast fence ferry fetch fever fiber field "+
+  "fiery fifth fifty fight final finch first fixed flair flake flame flank flash "+
+  "flask fleet flesh flick fling flint float flock flood floor flour fluid flush "+
+  "flute focus foggy force forge forth forty forum found frame frank fraud fresh "+
+  "fried frost frown fruit fudge fully funny fuzzy gauge ghost giant giddy given "+
+  "glass gleam glide globe gloom glory glove glued going goose gorge grace grade "+
+  "grain grand grant grape graph grasp grass grave gravy graze great greed green "+
+  "greet grief grill grind groan groom group grove growl guard guess guest guide "+
+  "guild guilt guitar habit handy happy harbor hardy harsh haste hatch haunt haven "+
+  "havoc heard heart heavy hedge hefty hello hence herbs hinge hobby hoist honey "+
+  "honor horse hotel hound house hover human humid humor hurry ideal image imply "+
+  "index inner input irony issue ivory jelly jewel joint jolly judge juice juicy "+
+  "jumbo knack kneel knife knock known label labor lance large larva laser latch "+
+  "later laugh layer leach leader league learn lease least leave ledge legal lemon "+
+  "level lever light lilac limbo limit linen liner lingo liter llama lobby local "+
+  "lodge logic loose lorry lotus lower loyal lucid lucky lunar lunch lyric magic "+
+  "magma maize major maker mango maple march marsh match maybe mayor meant medal "+
+  "media melon mercy merge merit merry metal meter micro midst might mimic miner "+
+  "minor minus mirth mixer model modem moist molar money month moral motor mound "+
+  "mount mourn mouse mouth movie mower muddy mural music nacho naive nasty naval "+
+  "needle nerve never newly niche night ninja noble noise north notch novel nurse "+
+  "nylon oasis occur ocean offer olive omega onion opera orbit order organ other "+
+  "otter ought ounce outer owner oxide ozone paced paddle paint panel panic paper "+
+  "parade parcel pardon parent parlor parrot party pasta paste patch patio pause "+
+  "peace peach pearl pedal penny perch peril petal phase phone photo piano piece "+
+  "pilot pinch pitch pivot pixel pizza place plaid plain plane plank plant plate "+
+  "plaza plead pluck plumb plume point polar polka porch pouch pound power prank "+
+  "press price pride prime print prior prism prize probe prone proof proud prove "+
+  "prune pulse punch pupil puppy purge purse quake quart queen query quest queue "+
+  "quick quiet quill quilt quirk quote radar radio raise rally ranch range rapid "+
+  "ratio raven reach react ready realm rebel refer reign relax relay renew repay "+
+  "reply rerun reset resin retro rhino rhyme rider ridge rifle right rigid rinse "+
+  "risky rival river roast robin robot rocky rodeo rogue roman rough round route "+
+  "royal rugby ruler rumor rural sabre saddle safer saint salad salon salsa salty "+
+  "sandy sauce sauna savor scale scalp scare scarf scene scent scoop scope score "+
+  "scout scrap screw scrub sedan seize sense serve seven shade shaft shake shale "+
+  "shall shame shape share shark sharp shave sheep sheer sheet shelf shell shift "+
+  "shine shiny shire shirt shock shore short shout shove shown shred shrub sight "+
+  "silly since siren sixth sixty skate skill skirt skull slack slate sleek sleep "+
+  "sleet slice slide slime sling slope small smart smash smell smile smirk smoke "+
+  "snack snail snake sneak sniff snore snout solar solid solve sonic sorry sound "+
+  "south space spade spare spark speak spear speck speed spell spend spice spike "+
+  "spill spine spiral spite splash split spoil spoke spoon sport spout spray spree "+
+  "spring sprint spruce squad squat squid stack staff stage stain stair stake stale "+
+  "stalk stall stamp stand stare start state steak steal steam steel steep steer "+
+  "stern stick stiff still sting stock stole stomp stone stood stool stoop store "+
+  "storm story stout stove strap straw stray strip stuck study stuff stump stunt "+
+  "style sugar suite sunny super surge sushi swamp swarm swear sweat sweep sweet "+
+  "swell swept swift swing swirl sword swore syrup table taken talon tango taper "+
+  "tardy tasty teach tease teeth tempo tenor tense tenth thank theft their theme "+
+  "there these thick thief thigh thing think third thorn those three throw thumb "+
+  "tiger tight timid title toast today token tonic tooth topaz torch total touch "+
+  "tough towel tower toxic trace track trade trail train trait tramp trash tread "+
+  "treat trend trial tribe trick tried tripod troop trout truce truck truly trunk "+
+  "trust truth tulip tumble tunic turbo tutor tweed twice twist typing udder ultra "+
+  "uncle under union unite unity until upper upset urban usage usher usual valid "+
+  "value valve vapor vault velvet venom venue verge verse video vigil vinyl viola "+
+  "viral virus visit vital vivid vocal vodka vogue voice voter wafer wager wagon "+
+  "waist waltz wander wharf wheat wheel where which while whirl whisk white whole "+
+  "widen width wield windy wiper witch witty woman women world worry worse worth "+
+  "would wound woven wrath wreck wrist write wrong yacht yeast yield young yours "+
+  "youth zebra zesty "+
+  // 7-9 letters
+  "abandon ability absence absolute abstract academy accent accept access account "+
+  "achieve acquire acrobat actress actual address adjust admire advance adverb "+
+  "advice affair afford against airline airport alcove alkaline allergy almanac "+
+  "already amateur amazing amber ambient ammonia amplify amusing analogy analyst "+
+  "anatomy ancient anecdote angular animate annual another answer antenna anthem "+
+  "antique anxiety anybody anymore anyway apparel appeal appetite applaud approve "+
+  "apricot aquatic archery archive arctic arrange arrival article artisan artistic "+
+  "aspect asphalt assault assemble asset assign assist assume asteroid astound "+
+  "athlete atlantic attach attempt attend attract auction audible auditor august "+
+  "author autumn avatar average awesome awkward backpack bacteria balance balcony "+
+  "ballad ballet bamboo bandage banjo banner banquet baptism barbecue barrel "+
+  "barrier baseball basket bassoon bathtub battery battle beacon bearing because "+
+  "bedroom bedtime beetle beginner behave behind believe beneath benefit beside "+
+  "betray beverage beyond bicycle biology birthday biscuit bishop bitter blanket "+
+  "blender blessing blister blizzard blossom blunder bobcat boiler bonfire bonnet "+
+  "booklet border borrow botany bottle bottom boulder bounce boundary bouquet "+
+  "boutique bracket braille bramble brandy bravery breach breathe breeze brewery "+
+  "bridge brigade brilliant brisket brittle broadcast brochure broiler brother "+
+  "brownie bruise bubble bucket buckle budget buffalo buffet builder bulldog "+
+  "bulletin bumper bundle bunker burden bureau burglar burrow bustle butcher "+
+  "butter button buzzer cabbage cabinet caffeine calcium caliber calorie camera "+
+  "campaign campus canary candid candle canvas canyon capable capital caption "+
+  "capture caravan carbon cardinal careful cargo carnival carpet carrot cartoon "+
+  "cascade cashew casino cassette castle casual catalog category caterer cathedral "+
+  "cattle caution cavern ceiling celery cement census center central century "+
+  "ceramic cereal certain chamber champion chandler channel chapter charcoal "+
+  "charity charter cheddar cheerful chemist cherish cherry chestnut chicken "+
+  "childish chimney chipmunk chisel chlorine chocolate choice cholera chorus "+
+  "chowder chrome chronic chuckle churn cinema cinnamon circle circuit circus "+
+  "citadel citizen citrus clarify clarity classic clatter cleaner clearing clever "+
+  "climate clinic clipper cluster clutter coaster cobbler cocktail coconut cocoon "+
+  "coffee cognac coherent collage collar collect college cologne colonel colony "+
+  "column combat combine comedy comfort comical command comment commerce commit "+
+  "common commute compact company compare compass compete compile complain complex "+
+  "comply compose compute concept concern concert conclude concrete condor conduct "+
+  "confess confirm conflict confuse connect conquer consent consider console "+
+  "consult consume contact contain contest context continue contract contrast "+
+  "control convert convince cookie coolant copper coral cordial corner cornice "+
+  "corridor cosmic cottage cotton council counter country coupon courage courier "+
+  "cousin coverage cowboy crackle cradle crafted cranberry crayon creamy creature "+
+  "credit crescent crevice cricket crimson crinkle crisis critic crochet crocodile "+
+  "crooked crossing crouton crowded crucial cruise crumble crusade crystal cuisine "+
+  "culture cunning cupcake curator curfew curious current cursive curtain cushion "+
+  "custard custody custom cutlery cyclone cypress dagger dahlia damage dancer "+
+  "danger daring darling dashing daughter dazzle deadline dealer debate decade "+
+  "decency decide decimal declare decline decorate decrease dedicate default "+
+  "defeat defend deficit defined degree delight deliver demand density dentist "+
+  "deposit descend desert design desire despite dessert destiny detail detect "+
+  "develop device devote diagram dialect diamond diary dictate diesel differ "+
+  "digital dilemma diligent dinner dinosaur diploma direct disable disaster "+
+  "discard discover discuss disease dismiss display dispute distant distinct "+
+  "district disturb diverse divide divine doctor doctrine document dolphin domain "+
+  "domino donate double doubtful dragon drainage dramatic drawing dresser drifting "+
+  "driveway drizzle dropout drumming duchess dungeon durable dusting dwelling "+
+  "dynamic dynasty eagerly earlier earnest eastern eclipse economy edition educate "+
+  "effect efficient effort eggplant elastic elderly elegant element elevate eleven "+
+  "eligible embrace emerald emerge emotion emperor empire employ empower enable "+
+  "enchant encode encounter endless endorse endure energy engage engine english "+
+  "engrave enhance enigma enjoyed enlarge enlist enormous enough enrich ensure "+
+  "entered entire entrance envelope episode equator equity errand escape essence "+
+  "estate esteem eternal ethical evening evident exactly example exceed exchange "+
+  "excited exclaim excuse execute exhale exhibit expand expect expense expert "+
+  "explain explore export expose express extend extract extreme eyebrow fabric "+
+  "factory faculty failure fairway falcon familiar famous fantasy farmer fashion "+
+  "fastball fathom fatigue feather feature federal feeling ferment fertile festive "+
+  "fiction fiddle fidelity fifteen figure filter finance finding finger finish "+
+  "firearm firefly fireside fitness fixture flagship flamingo flannel flavor "+
+  "flexible flicker flimsy flipper floral florist flourish flutter foliage follow "+
+  "fondness foolish football footnote foreign forest forever forget forgive "+
+  "formula fortune forward fossil foster founder fountain fraction fragile fragment "+
+  "fragrant freckle freedom freezer freight frequent fretful friction friday "+
+  "friendly frighten frontier frosting frozen frugal fulfill function funding "+
+  "furnace further fusion gadget galaxy gallery gallop gambit garage garbage "+
+  "garden garlic garment garnish gasoline gateway gather gazette general generous "+
+  "genius gentle genuine geology gesture giggle ginger giraffe glacier gladly "+
+  "glamour glimpse glisten glitter glorious glossary glucose golden goldfish "+
+  "gorilla gospel gossip gourmet governor gracious gradual graduate grammar "+
+  "granite graphic gratify gravity greatly grenade greeting griddle grimace "+
+  "grocery grommet grouper growing grumble guarded guardian guidance guiltless "+
+  "guitar gymnast habitat halibut hallway halogen hamlet hammer hamster handful "+
+  "handle handsome hangar happily harbor hardware harmony harness harvest hatchet "+
+  "hazard headache headline healthy hearing hearty heaven heavily hectare hedgehog "+
+  "helipad helmet helpful hemisphere heritage hermit heroic herring hexagon "+
+  "hibernate hickory hidden highway hilltop hinder history hobbies hockey holiday "+
+  "hollow homemade honesty honeydew horizon hormone hornet horrible hospital "+
+  "hostage hostile however humble humidity hundred hunger hurdle hurricane husband "+
+  "hydrant hygiene iceberg identify idyllic igneous ignition ignore illness "+
+  "illusion imagine imitate immense impact impasse imperial implant imply import "+
+  "impress improve impulse inbound incense inches incline include income indeed "+
+  "indicate indoor induce industry infant infield inflate inform ingot inhabit "+
+  "inherit initial inject injury inland inmate innocent inquire insect insert "+
+  "inside insight inspect inspire install instant instead insulin insure intact "+
+  "intend intense interest interior internal interval intimate intrigue invent "+
+  "inverse invest invite involve inward island isolate italic itinerary jacket "+
+  "jackpot jaguar janitor january jasmine javelin jealous jetpack jewelry jockey "+
+  "journal journey joyful jubilee judgment juggler jukebox jumper jungle juniper "+
+  "justice justify kangaroo kayak kennel kernel kestrel ketchup keyboard keynote "+
+  "kidney kindness kingdom kitchen kitten kneecap knuckle laboratory labyrinth "+
+  "lacquer ladder lagoon landmark landscape language lantern lapel largely lasting "+
+  "lateral lattice laughter laundry lavender lawyer layout leader leading leaflet "+
+  "leather lecture legacy legend leisure leopard lettuce liberty library license "+
+  "lifting lighter lightning likewise limited lincoln linear lingering linking "+
+  "liquid listen literal lively livestock lizard lobster locate locker locomotive "+
+  "lodging logical longing lookout lottery lounge lovely lowland loyalty lozenge "+
+  "luggage lullaby lumber luminous lunatic luncheon lurking luxury machine "+
+  "magazine magenta magical magnet magnify mahogany mailbox mainland maintain "+
+  "majesty majority mammal manager mandate mandolin mangrove manner mansion "+
+  "mantle manual manuscript maple marathon marble margin marina marine marker "+
+  "market marmalade maroon marriage marshal marvel massive mastery matinee matrix "+
+  "matter mattress maximum meadow measure mechanic medical medicine medieval "+
+  "meeting melody member memory mention mercury mermaid message metallic meteor "+
+  "method midnight migrate mileage military million mineral minimum minister "+
+  "minnow minute miracle mirror mischief missile mission mistake mixture mobile "+
+  "modest modify module moisture molecule moment monarch monday monitor monkey "+
+  "monsoon monster monthly monument morning mortgage mosaic mosquito motion "+
+  "motivate mountain mourning movement muffin multiple mundane museum mushroom "+
+  "musical mustard mutter mystery mystic napkin narrate narrow national native "+
+  "natural naughty nautical navigate nearby nebula necklace nectar needle negative "+
+  "neglect neighbor nervous nesting network neutral neither nickel nightly nimble "+
+  "nitrogen nobody nocturnal nominate nonsense noodle normal northern nostril "+
+  "notable nothing notice notify novelty nowhere nuclear nugget number numeral "+
+  "nursery nurture nutrient nutmeg oakwood obelisk object oblige oblong obscure "+
+  "observe obsidian obstacle obtain obvious occasion occupy october octopus "+
+  "offense office offset offshore ointment olympic omelet omission onboard "+
+  "onwards opaque opening operate opinion opossum opponent optical optimal option "+
+  "orange orbital orchard orchestra ordeal ordinary organic origin ornament "+
+  "orphan ostrich outcome outdoor outfit outland outlet outline output outrage "+
+  "outside outward overall overcast overcome overdue overhead overlap overseas "+
+  "oxygen oyster package packet paddle pageant painter painting palace pallet "+
+  "pamphlet panther paperclip parable parade paradise paragraph parallel paramedic "+
+  "parasol parcel parents parking parkway parlour parsley partial particle partner "+
+  "passage passion passport pasture pathway patience patient patriot pattern "+
+  "pavement pavilion payment payroll peaceful peacock peanut pebble peculiar "+
+  "pedestal pelican penalty pencil pending penguin peninsula pennant pension "+
+  "pepper percent perfect perform perfume perhaps perimeter period perish permit "+
+  "persist person perspective persuade pertain pesto petition petunia pharmacy "+
+  "phantom phoenix phrase physical physics pianist picnic picture pigment pigeon "+
+  "pillar pillow pinball pincer pioneer pipeline pirate pistol pitcher pivotal "+
+  "placard placid plaintiff planet planner plaster plastic plateau platform "+
+  "platinum platter playful playground pleasant please pledge plenty plotting "+
+  "plumage plunder plunge plywood pocket podcast podium poetry poignant pointer "+
+  "poison polar polish polite pollen pollute polygon popcorn poplar popular "+
+  "porcelain porridge portion portrait position positive possess possible postage "+
+  "posture potato potential pottery poultry poverty powder powerful practice "+
+  "prairie praise precise predict prefer premier premium prepare present preserve "+
+  "presume pretend pretzel prevail prevent preview previous primary primate "+
+  "printer priority prisoner private privilege problem proceed process proclaim "+
+  "produce product profile profit program progress project promise promote prompt "+
+  "pronoun proper propose prospect protect protein protest proud provide province "+
+  "provoke prowler prudent public pudding pumpkin punctual puncture pungent "+
+  "puppet purchase purify purple purpose pursuit puzzle pyramid quality quantum "+
+  "quarrel quarter quartz question quicken quiet quilted quintet quiver quotient "+
+  "rabbit raccoon radiant radical radish rafting railway rainbow rainfall raisin "+
+  "rampart ranger ransom rapids rapture rascal rating rattle reactor reader "+
+  "reading realism reality realize reason rebuild receipt receive recent recipe "+
+  "recital reckon recline recover recruit rectangle recycle reduce redwood reefer "+
+  "referee reflect reform refresh refuge refund refuse regard regatta regime "+
+  "region regular reject relate relative relax release relevant reliable relief "+
+  "remain remark remedy remind remote removal render renewal rental repair repeat "+
+  "replace report reptile republic request require rescue research reserve reside "+
+  "resolve resort resource respect respond restore result resume retail retain "+
+  "retire retreat retrieve return reunion reveal revenue reverse review revise "+
+  "revival reward rhythm ribbon riddle rifle rigging righteous rigorous ripple "+
+  "risotto ritual riverbed roadside roaster robotic rocket romance roofing rooster "+
+  "rosemary rotate rotten roughly routine royalty rubber rubble rudder rugged "+
+  "ruined rumble running rupture rustic sabotage saddle safari safety sailing "+
+  "salad salary salmon saloon salvage sample sanction sandal sandwich sapling "+
+  "sapphire sardine satchel satellite satin satisfy saturday sausage savage "+
+  "savings scaffold scallop scandal scanner scarlet scatter scenery schedule "+
+  "scholar science scissors scooter scorpion scramble scratch scribble script "+
+  "scripture sculpture seaside seaweed seclude second secret section secure "+
+  "segment seldom select seminar senator sensible sentence sequence serene serial "+
+  "series serious sermon servant service session setback settle several severe "+
+  "shadow shallow shampoo shatter shelter sheriff shield shimmer shingle shipment "+
+  "shiver shoulder shovel shower shrimp shrink shuffle shutter siberian sibling "+
+  "sidewalk sierra signal signature silence silicon silver similar simple sincere "+
+  "singer single sinister siphon sister sitting situate sizzle skeleton sketch "+
+  "skiing skillet skipper skyline slalom slender slipper slogan slumber smaller "+
+  "smelter smiling smoothie smuggle snapshot snorkel snowball snowfall soccer "+
+  "society softly software soldier solitary solstice solution somehow someone "+
+  "sonata sorbet sorrow soprano sought soundly sparkle sparrow spatial special "+
+  "species specify spectrum speech sphere spider spinach spindle spirit splendid "+
+  "splinter sponsor spotlight sprinkle sprocket squadron squeeze squirrel stadium "+
+  "staffer stagger stamina standard staple starfish starlight startle station "+
+  "statue stature statute steady stellar stencil stepping sterling stipple stomach "+
+  "storage stories stormy straight strange stranger strategy stream street stretch "+
+  "strict strike stringy stripe stroke strong struggle student studio stumble "+
+  "sturdy subject submarine submit subscribe subtle suburb subway succeed success "+
+  "sudden suffer sufficient suggest suitcase sulfur summary summer summit sunbeam "+
+  "sunburn sundial sunflower sunlight sunrise sunset superb supper supply support "+
+  "suppose supreme surface surgeon surplus surprise surrender survey survive "+
+  "suspect suspend sustain swallow sweater swelter swiftly swimmer swindle switch "+
+  "swollen symbol symphony symptom syndrome syntax system tabletop tackle tactic "+
+  "tadpole tailor talent talkative tandem tangent tangerine tangible tantrum "+
+  "tapestry target tarnish tattoo taxpayer teacher teamwork teapot technique "+
+  "tedious telegram telephone telescope teller temper template temple tempest "+
+  "tenant tender tennis tension terminal terrace terrain terrible territory "+
+  "testify texture thankful theater theory therapy thermal thicket thimble thirsty "+
+  "thirteen thistle thorough thought thousand thrive throne through thunder "+
+  "thursday ticket tideway tighten timber timeline timeless timing tingle tinker "+
+  "tiptoe tirade tissue titanic toaster tobacco toddler together toggle tolerant "+
+  "tomato tomorrow tonight toolbox topical topple torment tornado torpedo torrent "+
+  "tortoise total totally toucan touchdown tourist tournament toward towering "+
+  "tractor traffic tragedy trailer trainer transfer transit transmit transport "+
+  "trapeze travel treason treasure treaty trellis tremble trenches trending "+
+  "triangle tribute tricky trigger trilogy trinket triumph trolley trombone "+
+  "trooper tropical trouble trouser trowel truffle trumpet trustee tuesday tuition "+
+  "tumbler tundra tunnel turbine turkey turmoil turnip turnout turtle tuxedo "+
+  "twelve twenty twinkle twilight typical typhoon typist ultimate umbrella "+
+  "umpire unable unaware unbeaten uncover underdog undergo uniform unique united "+
+  "universe unknown unless unlock unpack unravel unusual unveil upgrade upheaval "+
+  "uphold upload upright uproar upstairs upstream urgency utensil utility utopia "+
+  "vacancy vacation vaccine vagrant valiant valley valuable vandal vanilla vanish "+
+  "vantage variety various varnish vaulted vector vegetable vehicle velocity "+
+  "vending venture verbal verdict verify version vertical vessel veteran vibrant "+
+  "vicinity victory viewer vigilant vigorous village vintage violet violin "+
+  "virtual virtue visible vision visitor visual vitamin vocation voltage volume "+
+  "voltaic voucher voyage waffle waiter wallet walnut wander wanted wardrobe "+
+  "warfare warmth warning warrant warrior washing wasteful watchful waterfall "+
+  "wavelength weather weaving webbing website wedding weekday weekend weighty "+
+  "welcome welfare western whatever wheelbarrow whenever wherever whether whimsy "+
+  "whisker whisper whistle willing willow window winning winter wireless wisdom "+
+  "wishful wistful withdraw witness wizard wobble wonder woodland woolen worker "+
+  "workshop worried worship worthy wounded wrangle wrapper wrestle wrinkle writer "+
+  "writing yearbook yearly yellow yesterday yielding yogurt younger yourself "+
+  "zealous zeppelin zigzag zippered zodiac zoology "+
+  // 10-13 letters
+  "absolutely abstraction accelerate acceptable accessible accidental accommodate "+
+  "accomplish accordion accountant accumulate accurately achievement acknowledge "+
+  "acquainted activation additional adjustment admiration adolescent advantage "+
+  "adventure advertise aeroplane aftermath afternoon aggressive agreement "+
+  "agriculture algorithm alligator allocation alteration alternative altogether "+
+  "aluminium ambassador ambitious amendment amphibian amusement analytical "+
+  "ancestral anniversary announcement antibiotic anticipate apartment apologize "+
+  "apparatus appearance appetizer applause appliance applicant appointment "+
+  "appreciate apprentice approach appropriate approximate aquarium arbitrary "+
+  "architect arithmetic arrangement artificial ascending assembly assessment "+
+  "assignment assistance associate assumption astonished astronaut astronomy "+
+  "atmosphere attachment attendance attention attitude attraction audience "+
+  "authentic authority automatic automobile autonomy available avalanche awareness "+
+  "background backwards balancing ballistic bankruptcy barbershop basketball "+
+  "battlefield beautiful beekeeper beginning behaviour beneficial benevolent "+
+  "beverages bibliography bicyclist billionaire binoculars biography biosphere "+
+  "blacksmith blindfold blockade bloodhound blueberry bodyguard bookkeeper "+
+  "bookshelf boomerang boundaries breakfast breakthrough breathless brickwork "+
+  "brightness brilliance broadcaster brochure brotherhood brushstroke butterfly "+
+  "calculate calendar calibrate camouflage campfire candidate cantilever capacity "+
+  "capitalize caretaker carpenter carpentry cartilage cartridge cassette catalogue "+
+  "catastrophe categorize caterpillar cathedral cauliflower celebrate cellphone "+
+  "centimetre ceremony certificate challenge champagne chandelier changeable "+
+  "characters charisma charitable chatterbox checkpoint chemistry chessboard "+
+  "childhood chocolate choreography chromosome chronicle circulate circumstance "+
+  "civilian classical classroom cleanliness cleverness cliffhanger climbing "+
+  "clockwork coincidence collaborate collection collective collision colourful "+
+  "combination comfortable commander commentary commercial commission commitment "+
+  "commonplace communicate community companion comparison compassion compatible "+
+  "competent competition complement complicated complimentary component composure "+
+  "compromise compulsory concentrate conception concerning conclusion condition "+
+  "conductor conference confidence confidential configure confirmation conformity "+
+  "confusion congestion congratulate connection conqueror conscience conscious "+
+  "consecutive consequence conservation considerable consistent consolidate "+
+  "conspiracy constable constantly constellation constitute construct consultant "+
+  "consumption contagious container contemplate contemporary contestant continent "+
+  "continuous contraption contribute controller convenient convention conversation "+
+  "conviction cooperate coordinate copyright corduroy corporate correction "+
+  "corridor corrugated countdown counterpart countryside courageous coursework "+
+  "courteous craftsman crescendo criterion criticism crossroads crowdfund cultivate "+
+  "curiosity curriculum customary customize cybernetic cylindrical dandelion "+
+  "dangerous dashboard decoration dedication defensive definition delegation "+
+  "deliberate delicious delightful delivery democracy demolition demonstrate "+
+  "department dependable deployment depression descendant describe description "+
+  "designer desperate destination destroyer detective determine developer "+
+  "devastating diagnosis dialogue dictionary difference difficult diligence "+
+  "diplomatic direction disappear disappoint discipline disclosure discomfort "+
+  "discourage discovery discussion disgraceful dishwasher dislocate dispatcher "+
+  "disruption distance distinguish distribute district disturbance diversity "+
+  "documentary dominance doorbell doubtless downstairs downstream dramatic "+
+  "drawbridge dreadful drumstick duplicate dwindling dynamite earthquake "+
+  "earthworm easygoing echolocation ecosystem editorial educational effective "+
+  "efficiency elaborate elasticity electrical electricity elementary elevation "+
+  "eliminate elsewhere embankment embroidery emergency emphasize employment "+
+  "empowerment enchanting encourage encyclopedia endeavour endurance energetic "+
+  "engagement engineering enlightened enormously enterprise entertain enthusiasm "+
+  "entirely entrepreneur environment equipment equivalent especially essential "+
+  "establish estimation evaluation evaporate everybody everything everywhere "+
+  "excavation excellence exceptional excitement exclusive executive exercise "+
+  "exhibition existence expansion expedition expensive experience experiment "+
+  "explanation exploration explosion expression extension extraordinary extremely "+
+  "fabricate facilitate fahrenheit fantastic fascinate fashionable favourable "+
+  "fearless feasibility federation fellowship fertilizer festival fictional "+
+  "fieldwork filmmaker filtration financial fingerprint firefighter fireplace "+
+  "fireworks fisherman flamboyant flashlight flexibility flourishing fluorescent "+
+  "foolproof footprint forecast foreground foreigner forgiveness formality "+
+  "formation formidable fortitude fortunate foundation fragrance framework "+
+  "franchise frequency freshwater friendship frostbite fulfilment functional "+
+  "fundamental furniture furthermore gardening generation generator generosity "+
+  "geography geometric geothermal gingerbread glacially glassware glorious "+
+  "goalkeeper goldsmith goodnight government gracefully graduation grandchild "+
+  "grandfather grasshopper gratitude gravitate greenhouse guarantee guidebook "+
+  "gymnasium halfhearted handkerchief handwriting harmonica harvester headmaster "+
+  "headphones headquarters heartbeat helicopter hemisphere hereditary heritage "+
+  "hesitation hibernation hieroglyph highlands highlight hilarious historian "+
+  "historical honeycomb honeymoon hopefully horizontal horrendous horseback "+
+  "hospitality hourglass household housework humanity humiliate hurricane "+
+  "hydraulic hydrogen hypothesis icebreaker identical identity illuminate "+
+  "illustrate imaginary imagination imitation immediate immersive impatient "+
+  "importance impossible impressive improvement inaugural incentive incidental "+
+  "increasing incredible independent indicator individual industrial inevitable "+
+  "infection infinite influence information ingredient inhabitant inheritance "+
+  "initiative injustice innovation inquisitive inscription insightful inspection "+
+  "inspiration installment instructor instrument insulation intelligence intensity "+
+  "intentional interaction interference intermission international interpret "+
+  "interrupt intersection interview introduce invaluable invention inventory "+
+  "investment invisible invitation involvement irrigation isolation janitorial "+
+  "jubilation judgement junction juxtapose kaleidoscope kilometre kindergarten "+
+  "kitchenette knowledge laboratory landmarks landslide latitude launching "+
+  "leadership leftovers legendary legislation lemonade leverage librarian "+
+  "lifeguard lighthouse lightweight likelihood limestone literacy literature "+
+  "livelihood locomotive logistics longitude loudspeaker loyalties luminous "+
+  "lumberjack machinery magnetism magnificent magnitude mainstream maintenance "+
+  "management manifesto manoeuvre manufacture manuscript marketplace marvellous "+
+  "masterpiece mathematics maximize mayonnaise meanwhile measurement mechanical "+
+  "medication meditation membership memorable memorandum merchandise meridian "+
+  "metabolism metaphor meteorite metropolis microphone microscope midsummer "+
+  "migration millennium millimetre miniature minimalist ministry minority "+
+  "miraculous mischievous misfortune misleading misplaced missionary mistletoe "+
+  "moderation modernize modification moisturize molecular momentary monastery "+
+  "monopoly monotonous monumental motivation motorcycle mountainous mouthpiece "+
+  "movement multiplayer multiply municipal mushrooms musician mysterious "+
+  "narrative nationwide naturally navigation necessary negotiate neighbour "+
+  "networking newsletter newspaper nightfall nightmare nonetheless nourishment "+
+  "noticeable notorious noteworthy nourishing novelist nowadays nuisance numerical "+
+  "nutritious obedience obligation observation obstruction occupation occurrence "+
+  "oceanfront officially offspring ointment onlooker opportunity opposition "+
+  "optimistic orchestra organization originally ornamental orthodox outcomes "+
+  "outnumber outrageous outstanding overcoming overflow overhaul overnight "+
+  "overpower oversight overtaken overwhelm ownership packaging paintbrush "+
+  "palaeontology panoramic paperback parachute paragraph parliament participate "+
+  "particular partnership passenger passionate pathfinder patiently patronage "+
+  "peacemaker pedestrian penetrate peninsula percentage perception performance "+
+  "periodical permanent permission perpetual persistence personality perspective "+
+  "persuasive pessimist phenomenal philosophy photograph physician pickpocket "+
+  "picturesque pilgrimage pineapple pioneering placement plagiarism planetarium "+
+  "plantation playwright pleasantly pneumatic policeman politician popularity "+
+  "population porcupine portfolio possession possibility postcard postponed "+
+  "potential powerhouse practical precaution precision predator prediction "+
+  "preference prehistoric prejudice preparation prescription presentation "+
+  "preserving president prevention primarily principal principle privilege "+
+  "procedure proceeding processing profession professor projection prominent "+
+  "promotion pronounce proportion proposition prosperous protection provision "+
+  "psychology publisher punctuation punishment purchasing quarantine questionable "+
+  "quicksand quotation racecourse racquetball radiation railroad rainforest "+
+  "randomly rationale reasonable reassuring rebellion receptive recognition "+
+  "recommend reconcile recreation rectangle recurring redevelop reduction "+
+  "reference reflection refreshing refrigerator regardless regionally registration "+
+  "regularly regulation rehearsal reinforce relationship relatively relaxation "+
+  "relentless reliability reluctant remainder remarkable reminder renewable "+
+  "renovation repetition replacement reportedly reposition represent reputation "+
+  "researcher residence resilient resistance resolution resourceful respectful "+
+  "responsible restaurant restoration restriction retirement revelation reversible "+
+  "revolution rhinoceros ridiculous rigorously roadrunner robotics rollercoaster "+
+  "roommate rotational roughness roundabout sacrifice safeguard sanctuary "+
+  "satellite satisfaction saxophone scaffolding scandalous scarcity scenario "+
+  "schedule scholarship scientific scoreboard screenplay sculptor seamstress "+
+  "searchlight seasoning secondary secretary sedimentary selection semiconductor "+
+  "sensation sensitive separation sequential settlement shakedown shareholder "+
+  "shipwreck shopkeeper shorthand shoulder shrinking sidetrack signature "+
+  "significant silhouette similarly simplicity simulation simultaneous sincerely "+
+  "singular situation skateboard skepticism skyscraper slaughter smokestack "+
+  "snowboard snowstorm socialize sociology solemnity solidarity solitude solution "+
+  "somebody something sometimes somewhere sophisticated soundtrack southeast "+
+  "southwest souvenir spacecraft spaceship spearhead specialist specifically "+
+  "spectacle spectacular speculate spellbound spiderweb spirituality splendour "+
+  "spokesman spontaneous sportsman spotlight springtime staggering starvation "+
+  "stationary statistics stepladder stereotype stewardship stimulate stockpile "+
+  "stopwatch storekeeper storyteller straightaway strawberry streamline strengthen "+
+  "stronghold structure struggling stubborn stunning subdivision submission "+
+  "subscribe subsequent substance substitute subterranean subtraction suburban "+
+  "successful sufficient suggestion sunglasses superhero superior supermarket "+
+  "supervisor supplement supportive surrounding surveillance suspicious sustainable "+
+  "sweetheart swordfish syllable symbolism sympathy synchronize synthesis tablecloth "+
+  "tablespoon tabulation tailgate tambourine tangerine tapestry technical technology "+
+  "telegraph telephone television temperate temperature temporary temptation "+
+  "tenacious tendency terminate terrestrial terrific territory testimony textbook "+
+  "thankfully theatrical themselves theoretical thereafter thermometer thoroughly "+
+  "thoughtful threatening thrilling throughout thumbtack thunderstorm timekeeper "+
+  "timetable tirelessly toothbrush toothpaste torchlight tornado tournament "+
+  "trademark tradition traditional trafficked trailblazer trampoline tranquil "+
+  "transaction transcript transfer transform transition translate transmission "+
+  "transparent transplant traveller treasurer tremendous triangular tributary "+
+  "trickster triumphant trombone tropical troublesome trustworthy turbulence "+
+  "typewriter ultimately unanimous uncertain uncomfortable underneath understand "+
+  "underwater undesirable unemployment unexpected unfamiliar unfinished unfortunate "+
+  "unhappiness unicycle uniformly unimportant uninformed universal university "+
+  "unnecessary unpleasant unpopular unrealistic unreliable unsuitable untangle "+
+  "unusually upholstery uplifting uppermost upstanding usefulness utilities "+
+  "vacationer vaccinate validation valuables variation vegetarian vegetation "+
+  "vengeance ventilate verification versatile vibration victorious videotape "+
+  "viewpoint vigilance vindicate violation visibility visionary vocabulary "+
+  "volcanic volleyball volunteer vulnerable warehouse warranty wastewater "+
+  "watchtower waterfall watermelon waterproof wavelength wealthiest weathering "+
+  "wednesday weightless welcoming wellbeing whatsoever wheelchair whimsical "+
+  "whirlpool whirlwind whistling widespread wilderness windmill windshield "+
+  "wingspan withstand wonderful woodpecker workbench workmanship worldwide "+
+  "worthwhile wrestling wristwatch xylophone yardstick yesterday youngster "+
+  "zookeeper"
+).split(/\s+/).filter(Boolean);
+
+/* dedupe + bucket by length */
+const WORDS_BY_LEN = (() => {
+  const seen = new Set(), buckets = {};
+  for (const w of WORDBANK) {
+    if (seen.has(w)) continue;
+    seen.add(w);
+    (buckets[w.length] || (buckets[w.length] = [])).push(w);
+  }
+  return buckets;
+})();
+
+function wordsInRange(min, max) {
+  let out = [];
+  for (let n = min; n <= max; n++) if (WORDS_BY_LEN[n]) out = out.concat(WORDS_BY_LEN[n]);
+  return out;
+}
+
+/* ---------------- difficulty / mode tables ---------------- */
+const DIFFS = {
+  easy:    { id:'easy',    label:'Easy',    ico:'🌱', min:3,  max:5,  speed:7.5,  spawn:2.05, maxOn:4, ramp:0.010, sub:'3–5 letters, gentle drift' },
+  medium:  { id:'medium',  label:'Medium',  ico:'🌊', min:4,  max:7,  speed:9.5,  spawn:1.70, maxOn:5, ramp:0.012, sub:'4–7 letters, steady pace' },
+  hard:    { id:'hard',    label:'Hard',    ico:'🔥', min:6,  max:9,  speed:11.5, spawn:1.40, maxOn:6, ramp:0.014, sub:'6–9 letters, quick fall' },
+  expert:  { id:'expert',  label:'Expert',  ico:'⚡', min:8,  max:11, speed:13.5, spawn:1.20, maxOn:7, ramp:0.016, sub:'8–11 letters, no mercy' },
+  insane:  { id:'insane',  label:'Insane',  ico:'☄️', min:9,  max:13, speed:16.0, spawn:1.00, maxOn:8, ramp:0.018, sub:'9–13 letters, hold on' }
+};
+const DIFF_ORDER = ['easy','medium','hard','expert','insane'];
+
+const MODES = {
+  sprint:   { id:'sprint',   label:'Sprint',   ico:'⏱️', sub:'60 seconds. Every miss costs 2s.',         duration:60,  lives:0, target:0,  missTime:-2, tally:'down', speedScale:1,    rampScale:1   },
+  survival: { id:'survival', label:'Survival', ico:'❤️', sub:'Three lives. Waves get faster forever.',    duration:0,   lives:3, target:0,  missTime:0,  tally:'up',   speedScale:1,    rampScale:1   },
+  marathon: { id:'marathon', label:'Marathon', ico:'🏁', sub:'Clear 40 words. Misses add 3s.',            duration:0,   lives:0, target:40, missTime:3,  tally:'up',   speedScale:1,    rampScale:0.6 },
+  zen:      { id:'zen',      label:'Zen',      ico:'🍃', sub:'Three calm minutes. Nothing can go wrong.', duration:180, lives:0, target:0,  missTime:0,  tally:'down', speedScale:0.72, rampScale:0   },
+  daily:    { id:'daily',    label:'Daily',    ico:'📅', sub:'Same words for everyone, once a day.',      duration:75,  lives:0, target:0,  missTime:-2, tally:'down', speedScale:1,    rampScale:1   }
+};
+const MODE_ORDER = ['sprint','survival','marathon','zen','daily'];
+
+const LANES = 5;
+const LOSE_Y = 93;          // % of field height — a word's box sits just above the line here
+const BONUS_CHANCE = 0.07;  // after warm-up
+const MAX_COMBO_MULT = 50;
+
+/* ---------------- seeded rng ---------------- */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function dateKey(d) {
+  const x = d || new Date();
+  return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+}
+function seedFromString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function dailyDiffFor(key) {
+  // rotates through the three middle tiers so the daily is always playable
+  const pick = ['medium', 'hard', 'medium', 'expert', 'hard'];
+  return pick[seedFromString(key + '#d') % pick.length];
+}
+
+/* ---------------- the game ---------------- */
+class Game {
+  constructor(opts) {
+    this.mode = MODES[opts.mode];
+    this.diff = DIFFS[opts.diff];
+    this.rng = opts.rng || Math.random;
+    this.pool = wordsInRange(this.diff.min, this.diff.max);
+    this.recent = [];
+    this.words = [];
+    this.nextId = 1;
+    this.activeId = null;
+    this.spawnTimer = 0.6;
+    this.elapsed = 0;
+    this.timeLeft = this.mode.duration;
+    this.penalty = 0;               // marathon seconds added
+    this.bank = 0;                  // timed modes: seconds lost to misses (never positive)
+    this.lives = this.mode.lives;
+    this.score = 0;
+    this.combo = 0;
+    this.bestCombo = 0;
+    this.cleared = 0;
+    this.missed = 0;
+    this.wave = 1;
+    this.keys = 0;
+    this.correct = 0;
+    this.errors = 0;
+    this.over = false;
+    this.reason = '';
+    this.laneY = new Array(LANES).fill(200);
+  }
+
+  /* --- derived --- */
+  get speedMult() {
+    if (this.mode.id === 'survival') return 1 + (this.wave - 1) * 0.11;
+    return Math.min(2.3, 1 + this.elapsed * this.diff.ramp * this.mode.rampScale);
+  }
+  get comboMult() { return 1 + Math.min(this.combo, MAX_COMBO_MULT) * 0.05; }
+  get accuracy() { return this.keys ? this.correct / this.keys : 1; }
+  get wpm() {
+    const mins = this.elapsed / 60;
+    return mins > 0.02 ? (this.correct / 5) / mins : 0;
+  }
+  get clock() {
+    if (this.mode.tally === 'down') return Math.max(0, this.timeLeft);
+    return this.elapsed + this.penalty;
+  }
+  get progress() {
+    if (this.mode.target) return this.cleared / this.mode.target;
+    if (this.mode.tally === 'down') return 1 - Math.max(0, this.timeLeft) / this.mode.duration;
+    return 0;
+  }
+
+  /* --- word picking --- */
+  pickWord() {
+    // No two words on screen may share a first letter: the key you press always
+    // has exactly one possible target, so nothing is ever stolen mid-word.
+    const taken = new Set(this.words.map(x => x.text[0]));
+    let w = null;
+    for (let guard = 0; guard < 60; guard++) {
+      const c = this.pool[Math.floor(this.rng() * this.pool.length)];
+      if (taken.has(c[0]) || this.recent.includes(c)) continue;
+      w = c; break;
+    }
+    if (!w) {   // exhaustive fallback, still deterministic under a seeded rng
+      const open = this.pool.filter(c => !taken.has(c[0]) && !this.recent.includes(c));
+      const fallback = open.length ? open : this.pool.filter(c => !taken.has(c[0]));
+      if (!fallback.length) return null;
+      w = fallback[Math.floor(this.rng() * fallback.length)];
+    }
+    this.recent.push(w);
+    if (this.recent.length > 25) this.recent.shift();
+    return w;
+  }
+
+  pickLane() {
+    // lane whose lowest word is furthest down; keeps columns from stacking
+    let best = 0, bestY = -1;
+    const order = [];
+    for (let i = 0; i < LANES; i++) order.push(i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    for (const l of order) {
+      let top = 999;
+      for (const w of this.words) if (w.lane === l) top = Math.min(top, w.y);
+      if (top > bestY) { bestY = top; best = l; }
+    }
+    return best;
+  }
+
+  spawn(ev) {
+    if (this.words.length >= this.diff.maxOn) return;
+    const text = this.pickWord();
+    if (!text) return;
+    const lane = this.pickLane();
+    const bonus = this.cleared >= 6 && this.rng() < BONUS_CHANCE;
+    const jitter = (this.rng() - 0.5) * 5;
+    const w = {
+      id: this.nextId++, text, typed: 0, lane, bonus,
+      x: Math.max(10, Math.min(90, ((lane + 0.5) / LANES) * 100 + jitter)),
+      y: -5,
+      speed: this.diff.speed * this.mode.speedScale * (0.88 + this.rng() * 0.26) * (bonus ? 1.15 : 1)
+    };
+    this.words.push(w);
+    if (ev) ev.push({ type: 'spawn', word: w });
+  }
+
+  update(dt) {
+    const ev = [];
+    if (this.over) return ev;
+    this.elapsed += dt;
+    if (this.mode.tally === 'down') {
+      // the clock is derived, so banked seconds can repay a miss but never extend the run
+      this.timeLeft = this.mode.duration - this.elapsed + this.bank;
+      if (this.timeLeft <= 0) { this.finish('time', ev); return ev; }
+    }
+
+    const mult = this.speedMult;
+    for (let i = this.words.length - 1; i >= 0; i--) {
+      const w = this.words[i];
+      w.y += w.speed * mult * dt;
+      if (w.y >= LOSE_Y) {
+        this.words.splice(i, 1);
+        if (this.activeId === w.id) this.activeId = null;
+        this.missed++;
+        this.combo = 0;
+        ev.push({ type: 'miss', word: w });
+        if (this.mode.lives) {
+          this.lives--;
+          if (this.lives <= 0) { this.finish('dead', ev); return ev; }
+        }
+        if (this.mode.missTime < 0) { this.bank += this.mode.missTime; this.timeLeft = this.mode.duration - this.elapsed + this.bank; }
+        if (this.mode.missTime > 0) this.penalty += this.mode.missTime;
+        if (this.mode.tally === 'down' && this.timeLeft <= 0) { this.finish('time', ev); return ev; }
+      }
+    }
+
+    this.spawnTimer -= dt;
+    if (this.spawnTimer <= 0) {
+      this.spawn(ev);
+      // an empty field refills quickly so a fast typist is never left waiting
+      const pressure = this.words.length <= 1 ? 0.45
+                     : this.words.length * 2 <= this.diff.maxOn ? 0.7 : 1;
+      const gap = Math.max(0.34, this.diff.spawn * pressure / Math.max(1, mult * 0.92));
+      this.spawnTimer = gap * (0.85 + this.rng() * 0.3);
+    }
+    return ev;
+  }
+
+  press(ch) {
+    const ev = [];
+    if (this.over || !/^[a-z]$/.test(ch)) return ev;
+    this.keys++;
+    let w = this.activeId ? this.words.find(x => x.id === this.activeId) : null;
+
+    if (!w) {
+      // lock onto the most urgent untouched word starting with this letter
+      let best = null;
+      for (const c of this.words) if (c.typed === 0 && c.text[0] === ch && (!best || c.y > best.y)) best = c;
+      if (!best) { this.miss(ev); return ev; }
+      w = best; this.activeId = w.id;
+    }
+    if (w.text[w.typed] !== ch) { this.miss(ev); return ev; }
+
+    w.typed++;
+    this.correct++;
+    ev.push({ type: 'hit', word: w, progress: w.typed / w.text.length });
+    if (w.typed >= w.text.length) this.clearWord(w, ev);
+    return ev;
+  }
+
+  miss(ev) {
+    this.errors++;
+    this.combo = 0;
+    ev.push({ type: 'error' });
+  }
+
+  clearWord(w, ev) {
+    this.words = this.words.filter(x => x.id !== w.id);
+    this.activeId = null;
+    this.combo++;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    this.cleared++;
+    const height = Math.round(Math.max(0, LOSE_Y - w.y) / 5);   // reward early kills
+    let pts = Math.round((5 * w.text.length + height) * this.comboMult);
+    if (w.bonus) pts *= 3;
+    this.score += pts;
+    if (w.bonus) {
+      if (this.mode.lives) this.lives++;
+      // banked seconds can only refund what misses took away, never extend the run
+      else if (this.mode.tally === 'down') {
+        this.bank = Math.min(0, this.bank + 3);
+        this.timeLeft = this.mode.duration - this.elapsed + this.bank;
+      }
+      else this.penalty = Math.max(0, this.penalty - 3);
+    }
+    const oldWave = this.wave;
+    this.wave = 1 + Math.floor(this.cleared / 12);
+    ev.push({ type: 'clear', word: w, points: pts, combo: this.combo, bonus: w.bonus });
+    if (this.wave > oldWave && this.mode.id === 'survival') ev.push({ type: 'wave', wave: this.wave });
+    if (this.mode.target && this.cleared >= this.mode.target) this.finish('done', ev);
+  }
+
+  backspace() {
+    if (this.over || !this.activeId) return;
+    const w = this.words.find(x => x.id === this.activeId);
+    if (!w) { this.activeId = null; return; }
+    w.typed = Math.max(0, w.typed - 1);
+    if (w.typed === 0) this.activeId = null;
+  }
+
+  release() {   // escape: drop the current target
+    if (!this.activeId) return;
+    const w = this.words.find(x => x.id === this.activeId);
+    if (w) w.typed = 0;
+    this.activeId = null;
+  }
+
+  finish(reason, ev) {
+    if (this.over) return;
+    this.over = true;
+    this.reason = reason;
+    (ev || []).push({ type: 'end', reason });
+  }
+
+  summary() {
+    return {
+      mode: this.mode.id, diff: this.diff.id, reason: this.reason,
+      score: this.score, cleared: this.cleared, missed: this.missed,
+      bestCombo: this.bestCombo, wave: this.wave,
+      wpm: Math.round(this.wpm), accuracy: Math.round(this.accuracy * 100),
+      time: Math.round((this.mode.tally === 'down' ? this.elapsed : this.elapsed + this.penalty) * 10) / 10,
+      keys: this.keys, correct: this.correct
+    };
+  }
+}
+
+/* ---------------- achievements ---------------- */
+const ACHIEVEMENTS = [
+  { id:'first',    ico:'🌟', t:'First Blood',      d:'Clear your very first word' },
+  { id:'w100',     ico:'📗', t:'Century',          d:'Clear 100 words in total' },
+  { id:'w500',     ico:'📘', t:'Wordsmith',        d:'Clear 500 words in total' },
+  { id:'w2000',    ico:'📕', t:'Lexicon',          d:'Clear 2000 words in total' },
+  { id:'combo10',  ico:'🔗', t:'On a Roll',        d:'Reach a 10 word combo' },
+  { id:'combo25',  ico:'⛓️', t:'Unbroken',         d:'Reach a 25 word combo' },
+  { id:'combo50',  ico:'💎', t:'Flow State',       d:'Reach a 50 word combo' },
+  { id:'wpm40',    ico:'🚶', t:'Warmed Up',        d:'Finish a run at 40 WPM' },
+  { id:'wpm60',    ico:'🏃', t:'Quick Fingers',    d:'Finish a run at 60 WPM' },
+  { id:'wpm80',    ico:'🚴', t:'Blur',             d:'Finish a run at 80 WPM' },
+  { id:'wpm100',   ico:'🚀', t:'Supersonic',       d:'Finish a run at 100 WPM' },
+  { id:'flawless', ico:'🎯', t:'Flawless',         d:'100% accuracy with 25+ words cleared' },
+  { id:'wave10',   ico:'🌊', t:'Tenth Wave',       d:'Reach wave 10 in Survival' },
+  { id:'marathon', ico:'🏁', t:'Finisher',         d:'Complete a Marathon run' },
+  { id:'marafast', ico:'⏰', t:'Record Pace',      d:'Finish a Marathon under 80 seconds' },
+  { id:'score5k',  ico:'💰', t:'High Roller',      d:'Score 5000 in a single run' },
+  { id:'allmodes', ico:'🎡', t:'Tour Guide',       d:'Play all five modes' },
+  { id:'alldiffs', ico:'🎚️', t:'Full Range',       d:'Play all five difficulties' },
+  { id:'daily3',   ico:'📅', t:'Habit Forming',    d:'Hold a 3 day daily streak' },
+  { id:'daily7',   ico:'🗓️', t:'Seven Straight',   d:'Hold a 7 day daily streak' },
+  { id:'insane',   ico:'☄️', t:'Certified Insane', d:'Clear 20 words on Insane in one run' },
+  { id:'nomiss',   ico:'🛡️', t:'Airtight',         d:'Finish Sprint without missing a word' }
+];
+
+function evalAchievements(save, run) {
+  const got = [];
+  const has = id => !!save.ach[id];
+  const give = id => { if (!has(id)) { save.ach[id] = Date.now(); got.push(id); } };
+  const T = save.totals;
+
+  if (T.words >= 1) give('first');
+  if (T.words >= 100) give('w100');
+  if (T.words >= 500) give('w500');
+  if (T.words >= 2000) give('w2000');
+  if (T.bestCombo >= 10) give('combo10');
+  if (T.bestCombo >= 25) give('combo25');
+  if (T.bestCombo >= 50) give('combo50');
+
+  if (run) {
+    if (run.cleared >= 15) {
+      if (run.wpm >= 40) give('wpm40');
+      if (run.wpm >= 60) give('wpm60');
+      if (run.wpm >= 80) give('wpm80');
+      if (run.wpm >= 100) give('wpm100');
+    }
+    if (run.accuracy === 100 && run.cleared >= 25) give('flawless');
+    if (run.mode === 'survival' && run.wave >= 10) give('wave10');
+    if (run.mode === 'marathon' && run.reason === 'done') {
+      give('marathon');
+      if (run.time <= 80) give('marafast');
+    }
+    if (run.score >= 5000) give('score5k');
+    if (run.diff === 'insane' && run.cleared >= 20) give('insane');
+    if (run.mode === 'sprint' && run.missed === 0 && run.cleared >= 10) give('nomiss');
+  }
+  if (MODE_ORDER.every(m => save.modesPlayed[m])) give('allmodes');
+  if (DIFF_ORDER.every(d => save.diffsPlayed[d])) give('alldiffs');
+  if (save.daily.streak >= 3) give('daily3');
+  if (save.daily.streak >= 7) give('daily7');
+  return got;
+}
+
+/* ---------------- save state ---------------- */
+function freshSave() {
+  return {
+    v: 1, name: '', theme: 'neon', sfx: true, music: true,
+    lastMode: 'sprint', lastDiff: 'medium',
+    totals: { words: 0, missed: 0, runs: 0, keys: 0, correct: 0, time: 0, bestCombo: 0, score: 0 },
+    best: { sprint: 0, survivalWave: 0, survivalScore: 0, marathonTime: 0, zen: 0, daily: 0, wpm: 0 },
+    ach: {}, modesPlayed: {}, diffsPlayed: {},
+    daily: { last: '', streak: 0, bestStreak: 0, bestScore: 0 }
+  };
+}
+
+function applyRun(save, run) {
+  const T = save.totals, B = save.best;
+  T.words += run.cleared; T.missed += run.missed; T.runs += 1;
+  T.keys += run.keys; T.correct += run.correct; T.time += run.time;
+  T.score += run.score;
+  T.bestCombo = Math.max(T.bestCombo, run.bestCombo);
+  save.modesPlayed[run.mode] = true;
+  save.diffsPlayed[run.diff] = true;
+  if (run.cleared >= 10) B.wpm = Math.max(B.wpm, run.wpm);
+  if (run.mode === 'sprint') B.sprint = Math.max(B.sprint, run.score);
+  if (run.mode === 'zen') B.zen = Math.max(B.zen, run.score);
+  if (run.mode === 'survival') {
+    B.survivalWave = Math.max(B.survivalWave, run.wave);
+    B.survivalScore = Math.max(B.survivalScore, run.score);
+  }
+  if (run.mode === 'marathon' && run.reason === 'done') {
+    B.marathonTime = B.marathonTime ? Math.min(B.marathonTime, run.time) : run.time;
+  }
+  return save;
+}
+
+function registerDaily(save, key, score) {
+  const d = save.daily;
+  if (d.last === key) { d.bestScore = Math.max(d.bestScore, score); return false; }
+  const y = new Date(key + 'T12:00:00');
+  y.setDate(y.getDate() - 1);
+  const yKey = dateKey(y);
+  d.streak = (d.last === yKey) ? d.streak + 1 : 1;
+  d.last = key;
+  d.bestStreak = Math.max(d.bestStreak, d.streak);
+  d.bestScore = Math.max(d.bestScore, score);
+  return true;
+}
+
+/* ==========================================================================
+   TYPING SPRINT — interface, audio, themes
+   ========================================================================== */
+(function () {
+'use strict';
+
+const app = document.getElementById('app');
+const hidden = document.getElementById('hiddenInput');
+const KEY = 'typingsprint_v1';
+
+/* ---------------- themes ---------------- */
+const THEMES = [
+  { id:'ete',         name:'Été',            group:'Season', sw:['#1fb6c9','#ff9f43','#fdf3dc'], part:'beach'  },
+  { id:'printemps',   name:'Printemps',      group:'Season', sw:['#e75fa2','#7ac74f','#fdf1f6'], part:'petals' },
+  { id:'automne',     name:'Automne',        group:'Season', sw:['#ffb845','#e2622b','#2a1a12'], part:'leaves' },
+  { id:'hiver',       name:'Hiver',          group:'Season', sw:['#6fd6ff','#b9e6ff','#0e1a2b'], part:'snow'   },
+  { id:'nature',      name:'Nature',         group:'Mood',   sw:['#6ede8a','#d3b56a','#12211a'], part:null     },
+  { id:'calme',       name:'Calme',          group:'Mood',   sw:['#a9744a','#7d9a86','#f4ece2'], part:'coffee' },
+  { id:'creativite',  name:'Créativité',     group:'Mood',   sw:['#ffb03a','#b06bff','#1b1030'], part:null     },
+  { id:'energie',     name:'Énergie',        group:'Mood',   sw:['#ff4d3d','#ffd23f','#1d0f10'], part:null     },
+  { id:'minimaliste', name:'Minimaliste',    group:'Mood',   sw:['#1c1c1c','#8a8a8a','#f6f6f6'], part:null     },
+  { id:'romantique',  name:'Romantique',     group:'Mood',   sw:['#ff7aa8','#ffc46b','#2a0f1c'], part:'roses'  },
+  { id:'ocean',       name:'Océan',          group:'Mood',   sw:['#2fd6d0','#6ea8ff','#04202f'], part:'sea'    },
+  { id:'neon',        name:'Néon',           group:'Mood',   sw:['#00f5d4','#ff2bd6','#07060f'], part:null     },
+  { id:'fancy',       name:'Fancy',          group:'Mood',   sw:['#d9b86a','#8fa9d8','#0d1120'], part:null     }
+];
+const PARTICLES = {
+  snow:   { glyphs:['❄','❅','✻'],       drift:'fall',  size:[10,20], speed:[14,34], alpha:.55, n:34 },
+  leaves: { glyphs:['🍁','🍂','🌰'],      drift:'sway',  size:[13,24], speed:[18,40], alpha:.5,  n:20 },
+  petals: { glyphs:['🌸','🌷','🌼'],      drift:'sway',  size:[12,22], speed:[16,34], alpha:.5,  n:22 },
+  beach:  { glyphs:['🐚','🌞','🏖','⛱'],  drift:'sway',  size:[14,24], speed:[12,26], alpha:.42, n:16 },
+  sea:    { glyphs:['🐟','🫧','🐠','🌊'], drift:'rise',  size:[12,24], speed:[14,30], alpha:.42, n:20 },
+  coffee: { glyphs:['☕','🍪','🫖'],       drift:'rise',  size:[13,22], speed:[10,22], alpha:.38, n:14 },
+  roses:  { glyphs:['🌹','💗','💞'],      drift:'rise',  size:[12,22], speed:[12,26], alpha:.42, n:18 }
+};
+
+/* ---------------- save ---------------- */
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return freshSave();
+    const s = Object.assign(freshSave(), JSON.parse(raw));
+    s.totals = Object.assign(freshSave().totals, s.totals || {});
+    s.best   = Object.assign(freshSave().best,   s.best   || {});
+    s.daily  = Object.assign(freshSave().daily,  s.daily  || {});
+    s.ach = s.ach || {}; s.modesPlayed = s.modesPlayed || {}; s.diffsPlayed = s.diffsPlayed || {};
+    return s;
+  } catch (e) { return freshSave(); }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+let S = load();
+
+/* ---------------- audio ---------------- */
+const Audio2 = (function () {
+  let ctx = null, master = null, musicGain = null, sfxGain = null;
+  let timer = null, step = 0, nextTime = 0, kit = 'default';
+  const SCALES = {
+    default: [0, 2, 4, 7, 9], warm: [0, 3, 5, 7, 10], bright: [0, 2, 4, 7, 11], deep: [0, 2, 3, 7, 8]
+  };
+  let scale = SCALES.default, root = 220, wave = 'triangle', tempo = 0.5;
+
+  function init() {
+    if (ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+    sfxGain = ctx.createGain(); sfxGain.gain.value = 0.5; sfxGain.connect(master);
+    musicGain = ctx.createGain(); musicGain.gain.value = 0.0; musicGain.connect(master);
+    return true;
+  }
+  function resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
+
+  function tone(freq, dur, type, vol, when, slideTo) {
+    if (!ctx) return;
+    const t = when || ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol || 0.2), t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(sfxGain);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol, hp) {
+    if (!ctx) return;
+    const n = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp || 1200;
+    const g = ctx.createGain(); g.gain.value = vol || 0.1;
+    src.connect(f); f.connect(g); g.connect(sfxGain); src.start();
+  }
+
+  const sfx = {
+    key:   () => tone(520 + Math.random() * 60, 0.035, 'square', 0.045),
+    hit:   p  => tone(360 + p * 420, 0.05, 'triangle', 0.09),
+    clear: () => { const b = kit === 'deep' ? 300 : 440; [0, 4, 7, 12].forEach((s, i) => tone(b * Math.pow(2, s / 12), 0.16, wave, 0.13, ctx && ctx.currentTime + i * 0.035)); },
+    bonus: () => [0, 5, 9, 12, 16].forEach((s, i) => tone(520 * Math.pow(2, s / 12), 0.22, 'sine', 0.15, ctx && ctx.currentTime + i * 0.05)),
+    error: () => { tone(150, 0.11, 'sawtooth', 0.1, 0, 90); noise(0.05, 0.05, 800); },
+    miss:  () => { tone(260, 0.34, 'sine', 0.16, 0, 70); noise(0.12, 0.05, 400); },
+    wave:  () => [0, 7, 12, 19].forEach((s, i) => tone(330 * Math.pow(2, s / 12), 0.3, 'triangle', 0.13, ctx && ctx.currentTime + i * 0.08)),
+    over:  () => [12, 7, 3, 0].forEach((s, i) => tone(330 * Math.pow(2, s / 12), 0.4, 'sine', 0.15, ctx && ctx.currentTime + i * 0.13)),
+    ach:   () => [0, 4, 7, 12, 16].forEach((s, i) => tone(523 * Math.pow(2, s / 12), 0.26, 'sine', 0.14, ctx && ctx.currentTime + i * 0.06)),
+    ui:    () => tone(600, 0.05, 'sine', 0.07),
+    tick:  () => tone(880, 0.07, 'sine', 0.1),
+    go:    () => { tone(660, 0.12, 'triangle', 0.14); tone(990, 0.2, 'triangle', 0.12, ctx && ctx.currentTime + 0.1); }
+  };
+
+  function play(name, arg) {
+    if (!S.sfx) return;
+    if (!init()) return;
+    resume();
+    (sfx[name] || sfx.ui)(arg);
+  }
+
+  /* ambient bed — a slow pad plus a sparse arpeggio, all synthesised */
+  function schedule() {
+    if (!ctx) return;
+    while (nextTime < ctx.currentTime + 0.4) {
+      const beat = step % 16;
+      const deg = scale[(step * 3) % scale.length];
+      const oct = beat % 8 === 0 ? 0 : (beat % 4 === 0 ? 12 : (step % 5 === 0 ? 12 : 0));
+      if (beat % 2 === 0) {
+        const f = root * Math.pow(2, (deg + oct) / 12);
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = wave; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, nextTime);
+        g.gain.exponentialRampToValueAtTime(0.06, nextTime + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.0001, nextTime + tempo * 1.8);
+        o.connect(g); g.connect(musicGain); o.start(nextTime); o.stop(nextTime + tempo * 2);
+      }
+      if (beat === 0) {
+        [0, 7, 16].forEach(s => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = (root / 2) * Math.pow(2, s / 12);
+          g.gain.setValueAtTime(0.0001, nextTime);
+          g.gain.exponentialRampToValueAtTime(0.05, nextTime + 0.6);
+          g.gain.exponentialRampToValueAtTime(0.0001, nextTime + tempo * 15);
+          o.connect(g); g.connect(musicGain); o.start(nextTime); o.stop(nextTime + tempo * 16);
+        });
+      }
+      nextTime += tempo; step++;
+    }
+  }
+  function setTheme(id) {
+    const t = { ete:['bright',262,'triangle',.46,'default'], printemps:['bright',294,'sine',.5,'bright'],
+      automne:['warm',196,'triangle',.58,'warm'], hiver:['deep',233,'sine',.62,'deep'],
+      ocean:['deep',196,'sine',.6,'deep'], neon:['default',220,'sawtooth',.4,'default'],
+      calme:['warm',175,'sine',.68,'warm'], romantique:['warm',233,'triangle',.56,'warm'],
+      energie:['bright',262,'square',.36,'bright'], creativite:['default',247,'triangle',.44,'default'],
+      minimaliste:['default',220,'sine',.66,'default'], nature:['warm',196,'triangle',.6,'warm'],
+      fancy:['deep',207,'triangle',.58,'deep'] }[id] || ['default', 220, 'triangle', .5, 'default'];
+    scale = SCALES[t[0]] || SCALES.default; root = t[1]; wave = t[2]; tempo = t[3]; kit = t[4];
+  }
+  function music(on) {
+    if (!on) { if (musicGain) musicGain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); if (timer) { clearInterval(timer); timer = null; } return; }
+    if (!init()) return;
+    resume();
+    if (!timer) { nextTime = ctx.currentTime + 0.1; step = 0; timer = setInterval(schedule, 90); }
+    musicGain.gain.setTargetAtTime(0.5, ctx.currentTime, 0.6);
+  }
+  function unlock() { if (init()) resume(); }
+  return { play, music, setTheme, unlock, get ready() { return !!ctx; } };
+})();
+
+/* ---------------- particles ---------------- */
+const Particles = (function () {
+  const cv = document.getElementById('particles');
+  const cx = cv.getContext('2d');
+  let items = [], cfg = null, raf = null, last = 0, w = 0, h = 0;
+  function size() { w = cv.width = innerWidth; h = cv.height = innerHeight; }
+  addEventListener('resize', size); size();
+  function set(kind) {
+    cfg = PARTICLES[kind] || null; items = [];
+    if (!cfg) { cx.clearRect(0, 0, w, h); if (raf) cancelAnimationFrame(raf); raf = null; return; }
+    for (let i = 0; i < cfg.n; i++) items.push(mk(true));
+    if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
+  }
+  function mk(spread) {
+    const s = cfg.size[0] + Math.random() * (cfg.size[1] - cfg.size[0]);
+    return {
+      g: cfg.glyphs[Math.floor(Math.random() * cfg.glyphs.length)],
+      x: Math.random() * w,
+      y: cfg.drift === 'rise' ? (spread ? Math.random() * h : h + 30) : (spread ? Math.random() * h : -30),
+      s, v: cfg.speed[0] + Math.random() * (cfg.speed[1] - cfg.speed[0]),
+      p: Math.random() * Math.PI * 2, a: 0.5 + Math.random() * 0.5, r: (Math.random() - .5) * 0.6
+    };
+  }
+  function loop(t) {
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    cx.clearRect(0, 0, w, h);
+    if (!cfg) { raf = null; return; }
+    cx.globalAlpha = cfg.alpha;
+    for (let i = 0; i < items.length; i++) {
+      const p = items[i];
+      p.p += dt * 0.9;
+      if (cfg.drift === 'rise') { p.y -= p.v * dt; p.x += Math.sin(p.p) * 12 * dt; if (p.y < -40) items[i] = mk(false); }
+      else { p.y += p.v * dt; p.x += (cfg.drift === 'sway' ? Math.sin(p.p) * 26 : Math.sin(p.p) * 10) * dt; if (p.y > h + 40) items[i] = mk(false); }
+      cx.save();
+      cx.translate(p.x, p.y);
+      if (cfg.drift === 'sway') cx.rotate(Math.sin(p.p) * p.r);
+      cx.font = p.s + 'px serif';
+      cx.globalAlpha = cfg.alpha * p.a;
+      cx.fillText(p.g, 0, 0);
+      cx.restore();
+    }
+    raf = requestAnimationFrame(loop);
+  }
+  return { set };
+})();
+
+/* ---------------- helpers ---------------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const fmtTime = s => {
+  s = Math.max(0, s);
+  const m = Math.floor(s / 60), r = s - m * 60;
+  return m + ':' + (r < 10 ? '0' : '') + r.toFixed(r < 10 && m === 0 ? 1 : 0).replace(/\.0$/, '');
+};
+const clock = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id) || THEMES[11];
+  document.documentElement.setAttribute('data-theme', t.id);
+  document.querySelector('meta[name=theme-color]').setAttribute('content', t.sw[2]);
+  Particles.set(t.part);
+  Audio2.setTheme(t.id);
+}
+
+let toastQ = [];
+function toast(ico, title, desc) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<div style="font-size:22px">' + ico + '</div><div><div class="t">' + esc(title) + '</div><div class="d">' + esc(desc) + '</div></div>';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+function grantAchievements(run) {
+  const got = evalAchievements(S, run);
+  save();
+  got.forEach((id, i) => {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    setTimeout(() => { toast(a.ico, a.t, 'Achievement unlocked'); Audio2.play('ach'); }, 500 + i * 900);
+  });
+  return got;
+}
+
+/* ---------------- screens ---------------- */
+let screen = 'home', G = null, sel = { mode: S.lastMode || 'sprint', diff: S.lastDiff || 'medium' };
+
+const soundBtns = () =>
+  '<button class="iconbtn' + (S.music ? '' : ' off') + '" data-act="toggle:music" data-snd="music" title="Music">' + (S.music ? '🎵' : '🔇') + '</button>' +
+  '<button class="iconbtn' + (S.sfx ? '' : ' off') + '" data-act="toggle:sfx" data-snd="sfx" title="Sound effects">' + (S.sfx ? '🔊' : '🔈') + '</button>';
+function syncSoundBtns() {
+  document.querySelectorAll('[data-snd]').forEach(b => {
+    const on = b.dataset.snd === 'music' ? S.music : S.sfx;
+    b.classList.toggle('off', !on);
+    b.textContent = b.dataset.snd === 'music' ? (on ? '🎵' : '🔇') : (on ? '🔊' : '🔈');
+  });
+}
+
+function header(title, back) {
+  return '<div class="topbar">' +
+    (back ? '<button class="iconbtn" data-act="nav:' + back + '">←</button>' : '') +
+    '<h2>' + esc(title) + '</h2>' + soundBtns() + '</div>';
+}
+
+function homeScreen() {
+  const T = S.totals;
+  const acc = T.keys ? Math.round(T.correct / T.keys * 100) : 100;
+  const dailyDone = S.daily.last === dateKey();
+  const achCount = Object.keys(S.ach).length;
+  return '<div class="screen on" id="s-home">' +
+    '<div class="topbar"><h2 style="opacity:0"> </h2>' + soundBtns() +
+      '<button class="iconbtn" data-act="nav:settings">⚙️</button></div>' +
+    '<div class="logo"><div class="word">TYPING <i>SPRINT</i><span class="caret"></span></div>' +
+      '<div class="tag">Catch them before they land</div></div>' +
+    '<div class="scroll"><div class="grid" style="margin-top:6px">' +
+      '<button class="btn primary row" data-act="start:last"><span class="ico">▶</span><span><span class="tt">Play ' +
+        MODES[sel.mode].label + '</span><span class="sub">' + DIFFS[sel.diff].label + ' · pick up where you left off</span></span></button>' +
+      '<button class="btn row" data-act="nav:modes"><span class="ico">🎮</span><span><span class="tt">Modes</span>' +
+        '<span class="sub">Sprint, Survival, Marathon, Zen</span></span></button>' +
+      '<button class="btn row" data-act="daily"><span class="ico">📅</span><span><span class="tt">Daily Challenge' +
+        (dailyDone ? ' ✓' : '') + '</span><span class="sub">' +
+        (dailyDone ? 'Played today · best ' + S.daily.bestScore : 'Same words for everyone') +
+        ' · streak ' + S.daily.streak + '</span></span></button>' +
+      '<div class="grid" style="grid-template-columns:1fr 1fr">' +
+        '<button class="btn row" data-act="nav:ach"><span class="ico">🏆</span><span><span class="tt">Awards</span>' +
+          '<span class="sub">' + achCount + ' / ' + ACHIEVEMENTS.length + '</span></span></button>' +
+        '<button class="btn row" data-act="nav:profile"><span class="ico">👤</span><span><span class="tt">Profile</span>' +
+          '<span class="sub">' + (S.name ? esc(S.name) : 'Stats & name') + '</span></span></button>' +
+      '</div>' +
+      '<button class="btn ghost row" data-act="nav:help"><span class="ico">❓</span><span><span class="tt">How to play</span></span></button>' +
+    '</div>' +
+    '<div class="statstrip" style="margin-top:14px">' +
+      '<span class="pill">⌨️ ' + T.words + ' words</span>' +
+      '<span class="pill">⚡ ' + S.best.wpm + ' best WPM</span>' +
+      '<span class="pill">🎯 ' + acc + '% accuracy</span>' +
+      '<span class="pill">🔗 ' + T.bestCombo + ' combo</span>' +
+    '</div></div></div>';
+}
+
+function modesScreen() {
+  let h = '<div class="screen on">' + header('Choose a mode', 'home') + '<div class="scroll"><div class="grid">';
+  for (const id of MODE_ORDER) {
+    const m = MODES[id];
+    let best = '';
+    if (id === 'sprint') best = S.best.sprint ? 'Best ' + S.best.sprint : '';
+    if (id === 'survival') best = S.best.survivalWave ? 'Best wave ' + S.best.survivalWave : '';
+    if (id === 'marathon') best = S.best.marathonTime ? 'Best ' + S.best.marathonTime + 's' : '';
+    if (id === 'zen') best = S.best.zen ? 'Best ' + S.best.zen : '';
+    if (id === 'daily') best = S.daily.streak ? 'Streak ' + S.daily.streak : '';
+    h += '<button class="btn row" data-act="' + (id === 'daily' ? 'daily' : 'mode:' + id) + '">' +
+      '<span class="ico">' + m.ico + '</span><span style="flex:1"><span class="tt">' + m.label + '</span>' +
+      '<span class="sub">' + m.sub + '</span></span>' + (best ? '<span class="pill">' + best + '</span>' : '') + '</button>';
+  }
+  return h + '</div></div></div>';
+}
+
+function diffScreen() {
+  const m = MODES[sel.mode];
+  let h = '<div class="screen on">' + header(m.ico + ' ' + m.label, 'modes') +
+    '<div class="muted" style="margin:-4px 2px 0">' + m.sub + '</div><div class="scroll"><div class="grid">';
+  for (const id of DIFF_ORDER) {
+    const d = DIFFS[id];
+    h += '<button class="btn row' + (id === sel.diff ? ' primary' : '') + '" data-act="diff:' + id + '">' +
+      '<span class="ico">' + d.ico + '</span><span style="flex:1"><span class="tt">' + d.label + '</span>' +
+      '<span class="sub">' + d.sub + '</span></span>' +
+      (S.diffsPlayed[id] ? '' : '<span class="pill">new</span>') + '</button>';
+  }
+  h += '</div><div class="hint" style="margin-top:12px">Every mode and every tier is open from the start.</div></div></div>';
+  return h;
+}
+
+function gameScreen() {
+  const m = G.mode;
+  const showLives = !!m.lives;
+  return '<div class="screen on" id="s-game">' +
+    '<div class="hud">' +
+      '<button class="iconbtn" data-act="pause">⏸</button>' +
+      '<div class="box"><div class="k">Score</div><div class="v" id="hScore">0</div></div>' +
+      '<div class="box" id="combobox"><div class="k">Combo</div><div class="v" id="hCombo">0</div></div>' +
+      '<div class="box"><div class="k">WPM</div><div class="v" id="hWpm">0</div></div>' +
+      '<div class="spacer"></div>' +
+      (showLives
+        ? '<div class="box"><div class="k">Wave</div><div class="v" id="hWave">1</div></div>' +
+          '<div class="box"><div class="k">Lives</div><div class="v" id="lives">❤❤❤</div></div>'
+        : (m.target ? '<div class="box"><div class="k">Words</div><div class="v" id="hWords">0</div></div>' : '') +
+          '<div class="box"><div class="k">Time</div><div class="v" id="hClock">0:00</div></div>') +
+    '</div>' +
+    '<div class="field" id="field"><div class="lanes">' +
+      [1, 2, 3, 4].map(i => '<i style="left:' + (i * 20) + '%"></i>').join('') +
+    '</div><div class="deadline"></div><div class="flash" id="flash"></div>' +
+    '<div class="countdown" id="cd">3</div></div>' +
+    '<div class="typedbar" id="typedbar"><span class="ph">Type the falling words — start with the first letter</span></div>' +
+  '</div>';
+}
+
+function resultsScreen(run, isBest, dailyNew) {
+  const m = MODES[run.mode], d = DIFFS[run.diff];
+  const title = run.reason === 'done' ? 'Marathon complete' : run.reason === 'dead' ? 'Out of lives' : "Time's up";
+  let h = '<div class="screen on">' + header(title, 'home') + '<div class="scroll">' +
+    '<div class="card" style="text-align:center">' +
+      '<div class="muted">' + m.ico + ' ' + m.label + ' · ' + d.label + '</div>' +
+      '<div class="big" style="margin:8px 0 2px;color:var(--accent)">' + run.score + '</div>' +
+      '<div class="muted">points' + (isBest ? ' · new personal best 🎉' : '') + '</div>' +
+      (dailyNew ? '<div class="pill" style="margin-top:10px">📅 Daily streak ' + S.daily.streak + '</div>' : '') +
+    '</div>' +
+    '<div class="card" style="margin-top:10px">' +
+      kv('Words cleared', run.cleared) + kv('Words missed', run.missed) +
+      kv('Speed', run.wpm + ' WPM') + kv('Accuracy', run.accuracy + '%') +
+      kv('Best combo', run.bestCombo + '×') +
+      (run.mode === 'survival' ? kv('Wave reached', run.wave) : '') +
+      (run.mode === 'marathon' ? kv('Time', run.time + 's') : kv('Time played', fmtTime(run.time))) +
+    '</div>' +
+    '<div class="grid" style="margin-top:10px">' +
+      '<button class="btn primary row" data-act="retry"><span class="ico">↻</span><span><span class="tt">Play again</span>' +
+        '<span class="sub">' + m.label + ' · ' + d.label + '</span></span></button>' +
+      (run.mode === 'daily' ? '' : '<button class="btn row" data-act="nav:diffs"><span class="ico">🎚️</span><span><span class="tt">Change difficulty</span></span></button>') +
+      '<button class="btn row" data-act="nav:modes"><span class="ico">🎮</span><span><span class="tt">Another mode</span></span></button>' +
+      '<button class="btn ghost row" data-act="nav:home"><span class="ico">🏠</span><span><span class="tt">Home</span></span></button>' +
+    '</div></div></div>';
+  return h;
+}
+const kv = (k, v) => '<div class="kv"><span>' + k + '</span><b>' + v + '</b></div>';
+
+function achScreen() {
+  const got = Object.keys(S.ach).length;
+  let h = '<div class="screen on">' + header('Awards', 'home') +
+    '<div class="card"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">' +
+      '<span>' + got + ' of ' + ACHIEVEMENTS.length + ' unlocked</span><b>' + Math.round(got / ACHIEVEMENTS.length * 100) + '%</b></div>' +
+      '<div class="bar"><i style="width:' + (got / ACHIEVEMENTS.length * 100) + '%"></i></div></div>' +
+    '<div class="scroll" style="margin-top:10px">';
+  for (const a of ACHIEVEMENTS) {
+    const on = !!S.ach[a.id];
+    h += '<div class="ach' + (on ? ' got' : '') + '"><div class="ico">' + (on ? a.ico : '🔒') + '</div>' +
+      '<div><div class="t">' + a.t + '</div><div class="d">' + a.d + '</div></div></div>';
+  }
+  return h + '</div></div>';
+}
+
+function profileScreen() {
+  const T = S.totals, B = S.best;
+  const acc = T.keys ? Math.round(T.correct / T.keys * 100) : 100;
+  const recent = Object.keys(S.ach).sort((a, b) => S.ach[b] - S.ach[a]).slice(0, 4)
+    .map(id => ACHIEVEMENTS.find(a => a.id === id)).filter(Boolean);
+  return '<div class="screen on">' + header('Profile', 'home') + '<div class="scroll">' +
+    '<div class="card"><h3>Name</h3><input class="txt" id="nameInput" maxlength="18" placeholder="Type your name" value="' + esc(S.name) + '"></div>' +
+    '<div class="card" style="margin-top:10px"><h3>Personal bests</h3>' +
+      kv('Fastest run', B.wpm + ' WPM') +
+      kv('Sprint score', B.sprint || '—') +
+      kv('Survival wave', B.survivalWave || '—') +
+      kv('Marathon time', B.marathonTime ? B.marathonTime + 's' : '—') +
+      kv('Zen score', B.zen || '—') +
+      kv('Longest combo', T.bestCombo + '×') +
+      kv('Daily streak', S.daily.streak + ' (best ' + S.daily.bestStreak + ')') +
+    '</div>' +
+    '<div class="card" style="margin-top:10px"><h3>Lifetime</h3>' +
+      kv('Words cleared', T.words) + kv('Words missed', T.missed) +
+      kv('Runs played', T.runs) + kv('Accuracy', acc + '%') +
+      kv('Keys pressed', T.keys) + kv('Time typing', fmtTime(Math.round(T.time))) +
+    '</div>' +
+    '<div class="card" style="margin-top:10px"><h3>Recent awards</h3>' +
+      (recent.length ? recent.map(a => '<div class="ach got"><div class="ico">' + a.ico + '</div><div><div class="t">' + a.t + '</div><div class="d">' + a.d + '</div></div></div>').join('')
+        : '<div class="muted">Nothing yet. Clear a word to open the first one.</div>') +
+      '<button class="btn ghost row" data-act="nav:ach" style="margin-top:6px"><span class="ico">🏆</span><span><span class="tt">See all awards</span></span></button>' +
+    '</div>' +
+    '<button class="btn ghost row" data-act="reset" style="margin-top:10px"><span class="ico">🗑️</span><span><span class="tt">Erase all progress</span>' +
+      '<span class="sub">Scores, awards and streaks</span></span></button>' +
+    '</div></div>';
+}
+
+function settingsScreen() {
+  let h = '<div class="screen on">' + header('Settings', 'home') + '<div class="scroll">' +
+    '<div class="card"><h3>Sound</h3>' +
+      '<div class="seg" style="margin-bottom:8px"><button data-act="set:music:1" class="' + (S.music ? 'sel' : '') + '">Music on</button>' +
+      '<button data-act="set:music:0" class="' + (!S.music ? 'sel' : '') + '">Off</button></div>' +
+      '<div class="seg"><button data-act="set:sfx:1" class="' + (S.sfx ? 'sel' : '') + '">Effects on</button>' +
+      '<button data-act="set:sfx:0" class="' + (!S.sfx ? 'sel' : '') + '">Off</button></div>' +
+      '<div class="muted" style="margin-top:8px">Seasonal themes carry their own ambience and effect kit.</div></div>';
+  for (const grp of ['Season', 'Mood']) {
+    h += '<div class="card" style="margin-top:10px"><h3>' + (grp === 'Season' ? 'Seasons' : 'Moods') + '</h3><div class="themegrid">';
+    for (const t of THEMES.filter(x => x.group === grp)) {
+      h += '<div class="swatch' + (S.theme === t.id ? ' sel' : '') + '" data-act="theme:' + t.id + '" ' +
+        'style="background:linear-gradient(135deg,' + t.sw[2] + ',' + t.sw[2] + ');color:' + (isLight(t.sw[2]) ? '#222' : '#fff') + '">' +
+        t.name + (t.part ? ' ✦' : '') + '<div class="dots"><i style="background:' + t.sw[0] + '"></i><i style="background:' + t.sw[1] + '"></i></div></div>';
+    }
+    h += '</div></div>';
+  }
+  h += '<div class="card" style="margin-top:10px"><h3>About</h3><div class="muted">Typing Sprint runs entirely on this device. ' +
+    'No account, no network, no files — sounds are synthesised as they play and progress lives in this browser.</div></div>';
+  return h + '</div></div>';
+}
+function isLight(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150;
+}
+
+function helpScreen() {
+  return '<div class="screen on">' + header('How to play', 'home') + '<div class="scroll">' +
+    '<div class="card"><h3>The loop</h3><div class="muted">Words drift down the field. Type a word\'s first letter to lock onto it, ' +
+      'then type the rest. Finish it and it bursts before it lands.<br><br>' +
+      'No two words on screen ever start with the same letter, so the key you press always has one target.</div></div>' +
+    '<div class="card" style="margin-top:10px"><h3>Keys</h3>' +
+      kv('Backspace', 'Undo a letter — empties back to a free target') +
+      kv('Escape or ⏸', 'Pause') +
+      '<div class="muted" style="margin-top:8px">On a phone, tap the field to raise the keyboard.</div></div>' +
+    '<div class="card" style="margin-top:10px"><h3>Scoring</h3><div class="muted">Longer words pay more, and catching one high on the field pays more still. ' +
+      'Each word in a row raises your multiplier up to 3.5×; a wrong key resets it.<br><br>' +
+      'Gold words are worth triple and hand back a life in Survival, or three seconds in the timed modes.</div></div>' +
+    '<div class="card" style="margin-top:10px"><h3>Modes</h3><div class="muted">' +
+      MODE_ORDER.map(id => MODES[id].ico + ' <b>' + MODES[id].label + '</b> — ' + MODES[id].sub).join('<br>') +
+      '</div></div>' +
+    '</div></div>';
+}
+
+/* ---------------- navigation ---------------- */
+function go(name) {
+  screen = name;
+  stopLoop();
+  const html = { home: homeScreen, modes: modesScreen, diffs: diffScreen, ach: achScreen,
+    profile: profileScreen, settings: settingsScreen, help: helpScreen }[name];
+  if (html) app.innerHTML = html();
+  if (name === 'profile') {
+    const el = document.getElementById('nameInput');
+    el.addEventListener('change', () => { S.name = el.value.trim().slice(0, 18); save(); });
+    el.addEventListener('blur', () => { S.name = el.value.trim().slice(0, 18); save(); });
+  }
+  app.scrollTop = 0;
+}
+
+/* ---------------- game runtime ---------------- */
+let raf = null, lastT = 0, nodes = new Map(), fieldEl = null, barEl = null, paused = false, countdown = 0;
+let hudScore, hudCombo, hudWpm, hudClock, hudWords, hudWave, hudLives, cdEl, flashEl;
+let pendingRun = null;
+
+function startGame(mode, diff, seeded) {
+  sel.mode = mode; sel.diff = diff;
+  S.lastMode = mode; S.lastDiff = diff; save();
+  const key = dateKey();
+  G = new Game({ mode, diff, rng: seeded ? mulberry32(seedFromString(key)) : Math.random });
+  screen = 'game';
+  app.innerHTML = gameScreen();
+  fieldEl = document.getElementById('field');
+  barEl = document.getElementById('typedbar');
+  hudScore = document.getElementById('hScore'); hudCombo = document.getElementById('hCombo');
+  hudWpm = document.getElementById('hWpm'); hudClock = document.getElementById('hClock');
+  hudWave = document.getElementById('hWave'); hudLives = document.getElementById('lives');
+  hudWords = document.getElementById('hWords');
+  cdEl = document.getElementById('cd'); flashEl = document.getElementById('flash');
+  nodes.clear(); paused = false; countdown = 3.0;
+  Audio2.unlock();
+  Audio2.music(S.music);
+  focusInput();
+  lastT = performance.now();
+  raf = requestAnimationFrame(loop);
+}
+function stopLoop() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
+
+function focusInput() {
+  hidden.value = '\u200b'.repeat(12);
+  try { hidden.focus({ preventScroll: true }); } catch (e) { hidden.focus(); }
+}
+
+function loop(t) {
+  raf = requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (t - lastT) / 1000);
+  lastT = t;
+  if (paused) return;
+
+  if (countdown > 0) {
+    const before = Math.ceil(countdown);
+    countdown -= dt;
+    const now = Math.ceil(countdown);
+    if (now !== before) { if (now > 0) { cdEl.textContent = now; Audio2.play('tick'); } }
+    if (countdown <= 0) { cdEl.textContent = 'GO'; Audio2.play('go'); setTimeout(() => cdEl && (cdEl.style.display = 'none'), 320); }
+    return;
+  }
+
+  const events = G.update(dt);
+  for (const e of events) handleEvent(e);
+  if (!G || G.over) return;
+  draw();
+}
+
+function handleEvent(e) {
+  if (e.type === 'miss') {
+    Audio2.play('miss');
+    if (flashEl && flashEl.isConnected) { flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+  } else if (e.type === 'wave') {
+    Audio2.play('wave');
+    popText(50, 40, 'WAVE ' + e.wave, 'var(--warn)');
+  } else if (e.type === 'end') {
+    endRun();
+  }
+}
+
+function draw() {
+  // words
+  for (const w of G.words) {
+    let n = nodes.get(w.id);
+    if (!n) {
+      n = document.createElement('div');
+      n.className = 'wordbox' + (w.bonus ? ' bonus' : '');
+      n.style.left = w.x + '%';
+      n.dataset.typed = '-1';
+      fieldEl.appendChild(n);
+      nodes.set(w.id, n);
+    }
+    if (n.dataset.typed !== String(w.typed)) {
+      n.dataset.typed = String(w.typed);
+      n.innerHTML = w.typed ? '<b>' + esc(w.text.slice(0, w.typed)) + '</b>' + esc(w.text.slice(w.typed)) : esc(w.text);
+      n.classList.toggle('active', G.activeId === w.id);
+    }
+    n.style.top = w.y + '%';
+    const danger = w.y > 70;
+    if (danger !== n.classList.contains('danger')) n.classList.toggle('danger', danger);
+  }
+  for (const [id, n] of nodes) if (!G.words.some(w => w.id === id)) { n.remove(); nodes.delete(id); }
+
+  // hud
+  hudScore.textContent = G.score;
+  hudCombo.textContent = G.combo ? G.combo + '×' : '0';
+  document.getElementById('combobox').classList.toggle('hot', G.combo >= 10);
+  hudWpm.textContent = Math.round(G.wpm);
+  if (hudLives) {
+    hudLives.textContent = '❤'.repeat(Math.max(0, Math.min(5, G.lives))) + (G.lives > 5 ? '+' : '');
+    hudWave.textContent = G.wave;
+  } else if (hudClock) {
+    hudClock.textContent = clock(G.clock);
+    if (hudWords) hudWords.textContent = G.cleared + '/' + G.mode.target;
+  }
+
+  // typed bar
+  const w = G.activeId ? G.words.find(x => x.id === G.activeId) : null;
+  if (w) {
+    barEl.innerHTML = '<b style="color:var(--hit)">' + esc(w.text.slice(0, w.typed)) + '</b>' +
+      '<span style="color:var(--dim)">' + esc(w.text.slice(w.typed)) + '</span>';
+  } else if (barEl.dataset.state !== 'idle') {
+    barEl.innerHTML = '<span class="ph">Type the first letter of any word</span>';
+  }
+  barEl.dataset.state = w ? 'typing' : 'idle';
+}
+
+function popText(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'pop';
+  el.style.left = x + '%'; el.style.top = y + '%'; el.style.color = color || 'var(--good)';
+  el.textContent = text;
+  fieldEl.appendChild(el);
+  setTimeout(() => el.remove(), 780);
+}
+
+function type(ch) {
+  if (!G || G.over || paused || countdown > 0) return;
+  const evs = G.press(ch);
+  let cleared = null, err = false, finished = false;
+  for (const e of evs) {
+    if (e.type === 'hit') Audio2.play('hit', e.progress);
+    if (e.type === 'error') { err = true; Audio2.play('error'); }
+    if (e.type === 'clear') cleared = e;
+    if (e.type === 'end') finished = true;
+  }
+  if (err && barEl.isConnected) { barEl.classList.remove('err'); void barEl.offsetWidth; barEl.classList.add('err'); }
+  if (cleared) {
+    Audio2.play(cleared.bonus ? 'bonus' : 'clear');
+    const n = nodes.get(cleared.word.id);
+    if (n) { n.remove(); nodes.delete(cleared.word.id); }
+    if (!finished) popText(cleared.word.x, cleared.word.y,
+      '+' + cleared.points + (cleared.combo > 2 ? ' ×' + cleared.combo : ''),
+      cleared.bonus ? 'var(--warn)' : 'var(--good)');
+  }
+  if (finished) endRun(); else if (G && !G.over) draw();
+}
+
+function endRun() {
+  if (!G) return;
+  stopLoop();
+  const run = G.summary();
+  const wasBest = {
+    sprint: run.score > S.best.sprint, zen: run.score > S.best.zen,
+    survival: run.wave > S.best.survivalWave,
+    marathon: run.reason === 'done' && (!S.best.marathonTime || run.time < S.best.marathonTime),
+    daily: run.score > S.daily.bestScore
+  }[run.mode];
+  applyRun(S, run);
+  let dailyNew = false;
+  if (run.mode === 'daily') dailyNew = registerDaily(S, dateKey(), run.score);
+  save();
+  Audio2.play('over');
+  const g = G; G = null;
+  screen = 'results';
+  app.innerHTML = resultsScreen(run, !!wasBest, dailyNew);
+  grantAchievements(run);
+  hidden.blur();
+}
+
+function togglePause(force) {
+  if (!G || G.over) return;
+  paused = force === undefined ? !paused : force;
+  if (paused) {
+    hidden.blur();
+    const s = document.createElement('div');
+    s.className = 'sheet'; s.id = 'pauseSheet';
+    s.innerHTML = '<div class="inner"><h2 style="margin:0 0 4px">Paused</h2>' +
+      '<div class="muted" style="margin-bottom:14px">' + MODES[sel.mode].label + ' · ' + DIFFS[sel.diff].label +
+      ' · ' + plural(G.cleared, 'word') + ' cleared</div>' +
+      '<div class="grid">' +
+      '<button class="btn primary row" data-act="resume"><span class="ico">▶</span><span><span class="tt">Resume</span></span></button>' +
+      '<button class="btn row" data-act="retry"><span class="ico">↻</span><span><span class="tt">Restart</span></span></button>' +
+      '<button class="btn ghost row" data-act="quit"><span class="ico">🏠</span><span><span class="tt">Quit to home</span></span></button>' +
+      '</div></div>';
+    document.body.appendChild(s);
+  } else {
+    const s = document.getElementById('pauseSheet');
+    if (s) s.remove();
+    focusInput();
+    lastT = performance.now();
+  }
+}
+
+/* ---------------- input ---------------- */
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (screen === 'game') { e.preventDefault(); togglePause(); }
+    return;
+  }
+  if (screen !== 'game' || paused) {
+    if (e.key === 'Enter' && screen === 'home') { e.preventDefault(); startGame(sel.mode, sel.diff, false); }
+    return;
+  }
+  if (document.activeElement === hidden) return;    // the input event path handles it
+  if (e.key === 'Backspace') { e.preventDefault(); G && G.backspace(); return; }
+  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) { e.preventDefault(); Audio2.play('key'); type(e.key.toLowerCase()); }
+});
+
+hidden.addEventListener('input', () => {
+  if (screen !== 'game' || paused) { hidden.value = '\u200b'.repeat(12); return; }
+  const v = hidden.value;
+  const pad = 12;
+  const typedPart = v.replace(/\u200b/g, '');
+  const zeros = v.length - typedPart.length;
+  if (typedPart) {
+    for (const ch of typedPart) {
+      if (/[a-zA-Z]/.test(ch)) { Audio2.play('key'); type(ch.toLowerCase()); }
+    }
+  } else if (zeros < pad) {
+    G && G.backspace();
+  }
+  hidden.value = '\u200b'.repeat(pad);
+});
+hidden.addEventListener('blur', () => { if (screen === 'game' && !paused) setTimeout(() => { if (screen === 'game' && !paused) focusInput(); }, 120); });
+document.addEventListener('click', e => {
+  if (screen === 'game' && !paused && !e.target.closest('[data-act]')) focusInput();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && screen === 'game') togglePause(true); });
+
+/* ---------------- actions ---------------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const [verb, a, b] = el.dataset.act.split(':');
+  Audio2.unlock();
+  if (verb !== 'pause') Audio2.play('ui');
+
+  switch (verb) {
+    case 'nav':
+      if (a === 'diffs') { go('diffs'); } else go(a);
+      break;
+    case 'mode':
+      sel.mode = a; go('diffs'); break;
+    case 'diff':
+      startGame(sel.mode, a, sel.mode === 'daily'); break;
+    case 'daily': {
+      const key = dateKey();
+      sel.mode = 'daily';
+      startGame('daily', dailyDiffFor(key), true);
+      break;
+    }
+    case 'start':
+      startGame(sel.mode, sel.diff, sel.mode === 'daily'); break;
+    case 'retry': {
+      const s = document.getElementById('pauseSheet'); if (s) s.remove();
+      startGame(sel.mode, sel.diff, sel.mode === 'daily'); break;
+    }
+    case 'resume': togglePause(false); break;
+    case 'quit': {
+      const s = document.getElementById('pauseSheet'); if (s) s.remove();
+      G = null; go('home'); break;
+    }
+    case 'pause': togglePause(); break;
+    case 'toggle':
+      if (a === 'music') { S.music = !S.music; Audio2.music(S.music); }
+      else { S.sfx = !S.sfx; }
+      save(); refresh(); break;
+    case 'set':
+      if (a === 'music') { S.music = b === '1'; Audio2.music(S.music); }
+      else { S.sfx = b === '1'; }
+      save(); refresh(); break;
+    case 'theme':
+      S.theme = a; save(); applyTheme(a); refresh(); break;
+    case 'reset':
+      if (confirm('Erase every score, award and streak on this device? This cannot be undone.')) {
+        const theme = S.theme, name = S.name;
+        S = freshSave(); S.theme = theme; S.name = name;
+        save(); go('home');
+      }
+      break;
+  }
+});
+function refresh() {
+  if (screen === 'game' || screen === 'results') { syncSoundBtns(); return; }
+  go(screen);
+}
+
+/* ---------------- boot ---------------- */
+applyTheme(S.theme);
+go('home');
+// browsers only allow audio after a gesture: start the bed on the first one
+const firstGesture = () => {
+  Audio2.unlock();
+  Audio2.music(S.music);
+  removeEventListener('pointerdown', firstGesture);
+  removeEventListener('keydown', firstGesture);
+};
+addEventListener('pointerdown', firstGesture);
+addEventListener('keydown', firstGesture);
+addEventListener('touchmove', e => { if (screen === 'game') e.preventDefault(); }, { passive: false });
+window.addEventListener('beforeunload', save);
+})();
+
+</script>
+</body>
+</html>

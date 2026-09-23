@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Letter Safari &amp; Word Builder</title>
+<style>
+  :root{
+    --bg1:#FFF6E0; --bg2:#FFE0B2; --accent:#FF7043; --accent2:#29B6F6;
+    --text:#4E342E; --card:#FFFFFF; --card-shadow: rgba(78,52,46,0.18);
+    --good:#43A047; --bad:#E53935; --radius:26px; --ink:#3A2F2A;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+  body{
+    font-family:'Comic Sans MS','Trebuchet MS','Segoe UI Rounded',sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    color:var(--text); transition:background 0.6s ease, color 0.6s ease;
+    width:100vw; height:100vh; position:relative;
+  }
+  #particles{position:fixed; inset:0; pointer-events:none; z-index:0;}
+  #app{position:relative; z-index:1; width:100%; height:100%; display:flex; flex-direction:column;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; flex-shrink:0;}
+  .iconbtn{
+    background:var(--card); border:none; border-radius:50%; width:52px; height:52px;
+    font-size:24px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 4px 0 var(--card-shadow); transition:transform 0.12s ease;
+  }
+  .iconbtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--card-shadow);}
+  .title-lockup{font-weight:bold; font-size:20px; text-align:center; flex:1;}
+
+  .screen{flex:1; overflow-y:auto; padding:6px 18px 24px; display:none; -webkit-overflow-scrolling:touch;}
+  .screen.active{display:block;}
+
+  .home-hero{text-align:center; margin:6px 0 22px;}
+  .home-hero .big-title{font-size:34px; font-weight:bold; margin:0; text-shadow:0 3px 0 var(--card-shadow);}
+  .home-hero .sub{font-size:16px; opacity:0.8; margin-top:4px;}
+
+  .menu-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:640px; margin:0 auto;}
+  .menu-card{
+    background:var(--card); border-radius:var(--radius); padding:20px 12px; text-align:center;
+    box-shadow:0 6px 0 var(--card-shadow); cursor:pointer; border:none; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:8px; transition:transform 0.12s ease;
+    position:relative;
+  }
+  .menu-card:active{transform:translateY(4px); box-shadow:0 2px 0 var(--card-shadow);}
+  .menu-card .emoji{font-size:44px;}
+  .menu-card .label{font-weight:bold; font-size:17px;}
+  .menu-card .desc{font-size:12px; opacity:0.7;}
+  .menu-card.wide{grid-column:1/3;}
+  .badge-dot{position:absolute; top:10px; right:10px; background:var(--bad); color:#fff; font-size:11px;
+    border-radius:10px; padding:2px 7px; font-weight:bold;}
+
+  .row-buttons{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0 20px;}
+  .pill{
+    background:var(--card); border:3px solid transparent; border-radius:999px; padding:10px 20px;
+    font-family:inherit; font-weight:bold; font-size:14px; cursor:pointer; box-shadow:0 4px 0 var(--card-shadow);
+  }
+  .pill.active{border-color:var(--accent); color:var(--accent);}
+
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:0 6px 0 var(--card-shadow); padding:22px; max-width:640px; margin:0 auto;}
+
+  .stage{text-align:center;}
+  .prompt-emoji{font-size:110px; line-height:1; margin:8px 0; filter:drop-shadow(0 6px 6px rgba(0,0,0,0.15));}
+  .speak-btn{
+    background:var(--accent2); color:#fff; border:none; border-radius:999px; padding:14px 26px;
+    font-family:inherit; font-weight:bold; font-size:18px; cursor:pointer; box-shadow:0 5px 0 rgba(0,0,0,0.15);
+    display:inline-flex; align-items:center; gap:8px; margin:6px 0 18px;
+  }
+  .speak-btn:active{transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,0.15);}
+
+  .options-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; max-width:420px; margin:0 auto;}
+  .option-btn{
+    background:#fff; border:4px solid #eee; border-radius:20px; font-size:40px; font-weight:bold;
+    padding:22px 0; cursor:pointer; box-shadow:0 5px 0 var(--card-shadow); font-family:inherit; color:var(--text);
+  }
+  .option-btn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--card-shadow);}
+  .option-btn.correct{border-color:var(--good); background:#E8F5E9;}
+  .option-btn.wrong{border-color:var(--bad); background:#FFEBEE;}
+
+  .dropzone{
+    width:170px; height:170px; margin:0 auto 18px; border:5px dashed var(--accent2); border-radius:28px;
+    display:flex; align-items:center; justify-content:center; font-size:90px; background:rgba(255,255,255,0.5);
+    transition:background 0.2s ease, border-color 0.2s ease;
+  }
+  .dropzone.over{background:rgba(41,182,246,0.18); border-color:var(--accent);}
+  .dropzone.good{border-color:var(--good); background:#E8F5E9;}
+
+  .tile-tray{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:10px; min-height:90px;}
+  .letter-tile{
+    width:64px; height:64px; background:#fff; border-radius:16px; box-shadow:0 5px 0 var(--card-shadow);
+    display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:bold;
+    cursor:grab; touch-action:none; color:var(--text); border:3px solid transparent;
+  }
+  .letter-tile.dragging{position:fixed; z-index:50; box-shadow:0 10px 18px rgba(0,0,0,0.25); cursor:grabbing;}
+  .letter-tile.placed{visibility:hidden;}
+
+  .blank-row{display:flex; gap:10px; justify-content:center; margin:16px 0;}
+  .blank-slot{
+    width:64px; height:64px; border:4px dashed #ccc; border-radius:16px; display:flex; align-items:center;
+    justify-content:center; font-size:30px; font-weight:bold; background:rgba(255,255,255,0.5);
+  }
+  .blank-slot.filled{border-style:solid; border-color:var(--good); background:#E8F5E9;}
+  .blank-slot.over{border-color:var(--accent2); background:rgba(41,182,246,0.15);}
+
+  .feedback{min-height:34px; font-weight:bold; font-size:18px; text-align:center; margin-top:8px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  .progress-bar-wrap{max-width:420px; margin:0 auto 14px; background:rgba(255,255,255,0.5); border-radius:999px; height:14px; overflow:hidden;}
+  .progress-bar{height:100%; background:var(--accent); border-radius:999px; transition:width 0.3s ease;}
+
+  .next-btn{
+    display:block; margin:18px auto 0; background:var(--good); color:#fff; border:none; border-radius:999px;
+    padding:14px 30px; font-family:inherit; font-weight:bold; font-size:17px; cursor:pointer;
+    box-shadow:0 5px 0 rgba(0,0,0,0.15);
+  }
+
+  .theme-section-title{font-weight:bold; font-size:15px; margin:18px 0 8px; opacity:0.75;}
+  .theme-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px;}
+  .theme-swatch{
+    border-radius:16px; padding:12px 6px; text-align:center; cursor:pointer; border:3px solid transparent;
+    box-shadow:0 4px 0 rgba(0,0,0,0.12); font-size:12px; font-weight:bold;
+  }
+  .theme-swatch.active{border-color:var(--text);}
+  .theme-swatch .em{font-size:26px; display:block; margin-bottom:2px;}
+
+  .setting-row{display:flex; align-items:center; justify-content:space-between; background:var(--card);
+    border-radius:18px; padding:14px 18px; margin-bottom:12px; box-shadow:0 4px 0 var(--card-shadow);}
+  .toggle{width:56px; height:32px; border-radius:999px; background:#ccc; position:relative; cursor:pointer; flex-shrink:0;}
+  .toggle.on{background:var(--good);}
+  .toggle .knob{width:26px; height:26px; border-radius:50%; background:#fff; position:absolute; top:3px; left:3px; transition:left 0.2s ease;}
+  .toggle.on .knob{left:27px;}
+
+  .avatar-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:12px 0;}
+  .avatar-opt{font-size:32px; text-align:center; padding:10px 0; border-radius:14px; cursor:pointer; border:3px solid transparent; background:rgba(255,255,255,0.5);}
+  .avatar-opt.active{border-color:var(--accent); background:#fff;}
+  .name-input{
+    width:100%; padding:12px 14px; border-radius:14px; border:3px solid #eee; font-family:inherit;
+    font-size:18px; font-weight:bold; margin:8px 0 4px; text-align:center;
+  }
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;}
+  .stat-box{background:rgba(255,255,255,0.6); border-radius:16px; padding:12px; text-align:center;}
+  .stat-box .num{font-size:24px; font-weight:bold; color:var(--accent);}
+  .stat-box .lbl{font-size:12px; opacity:0.75;}
+
+  .ach-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px;}
+  .ach-card{background:var(--card); border-radius:18px; padding:14px; text-align:center; box-shadow:0 4px 0 var(--card-shadow); opacity:0.4;}
+  .ach-card.unlocked{opacity:1;}
+  .ach-card .em{font-size:34px;}
+  .ach-card .t{font-weight:bold; font-size:13px; margin-top:4px;}
+  .ach-card .d{font-size:10px; opacity:0.7; margin-top:2px;}
+
+  .streak-banner{
+    background:var(--card); border-radius:20px; padding:14px 18px; text-align:center; margin-bottom:16px;
+    box-shadow:0 4px 0 var(--card-shadow); font-weight:bold;
+  }
+  .celebrate{animation:pop 0.4s ease;}
+  @keyframes pop{0%{transform:scale(1);}40%{transform:scale(1.25);}100%{transform:scale(1);}}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+  .shake{animation:shake 0.3s ease;}
+
+  .back-row{display:flex; gap:10px; align-items:center; margin-bottom:6px;}
+  h2.screen-title{margin:4px 0 14px; text-align:center; font-size:22px;}
+
+  .lang-gate{position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2)); padding:20px;}
+  .lang-gate-card{background:var(--card); border-radius:var(--radius); box-shadow:0 6px 0 var(--card-shadow);
+    padding:28px 22px; max-width:420px; width:100%; text-align:center; color:var(--ink);}
+  .lang-gate-card .em{font-size:48px;}
+  .lang-gate-card h2{margin:8px 0 4px; font-size:22px;}
+  .lang-gate-card p{margin:0 0 18px; opacity:0.75; font-size:14px;}
+  .lang-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .lang-opt{
+    background:rgba(255,255,255,0.6); border:3px solid transparent; border-radius:16px; padding:16px 8px;
+    text-align:center; cursor:pointer; font-family:inherit; color:var(--ink); box-shadow:0 4px 0 rgba(0,0,0,0.1);
+  }
+  .lang-opt:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.1);}
+  .lang-opt.active{border-color:var(--accent);}
+  .lang-opt .flag{font-size:30px; display:block; margin-bottom:4px;}
+  .lang-opt .name{font-weight:bold; font-size:14px;}
+
+  .card, .menu-card, .pill, .ach-card, .stat-box, .setting-row, .option-btn,
+  .letter-tile, .blank-slot, .avatar-opt, .name-input, .feedback, .streak-banner,
+  .theme-section-title, .stage, .dropzone { color: var(--ink); }
+  .option-btn.correct{color:var(--good);} .option-btn.wrong{color:var(--bad);}
+  .feedback.good{color:var(--good);} .feedback.bad{color:var(--bad);}
+
+  @media (max-width:420px){
+    .prompt-emoji{font-size:90px;}
+    .dropzone{width:140px;height:140px;font-size:74px;}
+    .letter-tile,.blank-slot{width:54px;height:54px;font-size:26px;}
+  }
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<div class="lang-gate" id="langGate" style="display:none;">
+  <div class="lang-gate-card">
+    <div class="em">🌍</div>
+    <h2>Choose your language</h2>
+    <p>Choisissez votre langue &middot; Elige tu idioma &middot; Wähle deine Sprache</p>
+    <div class="lang-grid" id="langGateGrid"></div>
+  </div>
+</div>
+
+<div id="app">
+
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="visibility:hidden;">⬅️</button>
+    <div class="title-lockup" id="topTitle">🦁 Letter Safari</div>
+    <button class="iconbtn" id="soundBtn">🔊</button>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="home-hero">
+      <p class="big-title" id="homeBigTitle">🦁 Letter Safari</p>
+      <p class="sub" id="homeSub">Learn letters &amp; build words!</p>
+    </div>
+    <div class="menu-grid">
+      <button class="menu-card" data-go="safari">
+        <span class="emoji">🔎</span>
+        <span class="label" id="menuSafariLabel">Letter Safari</span>
+        <span class="desc" id="menuSafariDesc">Hear it, tap it, match it</span>
+      </button>
+      <button class="menu-card" data-go="builder">
+        <span class="emoji">🧩</span>
+        <span class="label" id="menuBuilderLabel">Word Builder</span>
+        <span class="desc" id="menuBuilderDesc">Spell fun little words</span>
+      </button>
+      <button class="menu-card wide" data-go="daily" id="dailyCard">
+        <span class="emoji">⭐</span>
+        <span class="label" id="menuDailyLabel">Daily Challenge</span>
+        <span class="desc" id="dailyDesc">A fresh mix, just for today</span>
+      </button>
+      <button class="menu-card" data-go="profile">
+        <span class="emoji">🙂</span>
+        <span class="label" id="menuProfileLabel">Profile</span>
+      </button>
+      <button class="menu-card" data-go="achievements">
+        <span class="emoji">🏆</span>
+        <span class="label" id="menuAchievementsLabel">Achievements</span>
+      </button>
+      <button class="menu-card wide" data-go="settings">
+        <span class="emoji">⚙️</span>
+        <span class="label" id="menuSettingsLabel">Settings</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- LETTER SAFARI -->
+  <div class="screen" id="screen-safari">
+    <h2 class="screen-title" id="safariScreenTitle">🔎 Letter Safari</h2>
+    <div class="row-buttons">
+      <button class="pill" data-mode="hear" id="modeHearBtn">👂 Hear &amp; Tap</button>
+      <button class="pill" data-mode="match" id="modeMatchBtn">🖐️ Picture Match</button>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="safariProgress" style="width:0%"></div></div>
+    <div class="card stage" id="safariStage"></div>
+  </div>
+
+  <!-- WORD BUILDER -->
+  <div class="screen" id="screen-builder">
+    <h2 class="screen-title" id="builderScreenTitle">🧩 Word Builder</h2>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="builderProgress" style="width:0%"></div></div>
+    <div class="card stage" id="builderStage"></div>
+  </div>
+
+  <!-- DAILY -->
+  <div class="screen" id="screen-daily">
+    <h2 class="screen-title" id="dailyScreenTitle">⭐ Daily Challenge</h2>
+    <div class="streak-banner" id="streakBanner"></div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="dailyProgress" style="width:0%"></div></div>
+    <div class="card stage" id="dailyStage"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="screen" id="screen-profile">
+    <h2 class="screen-title" id="profileScreenTitle">🙂 My Profile</h2>
+    <div class="card">
+      <div style="text-align:center; font-size:54px;" id="profileAvatarBig">🦁</div>
+      <input class="name-input" id="nameInput" maxlength="16" placeholder="Your name">
+      <div class="theme-section-title" style="margin-top:16px;" id="chooseAvatarTitle">Choose an avatar</div>
+      <div class="avatar-grid" id="avatarGrid"></div>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div class="screen" id="screen-achievements">
+    <h2 class="screen-title" id="achievementsScreenTitle">🏆 Achievements</h2>
+    <div class="ach-grid" id="achGrid"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <h2 class="screen-title" id="settingsScreenTitle">⚙️ Settings</h2>
+    <div class="setting-row">
+      <span id="settingSoundLabel">🔊 Sound &amp; music</span>
+      <div class="toggle" id="soundToggle"><div class="knob"></div></div>
+    </div>
+    <div class="setting-row">
+      <span id="settingSpeechLabel">🗣️ Spoken letters &amp; words</span>
+      <div class="toggle" id="speechToggle"><div class="knob"></div></div>
+    </div>
+    <div class="theme-section-title" id="langSectionTitle">🌐 Language</div>
+    <div class="lang-grid" id="langSettingsGrid"></div>
+    <div class="theme-section-title" id="themeSeasonalTitle">Seasonal themes</div>
+    <div class="theme-grid" id="themeGridSeasonal"></div>
+    <div class="theme-section-title" id="themeMoodTitle">Mood themes</div>
+    <div class="theme-grid" id="themeGridMood"></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ THEME CONFIG ============ */
+var THEMES = {
+  ete:        {name:"Été",         emoji:"☀️", group:"season", bg:['#FFF6E0','#FFE0B2'], accent:'#FF7043', accent2:'#29B6F6', text:'#4E342E', particle:'💧', ambient:'summer'},
+  printemps:  {name:"Printemps",   emoji:"🌸", group:"season", bg:['#F1FCE8','#DFF5C0'], accent:'#8BC34A', accent2:'#FF80AB', text:'#33691E', particle:'🌸', ambient:'spring'},
+  automne:    {name:"Automne",     emoji:"🍁", group:"season", bg:['#FFF3E0','#FFCCBC'], accent:'#F4511E', accent2:'#8D6E63', text:'#4E342E', particle:'🍂', ambient:'autumn'},
+  hiver:      {name:"Hiver",       emoji:"❄️", group:"season", bg:['#E8F4FD','#D0E8F7'], accent:'#42A5F5', accent2:'#B39DDB', text:'#1A237E', particle:'❄️', ambient:'winter'},
+  nature:     {name:"Nature",      emoji:"🌿", group:"mood", bg:['#EDF7ED','#C8E6C9'], accent:'#43A047', accent2:'#795548', text:'#1B5E20', particle:'🍃'},
+  calme:      {name:"Calme",       emoji:"☕", group:"mood", bg:['#F3EFEA','#E0D6C8'], accent:'#A1887F', accent2:'#90A4AE', text:'#4E342E', particle:'☁️'},
+  creativite: {name:"Créativité",  emoji:"🎨", group:"mood", bg:['#FDF0FF','#F3D9FF'], accent:'#AB47BC', accent2:'#FFCA28', text:'#4A148C', particle:'✨'},
+  energie:    {name:"Énergie",     emoji:"⚡", group:"mood", bg:['#FFF9E0','#FFE082'], accent:'#FB8C00', accent2:'#E53935', text:'#BF360C', particle:'⚡'},
+  minimaliste:{name:"Minimaliste", emoji:"⬜", group:"mood", bg:['#FAFAFA','#EEEEEE'], accent:'#616161', accent2:'#9E9E9E', text:'#212121', particle:''},
+  romantique: {name:"Romantique",  emoji:"💕", group:"mood", bg:['#FFF0F5','#FFD9E8'], accent:'#EC407A', accent2:'#F48FB1', text:'#880E4F', particle:'💗'},
+  ocean:      {name:"Océan",       emoji:"🌊", group:"mood", bg:['#E0F7FA','#B2EBF2'], accent:'#00ACC1', accent2:'#0277BD', text:'#01579B', particle:'🐟'},
+  neon:       {name:"Néon",        emoji:"🌃", group:"mood", bg:['#1A1A2E','#16213E'], accent:'#00F5D4', accent2:'#F72585', text:'#F5F5F5', particle:'✨'},
+  fancy:      {name:"Fancy",       emoji:"🎩", group:"mood", bg:['#FFF8E1','#FFECB3'], accent:'#C9A227', accent2:'#6D4C41', text:'#3E2723', particle:'☕'}
+};
+var AVATARS = ['🦁','🐯','🐶','🐱','🐰','🦊','🐼','🐨','🦄','🐸'];
+
+/* ============ LANGUAGES ============ */
+var LANGS = {
+  en: {name:'English',  flag:'🇬🇧', tts:'en-US'},
+  fr: {name:'Français', flag:'🇫🇷', tts:'fr-FR'},
+  es: {name:'Español',  flag:'🇪🇸', tts:'es-ES'},
+  de: {name:'Deutsch',  flag:'🇩🇪', tts:'de-DE'}
+};
+function curLang(){ return state.settings.lang || 'en'; }
+
+/* ============ DATA ============ */
+var LETTERS_BY_LANG = {
+  en: [
+    {l:'A', word:'apple',  em:'🍎', ph:'ah'},
+    {l:'B', word:'ball',   em:'⚽', ph:'buh'},
+    {l:'C', word:'cat',    em:'🐱', ph:'kuh'},
+    {l:'D', word:'dog',    em:'🐶', ph:'duh'},
+    {l:'E', word:'egg',    em:'🥚', ph:'eh'},
+    {l:'F', word:'fish',   em:'🐟', ph:'ff'},
+    {l:'G', word:'grapes', em:'🍇', ph:'guh'},
+    {l:'H', word:'hat',    em:'🎩', ph:'huh'},
+    {l:'I', word:'ice cream', em:'🍦', ph:'ih'},
+    {l:'J', word:'jam',    em:'🫙', ph:'juh'},
+    {l:'K', word:'kite',   em:'🪁', ph:'kuh'},
+    {l:'L', word:'lion',   em:'🦁', ph:'ll'},
+    {l:'M', word:'moon',   em:'🌙', ph:'mm'},
+    {l:'N', word:'nut',    em:'🥜', ph:'nn'},
+    {l:'O', word:'orange', em:'🍊', ph:'ah'},
+    {l:'P', word:'pig',    em:'🐷', ph:'puh'},
+    {l:'Q', word:'queen',  em:'👸', ph:'kwuh'},
+    {l:'R', word:'rabbit', em:'🐰', ph:'rr'},
+    {l:'S', word:'sun',    em:'☀️', ph:'ss'},
+    {l:'T', word:'tree',   em:'🌳', ph:'tuh'},
+    {l:'U', word:'umbrella', em:'☂️', ph:'uh'},
+    {l:'V', word:'van',    em:'🚐', ph:'vv'},
+    {l:'W', word:'watermelon', em:'🍉', ph:'wuh'},
+    {l:'X', word:'x-ray',  em:'🩻', ph:'ks'},
+    {l:'Y', word:'yarn',   em:'🧶', ph:'yuh'},
+    {l:'Z', word:'zebra',  em:'🦓', ph:'zz'}
+  ],
+  fr: [
+    {l:'A', word:'avion',    em:'✈️', ph:'a'},
+    {l:'B', word:'ballon',   em:'🎈', ph:'be'},
+    {l:'C', word:'chat',     em:'🐱', ph:'ke'},
+    {l:'D', word:'dauphin',  em:'🐬', ph:'de'},
+    {l:'E', word:'étoile',   em:'⭐', ph:'eu'},
+    {l:'F', word:'fleur',    em:'🌸', ph:'fe'},
+    {l:'G', word:'gâteau',   em:'🎂', ph:'gue'},
+    {l:'H', word:'hibou',    em:'🦉', ph:'ash'},
+    {l:'I', word:'igloo',    em:'🧊', ph:'i'},
+    {l:'J', word:'jus',      em:'🧃', ph:'je'},
+    {l:'K', word:'kangourou',em:'🦘', ph:'ka'},
+    {l:'L', word:'lion',     em:'🦁', ph:'le'},
+    {l:'M', word:'maison',   em:'🏠', ph:'me'},
+    {l:'N', word:'nuage',    em:'☁️', ph:'ne'},
+    {l:'O', word:'orange',   em:'🍊', ph:'o'},
+    {l:'P', word:'poisson',  em:'🐟', ph:'pe'},
+    {l:'Q', word:'quatre',   em:'4️⃣', ph:'ku'},
+    {l:'R', word:'robot',    em:'🤖', ph:'re'},
+    {l:'S', word:'soleil',   em:'☀️', ph:'se'},
+    {l:'T', word:'tortue',   em:'🐢', ph:'te'},
+    {l:'U', word:'unicorne', em:'🦄', ph:'u'},
+    {l:'V', word:'voiture',  em:'🚗', ph:'ve'},
+    {l:'W', word:'wagon',    em:'🚃', ph:'we'},
+    {l:'X', word:'xylophone',em:'🎼', ph:'ks'},
+    {l:'Y', word:'yoyo',     em:'🪀', ph:'ye'},
+    {l:'Z', word:'zèbre',    em:'🦓', ph:'ze'}
+  ],
+  es: [
+    {l:'A', word:'avión',    em:'✈️', ph:'a'},
+    {l:'B', word:'bola',     em:'⚽', ph:'be'},
+    {l:'C', word:'casa',     em:'🏠', ph:'ke'},
+    {l:'D', word:'dado',     em:'🎲', ph:'de'},
+    {l:'E', word:'estrella', em:'⭐', ph:'e'},
+    {l:'F', word:'flor',     em:'🌸', ph:'fe'},
+    {l:'G', word:'gato',     em:'🐱', ph:'ge'},
+    {l:'H', word:'huevo',    em:'🥚', ph:'ache'},
+    {l:'I', word:'iglú',     em:'🧊', ph:'i'},
+    {l:'J', word:'jirafa',   em:'🦒', ph:'je'},
+    {l:'K', word:'koala',    em:'🐨', ph:'ka'},
+    {l:'L', word:'luna',     em:'🌙', ph:'le'},
+    {l:'M', word:'mono',     em:'🐒', ph:'me'},
+    {l:'N', word:'nube',     em:'☁️', ph:'ne'},
+    {l:'O', word:'oso',      em:'🐻', ph:'o'},
+    {l:'P', word:'pez',      em:'🐟', ph:'pe'},
+    {l:'Q', word:'queso',    em:'🧀', ph:'ku'},
+    {l:'R', word:'ratón',    em:'🐭', ph:'re'},
+    {l:'S', word:'sol',      em:'☀️', ph:'se'},
+    {l:'T', word:'tigre',    em:'🐯', ph:'te'},
+    {l:'U', word:'uva',      em:'🍇', ph:'u'},
+    {l:'V', word:'vaca',     em:'🐮', ph:'ve'},
+    {l:'W', word:'wafle',    em:'🧇', ph:'we'},
+    {l:'X', word:'xilófono', em:'🎼', ph:'eks'},
+    {l:'Y', word:'yoyo',     em:'🪀', ph:'ye'},
+    {l:'Z', word:'zorro',    em:'🦊', ph:'se'}
+  ],
+  de: [
+    {l:'A', word:'Apfel',    em:'🍎', ph:'a'},
+    {l:'B', word:'Ball',     em:'⚽', ph:'be'},
+    {l:'C', word:'Clown',    em:'🤡', ph:'tse'},
+    {l:'D', word:'Dino',     em:'🦕', ph:'de'},
+    {l:'E', word:'Ente',     em:'🦆', ph:'e'},
+    {l:'F', word:'Fisch',    em:'🐟', ph:'ef'},
+    {l:'G', word:'Giraffe',  em:'🦒', ph:'ge'},
+    {l:'H', word:'Hut',      em:'🎩', ph:'ha'},
+    {l:'I', word:'Igel',     em:'🦔', ph:'i'},
+    {l:'J', word:'Jo-Jo',    em:'🪀', ph:'yot'},
+    {l:'K', word:'Katze',    em:'🐱', ph:'ka'},
+    {l:'L', word:'Löwe',     em:'🦁', ph:'el'},
+    {l:'M', word:'Maus',     em:'🐭', ph:'em'},
+    {l:'N', word:'Nuss',     em:'🥜', ph:'en'},
+    {l:'O', word:'Orange',   em:'🍊', ph:'o'},
+    {l:'P', word:'Pinguin',  em:'🐧', ph:'pe'},
+    {l:'Q', word:'Quadrat',  em:'⬜', ph:'ku'},
+    {l:'R', word:'Rakete',   em:'🚀', ph:'er'},
+    {l:'S', word:'Sonne',    em:'☀️', ph:'es'},
+    {l:'T', word:'Tiger',    em:'🐯', ph:'te'},
+    {l:'U', word:'Uhr',      em:'⏰', ph:'u'},
+    {l:'V', word:'Vogel',    em:'🐦', ph:'fau'},
+    {l:'W', word:'Wasser',   em:'💧', ph:'ve'},
+    {l:'X', word:'Xylophon', em:'🎼', ph:'iks'},
+    {l:'Y', word:'Yak',      em:'🐃', ph:'ypsilon'},
+    {l:'Z', word:'Zebra',    em:'🦓', ph:'tset'}
+  ]
+};
+var WORDS_BY_LANG = {
+  en: [
+    {w:'cat', em:'🐱'}, {w:'dog', em:'🐶'}, {w:'sun', em:'☀️'}, {w:'hat', em:'🎩'},
+    {w:'pig', em:'🐷'}, {w:'bed', em:'🛏️'}, {w:'cup', em:'☕'}, {w:'hen', em:'🐔'},
+    {w:'bus', em:'🚌'}, {w:'box', em:'📦'}, {w:'pen', em:'🖊️'}, {w:'bag', em:'🎒'},
+    {w:'map', em:'🗺️'}, {w:'mop', em:'🧹'}, {w:'net', em:'🥅'}, {w:'nut', em:'🥜'},
+    {w:'fox', em:'🦊'}, {w:'jam', em:'🫙'}, {w:'log', em:'🪵'}, {w:'van', em:'🚐'}
+  ],
+  fr: [
+    {w:'chat', em:'🐱'}, {w:'lit', em:'🛏️'}, {w:'sac', em:'🎒'}, {w:'bus', em:'🚌'},
+    {w:'riz', em:'🍚'}, {w:'nez', em:'👃'}, {w:'lune', em:'🌙'}, {w:'vase', em:'🏺'},
+    {w:'robe', em:'👗'}, {w:'pomme', em:'🍎'}, {w:'melon', em:'🍈'}, {w:'citron', em:'🍋'},
+    {w:'moto', em:'🏍️'}, {w:'train', em:'🚂'}, {w:'avion', em:'✈️'}, {w:'robot', em:'🤖'},
+    {w:'tigre', em:'🐯'}, {w:'ours', em:'🐻'}, {w:'raisin', em:'🍇'}, {w:'pain', em:'🍞'}
+  ],
+  es: [
+    {w:'gato', em:'🐱'}, {w:'sol', em:'☀️'}, {w:'pan', em:'🍞'}, {w:'oso', em:'🐻'},
+    {w:'pez', em:'🐟'}, {w:'luna', em:'🌙'}, {w:'casa', em:'🏠'}, {w:'mesa', em:'🪑'},
+    {w:'taza', em:'☕'}, {w:'vaca', em:'🐮'}, {w:'rana', em:'🐸'}, {w:'nido', em:'🪺'},
+    {w:'flor', em:'🌸'}, {w:'pato', em:'🦆'}, {w:'uva', em:'🍇'}, {w:'tren', em:'🚂'},
+    {w:'sopa', em:'🥣'}, {w:'nube', em:'☁️'}, {w:'leon', em:'🦁'}, {w:'pino', em:'🌲'}
+  ],
+  de: [
+    {w:'hut', em:'🎩'}, {w:'bus', em:'🚌'}, {w:'eis', em:'🍦'}, {w:'kuh', em:'🐮'},
+    {w:'tor', em:'🥅'}, {w:'hund', em:'🐶'}, {w:'katze', em:'🐱'}, {w:'maus', em:'🐭'},
+    {w:'fuchs', em:'🦊'}, {w:'baum', em:'🌳'}, {w:'auto', em:'🚗'}, {w:'boot', em:'⛵'},
+    {w:'zug', em:'🚂'}, {w:'apfel', em:'🍎'}, {w:'nuss', em:'🥜'}, {w:'ente', em:'🦆'},
+    {w:'igel', em:'🦔'}, {w:'hase', em:'🐰'}, {w:'sonne', em:'☀️'}, {w:'blume', em:'🌸'}
+  ]
+};
+function LETTERS(){ return LETTERS_BY_LANG[curLang()]; }
+function WORDS(){ return WORDS_BY_LANG[curLang()]; }
+
+var ACHIEVEMENTS = [
+  {id:'first_steps', em:'👣', check:function(s){return s.safariRounds>=1;}},
+  {id:'word_wizard', em:'✨', check:function(s){return s.wordsBuiltTotal>=1;}},
+  {id:'alphabet_explorer', em:'🗺️', check:function(s){return Object.keys(s.lettersLearned).length>=26;}},
+  {id:'builder_pro', em:'🏗️', check:function(s){return s.wordsBuiltTotal>=10;}},
+  {id:'safari_champ', em:'🥇', check:function(s){return s.safariRounds>=20;}},
+  {id:'perfect_streak', em:'🔥', check:function(s){return s.bestStreak>=5;}},
+  {id:'daily_devotee', em:'📅', check:function(s){return s.dailyStreak>=3;}},
+  {id:'daily_dedication', em:'🌟', check:function(s){return s.dailyStreak>=7;}},
+  {id:'vocab_star', em:'📖', check:function(s){return Object.keys(s.wordsBuiltSet).length>=20;}},
+  {id:'sound_master', em:'👂', check:function(s){return Object.keys(s.soundsMastered).length>=26;}}
+];
+
+/* ============ TRANSLATIONS ============ */
+var STR = {
+  en: {
+    titles:{home:'🦁 Letter Safari', safari:'🔎 Letter Safari', builder:'🧩 Word Builder', daily:'⭐ Daily Challenge', profile:'🙂 Profile', achievements:'🏆 Achievements', settings:'⚙️ Settings'},
+    homeSub:'Learn letters &amp; build words!',
+    menuSafariLabel:'Letter Safari', menuSafariDesc:'Hear it, tap it, match it',
+    menuBuilderLabel:'Word Builder', menuBuilderDesc:'Spell fun little words',
+    menuDailyLabel:'Daily Challenge', dailyDescFresh:'A fresh mix, just for today', dailyDescDone:'Done for today — come back tomorrow!',
+    menuProfileLabel:'Profile', menuAchievementsLabel:'Achievements', menuSettingsLabel:'Settings',
+    newBadge:'NEW',
+    modeHear:'👂 Hear &amp; Tap', modeMatch:'🖐️ Picture Match',
+    safariHearPrompt:'Tap the letter that matches the sound',
+    safariMatchPrompt:'Drag the letter that starts this word',
+    playSound:'🔊 Play sound',
+    feedbackGood:'Great job! 🎉', feedbackBadSafari:'Try again! You can do it 💪',
+    roundComplete:'Round complete!', playAgain:'Play again',
+    builderFeedbackBad:'Not quite — try another spot!',
+    builderFeedbackGood:function(w){ return 'You spelled '+w.toUpperCase()+'! 🎉'; },
+    allWordsBuilt:'All words built!',
+    dailyAlreadyTitle:'You already finished today’s challenge!',
+    dailyAlreadySub:'Come back tomorrow for a new mix.',
+    dailyCompleteTitle:'Daily challenge complete!',
+    dayWord:function(n){ return n===1?'day':'days'; },
+    streakCurrent:function(n){ return '🔥 Current streak: '+n+' '+this.dayWord(n); },
+    streakDone:function(n){ return '🔥 Streak: '+n+' '+this.dayWord(n)+' — see you tomorrow!'; },
+    dailyStreakLine:function(n){ return 'Streak: '+n+' '+this.dayWord(n); },
+    namePlaceholder:'Your name', chooseAvatar:'Choose an avatar',
+    statLettersFound:'Letters found', statWordsBuilt:'Words built', statBestStreak:'Best streak', statDailyStreak:'Daily streak',
+    achievementUnlocked:'Achievement unlocked!',
+    settingsSound:'🔊 Sound &amp; music', settingsSpeech:'🗣️ Spoken letters &amp; words',
+    settingsSeasonalThemes:'Seasonal themes', settingsMoodThemes:'Mood themes', settingsLanguage:'🌐 Language',
+    achievements:{
+      first_steps:{title:'First Steps', desc:'Finish your first Safari round'},
+      word_wizard:{title:'Word Wizard', desc:'Build your first word'},
+      alphabet_explorer:{title:'Alphabet Explorer', desc:'Find all 26 letters'},
+      builder_pro:{title:'Word Builder Pro', desc:'Build 10 words'},
+      safari_champ:{title:'Safari Champion', desc:'Complete 20 Safari rounds'},
+      perfect_streak:{title:'Perfect Streak', desc:'5 correct answers in a row'},
+      daily_devotee:{title:'Daily Devotee', desc:'3-day daily streak'},
+      daily_dedication:{title:'Daily Dedication', desc:'7-day daily streak'},
+      vocab_star:{title:'Vocabulary Star', desc:'Build all 20 words'},
+      sound_master:{title:'Sound Master', desc:'Identify all 26 letter sounds'}
+    }
+  },
+  fr: {
+    titles:{home:'🦁 Safari des Lettres', safari:'🔎 Safari des Lettres', builder:'🧩 Constructeur de mots', daily:'⭐ Défi du jour', profile:'🙂 Profil', achievements:'🏆 Succès', settings:'⚙️ Réglages'},
+    homeSub:'Apprends les lettres et construis des mots !',
+    menuSafariLabel:'Safari des Lettres', menuSafariDesc:'Écoute, touche, associe',
+    menuBuilderLabel:'Constructeur de mots', menuBuilderDesc:'Épelle des petits mots amusants',
+    menuDailyLabel:'Défi du jour', dailyDescFresh:'Un nouveau mélange, juste pour aujourd’hui', dailyDescDone:'Terminé pour aujourd’hui — reviens demain !',
+    menuProfileLabel:'Profil', menuAchievementsLabel:'Succès', menuSettingsLabel:'Réglages',
+    newBadge:'NOUVEAU',
+    modeHear:'👂 Écoute', modeMatch:'🖐️ Associe l’image',
+    safariHearPrompt:'Touche la lettre qui correspond au son',
+    safariMatchPrompt:'Glisse la lettre qui commence ce mot',
+    playSound:'🔊 Écouter le son',
+    feedbackGood:'Bravo ! 🎉', feedbackBadSafari:'Essaie encore ! Tu peux le faire 💪',
+    roundComplete:'Manche terminée !', playAgain:'Rejouer',
+    builderFeedbackBad:'Pas tout à fait — essaie un autre endroit !',
+    builderFeedbackGood:function(w){ return 'Tu as épelé '+w.toUpperCase()+' ! 🎉'; },
+    allWordsBuilt:'Tous les mots sont construits !',
+    dailyAlreadyTitle:'Tu as déjà terminé le défi d’aujourd’hui !',
+    dailyAlreadySub:'Reviens demain pour un nouveau mélange.',
+    dailyCompleteTitle:'Défi du jour terminé !',
+    dayWord:function(n){ return n===1?'jour':'jours'; },
+    streakCurrent:function(n){ return '🔥 Série actuelle : '+n+' '+this.dayWord(n); },
+    streakDone:function(n){ return '🔥 Série : '+n+' '+this.dayWord(n)+' — à demain !'; },
+    dailyStreakLine:function(n){ return 'Série : '+n+' '+this.dayWord(n); },
+    namePlaceholder:'Ton prénom', chooseAvatar:'Choisis un avatar',
+    statLettersFound:'Lettres trouvées', statWordsBuilt:'Mots construits', statBestStreak:'Meilleure série', statDailyStreak:'Série quotidienne',
+    achievementUnlocked:'Succès débloqué !',
+    settingsSound:'🔊 Son &amp; musique', settingsSpeech:'🗣️ Lettres &amp; mots parlés',
+    settingsSeasonalThemes:'Thèmes saisonniers', settingsMoodThemes:'Thèmes d’ambiance', settingsLanguage:'🌐 Langue',
+    achievements:{
+      first_steps:{title:'Premiers pas', desc:'Termine ta première manche Safari'},
+      word_wizard:{title:'Magicien des mots', desc:'Construis ton premier mot'},
+      alphabet_explorer:{title:'Explorateur de l’alphabet', desc:'Trouve les 26 lettres'},
+      builder_pro:{title:'Pro du mot', desc:'Construis 10 mots'},
+      safari_champ:{title:'Champion du Safari', desc:'Termine 20 manches Safari'},
+      perfect_streak:{title:'Série parfaite', desc:'5 bonnes réponses d’affilée'},
+      daily_devotee:{title:'Fidèle du jour', desc:'Série de 3 jours'},
+      daily_dedication:{title:'Dévouement quotidien', desc:'Série de 7 jours'},
+      vocab_star:{title:'Étoile du vocabulaire', desc:'Construis les 20 mots'},
+      sound_master:{title:'Maître des sons', desc:'Identifie les 26 sons des lettres'}
+    }
+  },
+  es: {
+    titles:{home:'🦁 Safari de Letras', safari:'🔎 Safari de Letras', builder:'🧩 Constructor de Palabras', daily:'⭐ Reto Diario', profile:'🙂 Perfil', achievements:'🏆 Logros', settings:'⚙️ Ajustes'},
+    homeSub:'¡Aprende letras y construye palabras!',
+    menuSafariLabel:'Safari de Letras', menuSafariDesc:'Escucha, toca, empareja',
+    menuBuilderLabel:'Constructor de Palabras', menuBuilderDesc:'Deletrea palabras divertidas',
+    menuDailyLabel:'Reto Diario', dailyDescFresh:'Una mezcla nueva, solo por hoy', dailyDescDone:'Hecho por hoy — ¡vuelve mañana!',
+    menuProfileLabel:'Perfil', menuAchievementsLabel:'Logros', menuSettingsLabel:'Ajustes',
+    newBadge:'NUEVO',
+    modeHear:'👂 Escucha', modeMatch:'🖐️ Empareja la imagen',
+    safariHearPrompt:'Toca la letra que coincide con el sonido',
+    safariMatchPrompt:'Arrastra la letra con la que empieza esta palabra',
+    playSound:'🔊 Reproducir sonido',
+    feedbackGood:'¡Muy bien! 🎉', feedbackBadSafari:'¡Inténtalo de nuevo, tú puedes! 💪',
+    roundComplete:'¡Ronda completada!', playAgain:'Jugar de nuevo',
+    builderFeedbackBad:'No es así — ¡prueba otro lugar!',
+    builderFeedbackGood:function(w){ return '¡Deletreaste '+w.toUpperCase()+'! 🎉'; },
+    allWordsBuilt:'¡Todas las palabras construidas!',
+    dailyAlreadyTitle:'¡Ya terminaste el reto de hoy!',
+    dailyAlreadySub:'Vuelve mañana para una nueva mezcla.',
+    dailyCompleteTitle:'¡Reto diario completado!',
+    dayWord:function(n){ return n===1?'día':'días'; },
+    streakCurrent:function(n){ return '🔥 Racha actual: '+n+' '+this.dayWord(n); },
+    streakDone:function(n){ return '🔥 Racha: '+n+' '+this.dayWord(n)+' — ¡hasta mañana!'; },
+    dailyStreakLine:function(n){ return 'Racha: '+n+' '+this.dayWord(n); },
+    namePlaceholder:'Tu nombre', chooseAvatar:'Elige un avatar',
+    statLettersFound:'Letras encontradas', statWordsBuilt:'Palabras construidas', statBestStreak:'Mejor racha', statDailyStreak:'Racha diaria',
+    achievementUnlocked:'¡Logro desbloqueado!',
+    settingsSound:'🔊 Sonido &amp; música', settingsSpeech:'🗣️ Letras &amp; palabras habladas',
+    settingsSeasonalThemes:'Temas de temporada', settingsMoodThemes:'Temas de ambiente', settingsLanguage:'🌐 Idioma',
+    achievements:{
+      first_steps:{title:'Primeros pasos', desc:'Termina tu primera ronda de Safari'},
+      word_wizard:{title:'Mago de las palabras', desc:'Construye tu primera palabra'},
+      alphabet_explorer:{title:'Explorador del alfabeto', desc:'Encuentra las 26 letras'},
+      builder_pro:{title:'Pro del constructor', desc:'Construye 10 palabras'},
+      safari_champ:{title:'Campeón del Safari', desc:'Completa 20 rondas de Safari'},
+      perfect_streak:{title:'Racha perfecta', desc:'5 respuestas correctas seguidas'},
+      daily_devotee:{title:'Devoto diario', desc:'Racha de 3 días'},
+      daily_dedication:{title:'Dedicación diaria', desc:'Racha de 7 días'},
+      vocab_star:{title:'Estrella del vocabulario', desc:'Construye las 20 palabras'},
+      sound_master:{title:'Maestro de sonidos', desc:'Identifica los 26 sonidos de las letras'}
+    }
+  },
+  de: {
+    titles:{home:'🦁 Buchstaben-Safari', safari:'🔎 Buchstaben-Safari', builder:'🧩 Wortbauer', daily:'⭐ Tagesaufgabe', profile:'🙂 Profil', achievements:'🏆 Erfolge', settings:'⚙️ Einstellungen'},
+    homeSub:'Lerne Buchstaben und baue Wörter!',
+    menuSafariLabel:'Buchstaben-Safari', menuSafariDesc:'Hören, tippen, zuordnen',
+    menuBuilderLabel:'Wortbauer', menuBuilderDesc:'Buchstabiere lustige kleine Wörter',
+    menuDailyLabel:'Tagesaufgabe', dailyDescFresh:'Eine neue Mischung, nur für heute', dailyDescDone:'Heute erledigt — komm morgen wieder!',
+    menuProfileLabel:'Profil', menuAchievementsLabel:'Erfolge', menuSettingsLabel:'Einstellungen',
+    newBadge:'NEU',
+    modeHear:'👂 Hören', modeMatch:'🖐️ Bild zuordnen',
+    safariHearPrompt:'Tippe auf den Buchstaben, der zum Laut passt',
+    safariMatchPrompt:'Ziehe den Buchstaben, mit dem dieses Wort beginnt',
+    playSound:'🔊 Laut abspielen',
+    feedbackGood:'Gut gemacht! 🎉', feedbackBadSafari:'Versuch’s nochmal! Du schaffst das 💪',
+    roundComplete:'Runde geschafft!', playAgain:'Nochmal spielen',
+    builderFeedbackBad:'Nicht ganz — versuch eine andere Stelle!',
+    builderFeedbackGood:function(w){ return 'Du hast '+w.toUpperCase()+' buchstabiert! 🎉'; },
+    allWordsBuilt:'Alle Wörter gebaut!',
+    dailyAlreadyTitle:'Du hast die heutige Aufgabe schon geschafft!',
+    dailyAlreadySub:'Komm morgen für eine neue Mischung wieder.',
+    dailyCompleteTitle:'Tagesaufgabe geschafft!',
+    dayWord:function(n){ return n===1?'Tag':'Tage'; },
+    streakCurrent:function(n){ return '🔥 Aktuelle Serie: '+n+' '+this.dayWord(n); },
+    streakDone:function(n){ return '🔥 Serie: '+n+' '+this.dayWord(n)+' — bis morgen!'; },
+    dailyStreakLine:function(n){ return 'Serie: '+n+' '+this.dayWord(n); },
+    namePlaceholder:'Dein Name', chooseAvatar:'Wähle einen Avatar',
+    statLettersFound:'Buchstaben gefunden', statWordsBuilt:'Wörter gebaut', statBestStreak:'Beste Serie', statDailyStreak:'Tagesserie',
+    achievementUnlocked:'Erfolg freigeschaltet!',
+    settingsSound:'🔊 Ton &amp; Musik', settingsSpeech:'🗣️ Gesprochene Buchstaben &amp; Wörter',
+    settingsSeasonalThemes:'Saisonale Themen', settingsMoodThemes:'Stimmungsthemen', settingsLanguage:'🌐 Sprache',
+    achievements:{
+      first_steps:{title:'Erste Schritte', desc:'Beende deine erste Safari-Runde'},
+      word_wizard:{title:'Wortzauberer', desc:'Baue dein erstes Wort'},
+      alphabet_explorer:{title:'Alphabet-Entdecker', desc:'Finde alle 26 Buchstaben'},
+      builder_pro:{title:'Wortbau-Profi', desc:'Baue 10 Wörter'},
+      safari_champ:{title:'Safari-Champion', desc:'Schließe 20 Safari-Runden ab'},
+      perfect_streak:{title:'Perfekte Serie', desc:'5 richtige Antworten in Folge'},
+      daily_devotee:{title:'Tagesfan', desc:'3-Tage-Serie'},
+      daily_dedication:{title:'Tageshingabe', desc:'7-Tage-Serie'},
+      vocab_star:{title:'Vokabelstar', desc:'Baue alle 20 Wörter'},
+      sound_master:{title:'Klangmeister', desc:'Erkenne alle 26 Buchstabenlaute'}
+    }
+  }
+};
+function T(){ return STR[curLang()]; }
+
+/* ============ STATE ============ */
+var DEFAULT_STATE = {
+  profile:{name:'', avatar:'🦁'},
+  settings:{theme:'ete', sound:true, speech:true, lang:''},
+  stats:{
+    safariRounds:0, wordsBuiltTotal:0, streak:0, bestStreak:0,
+    lettersLearned:{}, soundsMastered:{}, wordsBuiltSet:{},
+    dailyStreak:0, lastDailyDate:'', dailyDoneToday:false
+  },
+  achievementsUnlocked:{}
+};
+var state = load();
+function load(){
+  try{
+    var raw = localStorage.getItem('letterSafariState');
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    var parsed = JSON.parse(raw);
+    var merged = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    for(var k in parsed){ merged[k] = parsed[k]; }
+    return merged;
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
+}
+function save(){
+  try{ localStorage.setItem('letterSafariState', JSON.stringify(state)); }catch(e){}
+}
+
+/* ============ AUDIO ============ */
+var actx = null;
+function getCtx(){
+  if(!actx){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+  }
+  if(actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, start, dur, type, vol){
+  if(!state.settings.sound) return;
+  var ctx = getCtx();
+  var osc = ctx.createOscillator();
+  var gain = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ctx.currentTime+start);
+  gain.gain.linearRampToValueAtTime(vol||0.2, ctx.currentTime+start+0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+start+dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(ctx.currentTime+start);
+  osc.stop(ctx.currentTime+start+dur+0.05);
+}
+function sfxClick(){ tone(520,0,0.08,'triangle',0.15); }
+function sfxCorrect(){ tone(523.25,0,0.12,'sine',0.22); tone(659.25,0.1,0.12,'sine',0.22); tone(783.99,0.2,0.2,'sine',0.24); }
+function sfxWrong(){ tone(220,0,0.18,'sine',0.15); tone(180,0.12,0.22,'sine',0.13); }
+function sfxPop(){
+  if(!state.settings.sound) return;
+  var ctx = getCtx();
+  var osc = ctx.createOscillator(); var gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(180, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime+0.09);
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.15);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime+0.16);
+  tone(1046.5,0.1,0.18,'sine',0.15);
+}
+function sfxAchievement(){ tone(523.25,0,0.12,'triangle',0.2); tone(659.25,0.12,0.12,'triangle',0.2); tone(783.99,0.24,0.12,'triangle',0.2); tone(1046.5,0.36,0.3,'triangle',0.22); }
+
+function speak(text){
+  if(!state.settings.speech) return;
+  if(!('speechSynthesis' in window)) return;
+  try{
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.85; u.pitch = 1.15; u.lang = LANGS[curLang()].tts;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ambient loop */
+var ambientNodes = null;
+function stopAmbient(){
+  if(ambientNodes){
+    try{ ambientNodes.forEach(function(n){ n.stop && n.stop(); }); }catch(e){}
+    ambientNodes = null;
+  }
+}
+function startAmbient(kind){
+  stopAmbient();
+  if(!state.settings.sound) return;
+  var ctx = getCtx();
+  var master = ctx.createGain();
+  master.gain.value = 0.05;
+  master.connect(ctx.destination);
+  var freqs = {summer:[392,494,587], spring:[440,554,659], autumn:[349,415,523], winter:[523,659,784]};
+  var f = freqs[kind] || freqs.summer;
+  var nodes = [];
+  f.forEach(function(fr,i){
+    var osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = fr;
+    var lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.08 + i*0.03;
+    var lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.03;
+    lfo.connect(lfoGain); lfoGain.connect(master.gain);
+    var g = ctx.createGain(); g.gain.value = 0.33/f.length;
+    osc.connect(g); g.connect(master);
+    osc.start(); lfo.start();
+    nodes.push(osc); nodes.push(lfo);
+  });
+  ambientNodes = nodes;
+  ambientNodes.push({stop:function(){ try{master.disconnect();}catch(e){} }});
+}
+
+/* ============ PARTICLES ============ */
+var canvas = document.getElementById('particles');
+var ctx2d = canvas.getContext('2d');
+var particles = [];
+function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeCanvas); resizeCanvas();
+function seedParticles(){
+  var theme = THEMES[state.settings.theme];
+  particles = [];
+  if(!theme.particle) return;
+  for(var i=0;i<16;i++){
+    particles.push({
+      x: Math.random()*canvas.width, y: Math.random()*canvas.height - canvas.height,
+      speed: 0.4+Math.random()*0.8, size: 16+Math.random()*16, drift: (Math.random()-0.5)*0.6,
+      rot: Math.random()*360, em: theme.particle
+    });
+  }
+}
+function animateParticles(){
+  ctx2d.clearRect(0,0,canvas.width,canvas.height);
+  var theme = THEMES[state.settings.theme];
+  if(theme.particle){
+    particles.forEach(function(p){
+      p.y += p.speed; p.x += p.drift;
+      if(p.y > canvas.height+30){ p.y = -30; p.x = Math.random()*canvas.width; }
+      ctx2d.save();
+      ctx2d.globalAlpha = 0.55;
+      ctx2d.font = p.size+'px sans-serif';
+      ctx2d.fillText(p.em, p.x, p.y);
+      ctx2d.restore();
+    });
+  }
+  requestAnimationFrame(animateParticles);
+}
+requestAnimationFrame(animateParticles);
+
+/* ============ THEME APPLY ============ */
+function applyTheme(){
+  var t = THEMES[state.settings.theme];
+  var root = document.documentElement.style;
+  root.setProperty('--bg1', t.bg[0]);
+  root.setProperty('--bg2', t.bg[1]);
+  root.setProperty('--accent', t.accent);
+  root.setProperty('--accent2', t.accent2);
+  root.setProperty('--text', t.text);
+  seedParticles();
+  if(t.ambient) startAmbient(t.ambient); else stopAmbient();
+}
+
+/* ============ NAV ============ */
+var current = 'home';
+function goTo(screen){
+  sfxClick();
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('screen-'+screen).classList.add('active');
+  document.getElementById('topTitle').textContent = T().titles[screen];
+  document.getElementById('backBtn').style.visibility = screen==='home' ? 'hidden' : 'visible';
+  current = screen;
+  if(screen==='safari') initSafari();
+  if(screen==='builder') initBuilder('builderStage','builderProgress',false);
+  if(screen==='daily') initDaily();
+  if(screen==='profile') renderProfile();
+  if(screen==='achievements') renderAchievements();
+  if(screen==='settings') renderSettings();
+  if(screen==='home') renderHome();
+}
+document.getElementById('backBtn').addEventListener('click', function(){ goTo('home'); });
+document.querySelectorAll('[data-go]').forEach(function(btn){
+  btn.addEventListener('click', function(){ goTo(btn.getAttribute('data-go')); });
+});
+document.getElementById('soundBtn').addEventListener('click', function(){
+  state.settings.sound = !state.settings.sound;
+  document.getElementById('soundBtn').textContent = state.settings.sound ? '🔊' : '🔇';
+  if(state.settings.sound) applyTheme(); else stopAmbient();
+  save();
+});
+
+/* ============ HOME ============ */
+function renderHome(){
+  var todayStr = todayKey();
+  var doneToday = state.stats.lastDailyDate === todayStr && state.stats.dailyDoneToday;
+  document.getElementById('dailyDesc').textContent = doneToday ? T().dailyDescDone : T().dailyDescFresh;
+  var badge = document.getElementById('dailyCard').querySelector('.badge-dot');
+  if(!doneToday){
+    if(!badge){
+      badge = document.createElement('span'); badge.className='badge-dot'; badge.textContent=T().newBadge;
+      document.getElementById('dailyCard').appendChild(badge);
+    } else {
+      badge.textContent = T().newBadge;
+    }
+  } else if(badge){ badge.remove(); }
+}
+
+/* ============ RANDOM HELPERS ============ */
+function shuffle(arr){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){ var j = Math.floor(Math.random()*(i+1)); var tmp=a[i]; a[i]=a[j]; a[j]=tmp; }
+  return a;
+}
+function sample(arr,n){ return shuffle(arr).slice(0,n); }
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed>>>15, 1 | seed);
+    t = t + Math.imul(t ^ t>>>7, 61 | t) ^ t;
+    return ((t ^ t>>>14) >>> 0) / 4294967296;
+  };
+}
+function seededShuffle(arr, rng){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){ var j = Math.floor(rng()*(i+1)); var tmp=a[i]; a[i]=a[j]; a[j]=tmp; }
+  return a;
+}
+function todayKey(){
+  var d = new Date();
+  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+}
+function hashStr(s){
+  var h = 0;
+  for(var i=0;i<s.length;i++){ h = (h<<5)-h+s.charCodeAt(i); h|=0; }
+  return h;
+}
+
+/* ============ ACHIEVEMENTS ENGINE ============ */
+function checkAchievements(){
+  var newly = [];
+  ACHIEVEMENTS.forEach(function(a){
+    if(!state.achievementsUnlocked[a.id] && a.check(state.stats)){
+      state.achievementsUnlocked[a.id] = new Date().toISOString();
+      newly.push(a);
+    }
+  });
+  if(newly.length){
+    save();
+    sfxAchievement();
+    showToast(newly[0]);
+  }
+  return newly;
+}
+function showToast(a){
+  var el = document.createElement('div');
+  el.style.cssText = 'position:fixed; top:16px; left:50%; transform:translateX(-50%); background:var(--card); color:var(--text); padding:12px 20px; border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,0.25); z-index:999; font-weight:bold; display:flex; gap:10px; align-items:center;';
+  el.innerHTML = '<span style="font-size:26px;">'+a.em+'</span><span>'+T().achievementUnlocked+'<br><span style="font-size:12px;opacity:0.75;">'+T().achievements[a.id].title+'</span></span>';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.style.transition='opacity 0.5s'; el.style.opacity='0'; setTimeout(function(){el.remove();},500); }, 2600);
+}
+function registerCorrect(){
+  state.stats.streak++;
+  if(state.stats.streak > state.stats.bestStreak) state.stats.bestStreak = state.stats.streak;
+}
+function registerWrong(){ state.stats.streak = 0; }
+
+/* ============ LETTER SAFARI ============ */
+var safariMode = 'hear';
+var safariRoundIdx = 0;
+var SAFARI_ROUND_LEN = 8;
+var safariQueue = [];
+
+document.querySelectorAll('[data-mode]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    safariMode = btn.getAttribute('data-mode');
+    document.querySelectorAll('[data-mode]').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    initSafari();
+  });
+});
+
+function initSafari(){
+  document.querySelector('[data-mode="'+safariMode+'"]').classList.add('active');
+  document.querySelectorAll('[data-mode]').forEach(function(b){
+    if(b.getAttribute('data-mode')!==safariMode) b.classList.remove('active');
+  });
+  safariRoundIdx = 0;
+  safariQueue = sample(LETTERS(), SAFARI_ROUND_LEN);
+  updateSafariProgress();
+  renderSafariRound();
+}
+function updateSafariProgress(){
+  var pct = Math.round((safariRoundIdx/SAFARI_ROUND_LEN)*100);
+  document.getElementById('safariProgress').style.width = pct+'%';
+}
+function renderSafariRound(){
+  if(safariRoundIdx >= safariQueue.length){
+    document.getElementById('safariStage').innerHTML =
+      '<div style="font-size:60px;">🎉</div><p style="font-weight:bold;font-size:18px;">'+T().roundComplete+'</p>' +
+      '<button class="next-btn" id="safariAgain">'+T().playAgain+'</button>';
+    document.getElementById('safariAgain').addEventListener('click', initSafari);
+    return;
+  }
+  var item = safariQueue[safariRoundIdx];
+  var stage = document.getElementById('safariStage');
+  if(safariMode === 'hear'){
+    var opts = shuffle([item].concat(sample(LETTERS().filter(function(x){return x.l!==item.l;}),3)));
+    stage.innerHTML =
+      '<button class="speak-btn" id="playSound">'+T().playSound+'</button>' +
+      '<p style="opacity:0.7;font-size:13px;">'+T().safariHearPrompt+'</p>' +
+      '<div class="options-grid" id="optGrid"></div>' +
+      '<div class="feedback" id="fb"></div>';
+    document.getElementById('playSound').addEventListener('click', function(){ speak(item.ph); });
+    var grid = document.getElementById('optGrid');
+    opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.className='option-btn'; b.textContent=o.l;
+      b.addEventListener('click', function(){ handleSafariAnswer(o.l===item.l, b, item, 'hear'); });
+      grid.appendChild(b);
+    });
+    setTimeout(function(){ speak(item.ph); }, 300);
+  } else {
+    var distractors = sample(LETTERS().filter(function(x){return x.l!==item.l;}),3);
+    var tiles = shuffle([item].concat(distractors));
+    stage.innerHTML =
+      '<div class="prompt-emoji">'+item.em+'</div>' +
+      '<p style="opacity:0.7;font-size:13px;">'+T().safariMatchPrompt+'</p>' +
+      '<div class="dropzone" id="dz">'+item.em+'</div>' +
+      '<div class="tile-tray" id="tray"></div>' +
+      '<div class="feedback" id="fb"></div>';
+    var tray = document.getElementById('tray');
+    tiles.forEach(function(o){
+      var t = document.createElement('div');
+      t.className='letter-tile'; t.textContent=o.l; t.dataset.letter=o.l;
+      makeDraggable(t, document.getElementById('dz'), function(dropped){
+        handleSafariAnswer(o.l===item.l, t, item, 'match');
+      });
+      tray.appendChild(t);
+    });
+  }
+}
+function handleSafariAnswer(correctFlag, el, item, mode){
+  var fb = document.getElementById('fb');
+  if(correctFlag){
+    el.classList.add('correct');
+    registerCorrect();
+    sfxCorrect();
+    fb.textContent = T().feedbackGood; fb.className='feedback good';
+    state.stats.lettersLearned[item.l] = true;
+    if(mode==='hear') state.stats.soundsMastered[item.l] = true;
+    document.getElementById('safariStage').querySelectorAll('.option-btn,.letter-tile').forEach(function(b){ b.style.pointerEvents='none'; });
+    safariRoundIdx++;
+    state.stats.safariRounds++;
+    save();
+    checkAchievements();
+    updateSafariProgress();
+    setTimeout(renderSafariRound, 900);
+  } else {
+    el.classList.add('wrong'); el.classList.add('shake');
+    registerWrong();
+    sfxWrong();
+    fb.textContent = T().feedbackBadSafari; fb.className='feedback bad';
+    save();
+    setTimeout(function(){ el.classList.remove('wrong'); el.classList.remove('shake'); }, 500);
+  }
+}
+
+/* ============ WORD BUILDER ============ */
+var builderQueue = [];
+var builderIdx = 0;
+var BUILDER_ROUND_LEN = 6;
+function initBuilder(stageId, progId, isDaily, customWords){
+  builderIdx = 0;
+  builderQueue = customWords || sample(WORDS(), BUILDER_ROUND_LEN);
+  renderBuilderWord(stageId, progId, isDaily);
+}
+function updateBuilderProgress(progId){
+  var pct = Math.round((builderIdx/builderQueue.length)*100);
+  var elp = document.getElementById(progId);
+  if(elp) elp.style.width = pct+'%';
+}
+function renderBuilderWord(stageId, progId, isDaily, onAllDone){
+  updateBuilderProgress(progId);
+  var stage = document.getElementById(stageId);
+  if(builderIdx >= builderQueue.length){
+    stage.innerHTML = '<div style="font-size:60px;">🏆</div><p style="font-weight:bold;font-size:18px;">'+T().allWordsBuilt+'</p>' +
+      (isDaily ? '' : '<button class="next-btn" id="builderAgain">'+T().playAgain+'</button>');
+    if(!isDaily){
+      document.getElementById('builderAgain').addEventListener('click', function(){ initBuilder(stageId, progId, false); });
+    }
+    if(onAllDone) onAllDone();
+    return;
+  }
+  var item = builderQueue[builderIdx];
+  var letters = item.w.split('');
+  var distractorPool = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(function(c){ return letters.indexOf(c)===-1; });
+  var distractor = distractorPool[Math.floor(Math.random()*distractorPool.length)];
+  var tileLetters = shuffle(letters.concat([distractor]));
+  stage.innerHTML =
+    '<div class="prompt-emoji">'+item.em+'</div>' +
+    '<div class="blank-row" id="blankRow"></div>' +
+    '<div class="tile-tray" id="builderTray"></div>' +
+    '<div class="feedback" id="fbBuilder"></div>';
+  var blankRow = document.getElementById('blankRow');
+  var slots = [];
+  letters.forEach(function(ch, i){
+    var slot = document.createElement('div');
+    slot.className='blank-slot'; slot.dataset.index=i; slot.dataset.letter='';
+    blankRow.appendChild(slot);
+    slots.push(slot);
+  });
+  var tray = document.getElementById('builderTray');
+  tileLetters.forEach(function(ch){
+    var t = document.createElement('div');
+    t.className='letter-tile'; t.textContent=ch.toUpperCase(); t.dataset.letter=ch;
+    tray.appendChild(t);
+    makeDraggableMulti(t, slots, function(slot){
+      onTileDropped(t, slot, slots, letters, item, stageId, progId, isDaily, onAllDone);
+    });
+  });
+}
+function onTileDropped(tile, slot, slots, letters, item, stageId, progId, isDaily, onAllDone){
+  var idx = parseInt(slot.dataset.index, 10);
+  if(slot.dataset.letter){ return; }
+  if(tile.dataset.letter === letters[idx]){
+    slot.textContent = tile.dataset.letter.toUpperCase();
+    slot.dataset.letter = tile.dataset.letter;
+    slot.classList.add('filled');
+    tile.classList.add('placed');
+    sfxClick();
+    var allFilled = slots.every(function(s){ return s.dataset.letter; });
+    if(allFilled){
+      registerCorrect();
+      sfxPop();
+      speak(item.w);
+      document.getElementById('fbBuilder').textContent = T().builderFeedbackGood(item.w);
+      document.getElementById('fbBuilder').className = 'feedback good';
+      state.stats.wordsBuiltTotal++;
+      state.stats.wordsBuiltSet[item.w] = true;
+      builderIdx++;
+      save();
+      checkAchievements();
+      setTimeout(function(){ renderBuilderWord(stageId, progId, isDaily, onAllDone); }, 1000);
+    }
+  } else {
+    tile.classList.add('shake');
+    registerWrong();
+    sfxWrong();
+    document.getElementById('fbBuilder').textContent = T().builderFeedbackBad;
+    document.getElementById('fbBuilder').className = 'feedback bad';
+    save();
+    setTimeout(function(){ tile.classList.remove('shake'); }, 400);
+  }
+}
+
+/* ============ DRAG HELPERS (pointer events) ============ */
+function makeDraggable(tile, dropzone, onDrop){
+  var startX, startY, origParent, placeholder;
+  tile.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    var rect = tile.getBoundingClientRect();
+    startX = e.clientX - rect.left; startY = e.clientY - rect.top;
+    tile.setPointerCapture(e.pointerId);
+    tile.classList.add('dragging');
+    tile.style.width = rect.width+'px'; tile.style.height = rect.height+'px';
+    tile.style.left = rect.left+'px'; tile.style.top = rect.top+'px';
+    function move(ev){
+      tile.style.left = (ev.clientX-startX)+'px';
+      tile.style.top = (ev.clientY-startY)+'px';
+      var dzRect = dropzone.getBoundingClientRect();
+      var over = ev.clientX>dzRect.left && ev.clientX<dzRect.right && ev.clientY>dzRect.top && ev.clientY<dzRect.bottom;
+      dropzone.classList.toggle('over', over);
+    }
+    function up(ev){
+      tile.releasePointerCapture(e.pointerId);
+      tile.removeEventListener('pointermove', move);
+      tile.removeEventListener('pointerup', up);
+      var dzRect = dropzone.getBoundingClientRect();
+      var over = ev.clientX>dzRect.left && ev.clientX<dzRect.right && ev.clientY>dzRect.top && ev.clientY<dzRect.bottom;
+      dropzone.classList.remove('over');
+      tile.classList.remove('dragging');
+      tile.style.position=''; tile.style.left=''; tile.style.top=''; tile.style.width=''; tile.style.height='';
+      if(over){ onDrop(true); }
+    }
+    tile.addEventListener('pointermove', move);
+    tile.addEventListener('pointerup', up);
+  });
+}
+function makeDraggableMulti(tile, slots, onDropSlot){
+  tile.addEventListener('pointerdown', function(e){
+    if(tile.classList.contains('placed')) return;
+    e.preventDefault();
+    var rect = tile.getBoundingClientRect();
+    var offX = e.clientX - rect.left, offY = e.clientY - rect.top;
+    tile.setPointerCapture(e.pointerId);
+    tile.classList.add('dragging');
+    tile.style.width = rect.width+'px'; tile.style.height = rect.height+'px';
+    tile.style.left = rect.left+'px'; tile.style.top = rect.top+'px';
+    function findSlot(ev){
+      for(var i=0;i<slots.length;i++){
+        var r = slots[i].getBoundingClientRect();
+        if(ev.clientX>r.left && ev.clientX<r.right && ev.clientY>r.top && ev.clientY<r.bottom) return slots[i];
+      }
+      return null;
+    }
+    function move(ev){
+      tile.style.left = (ev.clientX-offX)+'px';
+      tile.style.top = (ev.clientY-offY)+'px';
+      slots.forEach(function(s){ s.classList.remove('over'); });
+      var s = findSlot(ev);
+      if(s) s.classList.add('over');
+    }
+    function up(ev){
+      tile.releasePointerCapture(e.pointerId);
+      tile.removeEventListener('pointermove', move);
+      tile.removeEventListener('pointerup', up);
+      slots.forEach(function(s){ s.classList.remove('over'); });
+      tile.classList.remove('dragging');
+      tile.style.position=''; tile.style.left=''; tile.style.top=''; tile.style.width=''; tile.style.height='';
+      var s = findSlot(ev);
+      if(s) onDropSlot(s);
+    }
+    tile.addEventListener('pointermove', move);
+    tile.addEventListener('pointerup', up);
+  });
+}
+
+/* ============ DAILY CHALLENGE ============ */
+function initDaily(){
+  var key = todayKey();
+  var seed = hashStr(key);
+  var rng = mulberry32(seed);
+  var dailyLetters = seededShuffle(LETTERS(), rng).slice(0,4);
+  var dailyWords = seededShuffle(WORDS(), rng).slice(0,3);
+  var already = state.stats.lastDailyDate === key && state.stats.dailyDoneToday;
+
+  var banner = document.getElementById('streakBanner');
+  banner.textContent = already
+    ? T().streakDone(state.stats.dailyStreak)
+    : T().streakCurrent(state.stats.dailyStreak);
+
+  var stage = document.getElementById('dailyStage');
+  if(already){
+    stage.innerHTML = '<div style="font-size:60px;">✅</div><p style="font-weight:bold;">'+T().dailyAlreadyTitle+'</p><p style="opacity:0.7;font-size:13px;">'+T().dailyAlreadySub+'</p>';
+    document.getElementById('dailyProgress').style.width='100%';
+    return;
+  }
+
+  var phase = {step:0, total: dailyLetters.length + dailyWords.length};
+  document.getElementById('dailyProgress').style.width='0%';
+
+  function runLetterStep(i){
+    if(i >= dailyLetters.length){ runWordPhase(); return; }
+    var item = dailyLetters[i];
+    var opts = shuffle([item].concat(sample(LETTERS().filter(function(x){return x.l!==item.l;}),3)));
+    stage.innerHTML =
+      '<button class="speak-btn" id="playSound">'+T().playSound+'</button>' +
+      '<p style="opacity:0.7;font-size:13px;">'+T().safariHearPrompt+'</p>' +
+      '<div class="options-grid" id="optGrid"></div><div class="feedback" id="fb"></div>';
+    document.getElementById('playSound').addEventListener('click', function(){ speak(item.ph); });
+    var grid = document.getElementById('optGrid');
+    opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.className='option-btn'; b.textContent=o.l;
+      b.addEventListener('click', function(){
+        if(o.l===item.l){
+          b.classList.add('correct'); sfxCorrect(); registerCorrect();
+          state.stats.lettersLearned[item.l]=true; state.stats.soundsMastered[item.l]=true;
+          state.stats.safariRounds++;
+          document.getElementById('dailyStage').querySelectorAll('.option-btn').forEach(function(x){x.style.pointerEvents='none';});
+          save(); checkAchievements();
+          phase.step++; document.getElementById('dailyProgress').style.width = Math.round(phase.step/phase.total*100)+'%';
+          setTimeout(function(){ runLetterStep(i+1); }, 900);
+        } else {
+          b.classList.add('wrong'); b.classList.add('shake'); sfxWrong(); registerWrong(); save();
+          setTimeout(function(){ b.classList.remove('wrong'); b.classList.remove('shake'); }, 500);
+        }
+      });
+      grid.appendChild(b);
+    });
+    setTimeout(function(){ speak(item.ph); }, 300);
+  }
+
+  function runWordPhase(){
+    initBuilder('dailyStage', 'dailyProgress', true, dailyWords);
+    var origRender = renderBuilderWord;
+    // patch progress base offset for combined bar
+    var checkInterval = setInterval(function(){
+      if(builderIdx >= builderQueue.length){
+        clearInterval(checkInterval);
+        finishDaily();
+      } else {
+        document.getElementById('dailyProgress').style.width = Math.round((dailyLetters.length+builderIdx)/phase.total*100)+'%';
+      }
+    }, 300);
+  }
+
+  function finishDaily(){
+    var key2 = todayKey();
+    var yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+    var yKey = yesterday.getFullYear()+'-'+(yesterday.getMonth()+1)+'-'+yesterday.getDate();
+    if(state.stats.lastDailyDate === yKey){
+      state.stats.dailyStreak++;
+    } else if(state.stats.lastDailyDate !== key2){
+      state.stats.dailyStreak = 1;
+    }
+    state.stats.lastDailyDate = key2;
+    state.stats.dailyDoneToday = true;
+    save();
+    checkAchievements();
+    document.getElementById('dailyStage').innerHTML =
+      '<div style="font-size:60px;" class="celebrate">🎉</div><p style="font-weight:bold;font-size:18px;">'+T().dailyCompleteTitle+'</p>' +
+      '<p style="opacity:0.75;font-size:13px;">'+T().dailyStreakLine(state.stats.dailyStreak)+'</p>';
+    document.getElementById('dailyProgress').style.width='100%';
+    document.getElementById('streakBanner').textContent = '🔥 '+T().dailyStreakLine(state.stats.dailyStreak);
+  }
+
+  runLetterStep(0);
+}
+
+/* ============ PROFILE ============ */
+function renderProfile(){
+  document.getElementById('profileAvatarBig').textContent = state.profile.avatar;
+  document.getElementById('nameInput').value = state.profile.name;
+  var grid = document.getElementById('avatarGrid');
+  grid.innerHTML = '';
+  AVATARS.forEach(function(a){
+    var d = document.createElement('div');
+    d.className = 'avatar-opt' + (a===state.profile.avatar ? ' active':'');
+    d.textContent = a;
+    d.addEventListener('click', function(){
+      state.profile.avatar = a; save(); renderProfile(); sfxClick();
+    });
+    grid.appendChild(d);
+  });
+  var stat = document.getElementById('statGrid');
+  stat.innerHTML =
+    '<div class="stat-box"><div class="num">'+Object.keys(state.stats.lettersLearned).length+'/26</div><div class="lbl">'+T().statLettersFound+'</div></div>' +
+    '<div class="stat-box"><div class="num">'+state.stats.wordsBuiltTotal+'</div><div class="lbl">'+T().statWordsBuilt+'</div></div>' +
+    '<div class="stat-box"><div class="num">'+state.stats.bestStreak+'</div><div class="lbl">'+T().statBestStreak+'</div></div>' +
+    '<div class="stat-box"><div class="num">'+state.stats.dailyStreak+'</div><div class="lbl">'+T().statDailyStreak+'</div></div>';
+}
+document.getElementById('nameInput').addEventListener('input', function(e){
+  state.profile.name = e.target.value; save();
+});
+
+/* ============ ACHIEVEMENTS SCREEN ============ */
+function renderAchievements(){
+  var grid = document.getElementById('achGrid');
+  grid.innerHTML = '';
+  ACHIEVEMENTS.forEach(function(a){
+    var unlocked = state.achievementsUnlocked[a.id];
+    var info = T().achievements[a.id];
+    var card = document.createElement('div');
+    card.className = 'ach-card' + (unlocked ? ' unlocked':'');
+    card.innerHTML = '<div class="em">'+a.em+'</div><div class="t">'+info.title+'</div><div class="d">'+(unlocked? new Date(unlocked).toLocaleDateString() : info.desc)+'</div>';
+    grid.appendChild(card);
+  });
+}
+
+/* ============ SETTINGS ============ */
+function renderSettings(){
+  var soundToggle = document.getElementById('soundToggle');
+  soundToggle.classList.toggle('on', state.settings.sound);
+  var speechToggle = document.getElementById('speechToggle');
+  speechToggle.classList.toggle('on', state.settings.speech);
+
+  var langGrid = document.getElementById('langSettingsGrid');
+  langGrid.innerHTML = '';
+  Object.keys(LANGS).forEach(function(code){
+    var l = LANGS[code];
+    var opt = document.createElement('div');
+    opt.className = 'lang-opt' + (code===curLang() ? ' active':'');
+    opt.innerHTML = '<span class="flag">'+l.flag+'</span><span class="name">'+l.name+'</span>';
+    opt.addEventListener('click', function(){ setLanguage(code); });
+    langGrid.appendChild(opt);
+  });
+
+  var seasonalGrid = document.getElementById('themeGridSeasonal');
+  var moodGrid = document.getElementById('themeGridMood');
+  seasonalGrid.innerHTML = ''; moodGrid.innerHTML = '';
+  Object.keys(THEMES).forEach(function(key){
+    var t = THEMES[key];
+    var sw = document.createElement('div');
+    sw.className = 'theme-swatch' + (key===state.settings.theme ? ' active':'');
+    sw.style.background = 'linear-gradient(135deg,'+t.bg[0]+','+t.bg[1]+')';
+    sw.style.color = t.text;
+    sw.innerHTML = '<span class="em">'+t.emoji+'</span>'+t.name;
+    sw.addEventListener('click', function(){
+      state.settings.theme = key; save(); applyTheme(); renderSettings(); sfxClick();
+    });
+    (t.group==='season'?seasonalGrid:moodGrid).appendChild(sw);
+  });
+}
+document.getElementById('soundToggle').addEventListener('click', function(){
+  state.settings.sound = !state.settings.sound;
+  document.getElementById('soundBtn').textContent = state.settings.sound ? '🔊' : '🔇';
+  save(); renderSettings();
+  if(state.settings.sound) applyTheme(); else stopAmbient();
+});
+document.getElementById('speechToggle').addEventListener('click', function(){
+  state.settings.speech = !state.settings.speech;
+  save(); renderSettings();
+});
+
+/* ============ LANGUAGE ============ */
+function applyLanguage(){
+  var t = T();
+  document.documentElement.lang = curLang();
+  document.getElementById('topTitle').textContent = t.titles[current];
+  document.getElementById('homeBigTitle').textContent = t.titles.home;
+  document.getElementById('homeSub').innerHTML = t.homeSub;
+  document.getElementById('menuSafariLabel').textContent = t.menuSafariLabel;
+  document.getElementById('menuSafariDesc').textContent = t.menuSafariDesc;
+  document.getElementById('menuBuilderLabel').textContent = t.menuBuilderLabel;
+  document.getElementById('menuBuilderDesc').textContent = t.menuBuilderDesc;
+  document.getElementById('menuDailyLabel').textContent = t.menuDailyLabel;
+  document.getElementById('menuProfileLabel').textContent = t.menuProfileLabel;
+  document.getElementById('menuAchievementsLabel').textContent = t.menuAchievementsLabel;
+  document.getElementById('menuSettingsLabel').textContent = t.menuSettingsLabel;
+  document.getElementById('safariScreenTitle').textContent = t.titles.safari;
+  document.getElementById('modeHearBtn').innerHTML = t.modeHear;
+  document.getElementById('modeMatchBtn').innerHTML = t.modeMatch;
+  document.getElementById('builderScreenTitle').textContent = t.titles.builder;
+  document.getElementById('dailyScreenTitle').textContent = t.titles.daily;
+  document.getElementById('profileScreenTitle').textContent = t.titles.profile;
+  document.getElementById('nameInput').placeholder = t.namePlaceholder;
+  document.getElementById('chooseAvatarTitle').textContent = t.chooseAvatar;
+  document.getElementById('achievementsScreenTitle').textContent = t.titles.achievements;
+  document.getElementById('settingsScreenTitle').textContent = t.titles.settings;
+  document.getElementById('settingSoundLabel').innerHTML = t.settingsSound;
+  document.getElementById('settingSpeechLabel').innerHTML = t.settingsSpeech;
+  document.getElementById('langSectionTitle').innerHTML = t.settingsLanguage;
+  document.getElementById('themeSeasonalTitle').textContent = t.settingsSeasonalThemes;
+  document.getElementById('themeMoodTitle').textContent = t.settingsMoodThemes;
+  renderHome();
+}
+function setLanguage(code){
+  state.settings.lang = code;
+  save();
+  applyLanguage();
+  goTo(current);
+}
+function renderLangGate(){
+  var grid = document.getElementById('langGateGrid');
+  grid.innerHTML = '';
+  Object.keys(LANGS).forEach(function(code){
+    var l = LANGS[code];
+    var opt = document.createElement('button');
+    opt.className = 'lang-opt';
+    opt.innerHTML = '<span class="flag">'+l.flag+'</span><span class="name">'+l.name+'</span>';
+    opt.addEventListener('click', function(){
+      state.settings.lang = code;
+      save();
+      document.getElementById('langGate').style.display = 'none';
+      applyLanguage();
+    });
+    grid.appendChild(opt);
+  });
+  document.getElementById('langGate').style.display = 'flex';
+}
+
+/* ============ INIT ============ */
+function init(){
+  if(!state.profile.avatar) state.profile.avatar = AVATARS[0];
+  document.getElementById('soundBtn').textContent = state.settings.sound ? '🔊' : '🔇';
+  applyTheme();
+  applyLanguage();
+  if(!state.settings.lang) renderLangGate();
+  document.body.addEventListener('pointerdown', function once(){ getCtx(); document.body.removeEventListener('pointerdown', once); }, {once:true});
+}
+init();
+
+})();
+</script>
+</body>
+</html>

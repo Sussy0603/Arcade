@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0C0A14">
+<title>Kaleidoscope Painter</title>
+<style>
+:root{
+  --bg:#0C0A14; --bg2:#161226; --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.11);
+  --text:#EFEAF7; --muted:#9C93B4; --accent:#C77DFF;
+  --radius:18px;
+  --font-display:'Avenir Next','Segoe UI',system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--font-body);color:var(--text);
+  background:radial-gradient(circle at 50% 40%,var(--bg2),var(--bg) 70%);
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+#app{height:100dvh;display:flex;flex-direction:column}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.brand{font-family:var(--font-display);font-weight:800;font-size:18px}
+.brand span{display:block;font-family:var(--font-body);font-weight:400;font-size:10.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.spacer{flex:1}
+.iconbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:16px;background:var(--panel);border:1px solid var(--line);transition:transform .15s ease,background .2s}
+.iconbtn:hover{background:rgba(255,255,255,.13)}
+.iconbtn:active{transform:scale(.9)}
+
+/* The canvas is square and centred: a kaleidoscope with a rectangular
+   frame has axes that reach the edge at different distances, which reads
+   as a mistake rather than as a design. */
+.stage{flex:1;display:grid;place-items:center;padding:6px 6px 10px;min-height:0}
+.wrap{position:relative;aspect-ratio:1;max-width:min(100%,calc(100dvh - 220px));max-height:100%;width:100%}
+canvas{
+  position:absolute;inset:0;width:100%;height:100%;border-radius:50%;
+  background:#08060F;box-shadow:0 0 0 1px rgba(255,255,255,.09),0 22px 60px rgba(0,0,0,.6);
+  touch-action:none;cursor:crosshair;display:block;
+}
+#guides{pointer-events:none;opacity:.5;transition:opacity .3s}
+#guides.off{opacity:0}
+
+.controls{padding:10px 16px calc(14px + env(safe-area-inset-bottom));display:grid;gap:11px;max-width:620px;width:100%;margin:0 auto}
+.row{display:flex;align-items:center;gap:11px}
+.label{font-size:11.5px;color:var(--muted);min-width:52px;letter-spacing:.4px;text-transform:uppercase}
+input[type=range]{flex:1;height:28px;-webkit-appearance:none;appearance:none;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:99px;background:rgba(255,255,255,.15)}
+input[type=range]::-moz-range-track{height:5px;border-radius:99px;background:rgba(255,255,255,.15)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;margin-top:-7.5px;background:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-radius:50%;background:var(--accent)}
+.val{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:26px;text-align:right}
+
+.swatches{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:4px;position:relative;z-index:2}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid transparent;transition:transform .15s ease,border-color .2s}
+.sw:hover{transform:scale(1.12)}
+.sw.on{border-color:#fff;transform:scale(1.16)}
+.sw.rainbow{background:conic-gradient(#ff5f6d,#ffc371,#7ee8fa,#c77dff,#ff5f6d)}
+
+.buttons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:10px 17px;border-radius:999px;font-size:13px;font-weight:600;background:var(--panel);border:1px solid var(--line);transition:background .2s,transform .15s}
+.btn:hover{background:rgba(255,255,255,.13)}
+.btn:active{transform:scale(.95)}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#7B5BFF);color:#120A1E;border-color:transparent;font-weight:700}
+
+.toast{
+  position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-12px);
+  background:rgba(20,16,32,.96);border:1px solid var(--line);padding:11px 20px;border-radius:999px;
+  font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-height:720px){
+  .wrap{max-width:min(100%,calc(100dvh - 200px))}
+  .brand span{display:none}
+}
+@media (prefers-reduced-motion:reduce){.sw,.btn,.iconbtn{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">Kaleidoscope<span>Painter</span></div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnGuides" aria-label="Toggle axis guides" title="Guides">&#9788;</button>
+    <button class="iconbtn" id="btnUndo" aria-label="Undo" title="Undo">&#8630;</button>
+  </div>
+
+  <div class="stage">
+    <div class="wrap">
+      <canvas id="art"></canvas>
+      <canvas id="guides" aria-hidden="true"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="swatches" id="swatches"></div>
+    <div class="row">
+      <span class="label">Axes</span>
+      <input type="range" id="axes" min="3" max="12" step="1" value="8" aria-label="Number of mirror axes">
+      <span class="val" id="axesVal">8</span>
+    </div>
+    <div class="row">
+      <span class="label">Brush</span>
+      <input type="range" id="size" min="1" max="40" step="1" value="7" aria-label="Brush size">
+      <span class="val" id="sizeVal">7</span>
+    </div>
+    <div class="buttons">
+      <button class="btn" id="btnMirror">Mirror: on</button>
+      <button class="btn" id="btnClear">Clear</button>
+      <button class="btn primary" id="btnSave">Save PNG</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Kaleidoscope Painter
+
+   One stroke, drawn N times around the centre. The trick that makes it
+   look like glass rather than like a spirograph is drawing each segment
+   as a line from the *previous* pointer position to the current one, in
+   every rotation, plus an optional reflection. Stamping dots instead
+   leaves a dotted arc whenever the pointer moves quickly — the same
+   failure a cursor trail has.
+
+   Three canvases, because the arms are blended additively:
+     base  - the committed artwork
+     layer - the stroke currently under the pointer
+     art   - what you see, = base + layer
+   A stroke is a chain of overlapping segments, so adding each segment
+   straight onto the artwork stacks the colour on itself and clips to
+   white within about three pointer moves — the picked colour would only
+   ever survive a single tap. The stroke instead accumulates opaquely on
+   its own layer and is added to the artwork exactly once, on release.
+   ===================================================================== */
+
+var TAU = Math.PI * 2;
+var art = document.getElementById('art');
+var g = art.getContext('2d', { willReadFrequently:false });
+var guides = document.getElementById('guides');
+var gg = guides.getContext('2d');
+var base = document.createElement('canvas'), bg = base.getContext('2d');
+var layer = document.createElement('canvas'), lg = layer.getContext('2d');
+
+var STROKE_ALPHA = .85;           // one additive application per stroke
+var DPR = 1, S = 0;               // S = canvas size in CSS px (square)
+var axes = 8, brush = 7, mirror = true;
+var color = '#C77DFF', rainbow = false, hue = 0;
+var drawing = false, lastPt = null;
+var undoStack = [];               // snapshots, capped — see push()
+
+var PALETTE = [
+  '#FF5F6D','#FF9E4A','#FFD166','#8FE388','#4CC9F0',
+  '#4361EE','#C77DFF','#FF7BD5','#FFFFFF','#8A8FA3'
+];
+
+/* ---------- sizing ----------
+   The bitmap is kept square and DPR-scaled. Resizing clears the drawing,
+   which is why the snapshot is restored afterwards: a phone rotating
+   should not wipe the piece. */
+function resize(){
+  var rect = art.getBoundingClientRect();
+  var size = Math.max(1, Math.round(Math.min(rect.width, rect.height)));
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var snap = null;
+  if (S > 0) { try { snap = bg.getImageData(0, 0, base.width, base.height); } catch (e) {} }
+
+  S = size;
+  [art, guides, base, layer].forEach(function(c){
+    c.width = Math.round(S * DPR); c.height = Math.round(S * DPR);
+  });
+  [g, gg, bg, lg].forEach(function(ctx){ ctx.setTransform(DPR, 0, 0, DPR, 0, 0); });
+  lg.lineCap = 'round'; lg.lineJoin = 'round';
+
+  if (snap) {
+    // Best effort: put the old pixels back at the origin. Exact rescaling
+    // of a live drawing is not worth a second offscreen canvas here.
+    try { bg.putImageData(snap, 0, 0); } catch (e) {}
+  }
+  render();
+  drawGuides();
+}
+
+/* Compose what the user sees. Cheap enough to run per frame: two
+   full-canvas blits, no per-segment rework. */
+function render(){
+  g.clearRect(0, 0, S, S);
+  g.drawImage(base, 0, 0, S, S);
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = STROKE_ALPHA;
+  g.drawImage(layer, 0, 0, S, S);
+  g.restore();
+}
+var frame = 0;
+function requestRender(){
+  if (frame) return;
+  frame = requestAnimationFrame(function(){ frame = 0; render(); });
+}
+// Fold the finished stroke into the artwork: the one and only place the
+// additive blend is applied.
+function commit(){
+  bg.save();
+  bg.globalCompositeOperation = 'lighter';
+  bg.globalAlpha = STROKE_ALPHA;
+  bg.drawImage(layer, 0, 0, S, S);
+  bg.restore();
+  lg.clearRect(0, 0, S, S);
+  render();
+}
+window.addEventListener('resize', function(){ setTimeout(resize, 60); }, { passive:true });
+
+function drawGuides(){
+  gg.clearRect(0, 0, S, S);
+  var c = S / 2;
+  gg.save();
+  gg.translate(c, c);
+  gg.strokeStyle = 'rgba(255,255,255,.13)';
+  gg.lineWidth = 1;
+  for (var i = 0; i < axes; i++) {
+    var a = (i / axes) * TAU;
+    gg.beginPath(); gg.moveTo(0, 0);
+    gg.lineTo(Math.cos(a) * c, Math.sin(a) * c);
+    gg.stroke();
+  }
+  gg.beginPath(); gg.arc(0, 0, c - .5, 0, TAU);
+  gg.strokeStyle = 'rgba(255,255,255,.10)'; gg.stroke();
+  gg.restore();
+}
+
+/* ---------- undo ----------
+   Full-canvas snapshots, one per stroke, capped at 12. A stroke here can
+   be thousands of segments across a dozen axes, so replaying vectors
+   would be slower and more code than just keeping the pixels. */
+function push(){
+  try {
+    undoStack.push(bg.getImageData(0, 0, base.width, base.height));
+    if (undoStack.length > 12) undoStack.shift();
+  } catch (e) { /* tainted or out of memory: undo simply won't be available */ }
+}
+function undo(){
+  var s = undoStack.pop();
+  if (!s) { toast('Nothing to undo'); return; }
+  bg.putImageData(s, 0, 0);
+  render();
+}
+
+/* ---------- drawing ---------- */
+function pointFromEvent(e){
+  var r = art.getBoundingClientRect();
+  return { x:(e.clientX - r.left) * (S / r.width), y:(e.clientY - r.top) * (S / r.height) };
+}
+
+function strokeSegment(from, to){
+  var c = S / 2;
+  var col = rainbow ? 'hsl(' + (hue % 360) + ' 90% 65%)' : color;
+  // Opaque source-over onto the stroke layer, so a segment laid over the
+  // previous one keeps the picked colour instead of stacking towards
+  // white. The additive blend happens later, in commit().
+  lg.save();
+  lg.translate(c, c);
+  lg.strokeStyle = col;
+  lg.lineWidth = brush;
+
+  var fx = from.x - c, fy = from.y - c, tx = to.x - c, ty = to.y - c;
+  for (var i = 0; i < axes; i++) {
+    lg.save();
+    lg.rotate((i / axes) * TAU);
+    lg.beginPath(); lg.moveTo(fx, fy); lg.lineTo(tx, ty); lg.stroke();
+    if (mirror) {
+      // Reflect across the x-axis for the "folded" half of each wedge.
+      lg.beginPath(); lg.moveTo(fx, -fy); lg.lineTo(tx, -ty); lg.stroke();
+    }
+    lg.restore();
+  }
+  lg.restore();
+  if (rainbow) hue += 2.5;
+  requestRender();
+}
+
+art.addEventListener('pointerdown', function(e){
+  art.setPointerCapture(e.pointerId);
+  push();
+  drawing = true;
+  lastPt = pointFromEvent(e);
+  strokeSegment(lastPt, lastPt);   // a tap alone should leave a mark
+  e.preventDefault();
+});
+art.addEventListener('pointermove', function(e){
+  if (!drawing) return;
+  var evts = (typeof e.getCoalescedEvents === 'function') ? e.getCoalescedEvents() : null;
+  var list = (evts && evts.length) ? evts : [e];
+  for (var i = 0; i < list.length; i++) {
+    var p = pointFromEvent(list[i]);
+    strokeSegment(lastPt, p);
+    lastPt = p;
+  }
+  e.preventDefault();
+});
+function endStroke(e){
+  if (!drawing) return;
+  drawing = false; lastPt = null;
+  commit();
+  if (e && e.pointerId != null && art.hasPointerCapture(e.pointerId)) art.releasePointerCapture(e.pointerId);
+}
+art.addEventListener('pointerup', endStroke);
+art.addEventListener('pointercancel', endStroke);
+art.addEventListener('pointerleave', endStroke);
+
+/* ---------- controls ---------- */
+var swEl = document.getElementById('swatches');
+PALETTE.forEach(function(c, i){
+  var b = document.createElement('button');
+  b.className = 'sw' + (i === 6 ? ' on' : '');
+  b.style.background = c;
+  b.setAttribute('aria-label', 'Colour ' + c);
+  b.addEventListener('click', function(){
+    color = c; rainbow = false;
+    swEl.querySelectorAll('.sw').forEach(function(s){ s.classList.remove('on'); });
+    b.classList.add('on');
+  });
+  swEl.appendChild(b);
+});
+var rb = document.createElement('button');
+rb.className = 'sw rainbow';
+rb.setAttribute('aria-label', 'Rainbow: colour shifts as you draw');
+rb.title = 'Rainbow';
+rb.addEventListener('click', function(){
+  rainbow = true;
+  swEl.querySelectorAll('.sw').forEach(function(s){ s.classList.remove('on'); });
+  rb.classList.add('on');
+});
+swEl.appendChild(rb);
+
+var axesIn = document.getElementById('axes'), axesVal = document.getElementById('axesVal');
+axesIn.addEventListener('input', function(){
+  axes = +axesIn.value; axesVal.textContent = axes; drawGuides();
+});
+var sizeIn = document.getElementById('size'), sizeVal = document.getElementById('sizeVal');
+sizeIn.addEventListener('input', function(){ brush = +sizeIn.value; sizeVal.textContent = brush; });
+
+var btnMirror = document.getElementById('btnMirror');
+btnMirror.addEventListener('click', function(){
+  mirror = !mirror;
+  btnMirror.textContent = 'Mirror: ' + (mirror ? 'on' : 'off');
+});
+
+document.getElementById('btnClear').addEventListener('click', function(){
+  push();
+  bg.clearRect(0, 0, S, S);
+  lg.clearRect(0, 0, S, S);
+  render();
+  toast('Cleared');
+});
+document.getElementById('btnUndo').addEventListener('click', undo);
+
+var guidesOn = true;
+document.getElementById('btnGuides').addEventListener('click', function(){
+  guidesOn = !guidesOn;
+  guides.classList.toggle('off', !guidesOn);
+});
+
+/* ---------- export ----------
+   Composited onto an opaque background first: a PNG with a transparent
+   centre looks broken everywhere it gets pasted. */
+document.getElementById('btnSave').addEventListener('click', function(){
+  var out = document.createElement('canvas');
+  out.width = art.width; out.height = art.height;
+  var o = out.getContext('2d');
+  o.fillStyle = '#08060F';
+  o.fillRect(0, 0, out.width, out.height);
+  o.drawImage(art, 0, 0);
+  out.toBlob(function(blob){
+    if (!blob) { toast('Could not export'); return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'kaleidoscope-' + Date.now() + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    toast('Saved as PNG');
+  }, 'image/png');
+});
+
+var toastEl = document.getElementById('toast'), toastT = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ toastEl.classList.remove('show'); }, 1600);
+}
+
+document.addEventListener('keydown', function(e){
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+});
+
+resize();
+setTimeout(resize, 120);   // after layout settles on first paint
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#0b1024"/>
+<title>Lantern Festival</title>
+<style>
+:root{
+  --ink:#f4eee2; --dim:#a9b0cc;
+  --panel:rgba(18,24,50,.82); --line:rgba(255,255,255,.16); --line2:rgba(255,255,255,.3);
+  --amber:#ffc46b; --amber2:#ffe3ac; --rose:#ff9db1; --jade:#8fdcb0; --gold:#f5d46a;
+  --ui:'Nunito','Segoe UI',system-ui,-apple-system,sans-serif;
+  --dsp:ui-rounded,'SF Pro Rounded','Baloo 2','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  --serif:'Iowan Old Style','Palatino Linotype',Georgia,'Times New Roman',serif;
+  --mono:'SFMono-Regular',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+body{font-family:var(--ui);background:#05070f;color:var(--ink);display:flex;align-items:center;
+  justify-content:center;user-select:none;-webkit-user-select:none}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+#app{position:relative;width:100%;height:100%;max-width:640px;max-height:100vh;overflow:hidden;
+  background:#0b1024;box-shadow:0 0 90px rgba(0,0,0,.7)}
+@media(min-width:820px){#app{max-width:min(96vw,760px)}}
+#sky{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* HUD */
+.hud{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;gap:7px;align-items:flex-start;
+  padding:calc(10px + env(safe-area-inset-top)) 12px 8px;pointer-events:none}
+.hud>*{pointer-events:auto}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+  display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;white-space:nowrap;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.chip b{font-family:var(--mono);letter-spacing:-.3px}
+.chip.n{color:var(--amber2)}
+.spacer{flex:1}
+.icbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);flex:none;
+  background:var(--panel);display:grid;place-items:center;font-size:16px;transition:transform .12s;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.icbtn:active{transform:scale(.9)}
+.icbtn.off{opacity:.45}
+
+#hintLine{position:absolute;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));z-index:14;
+  text-align:center;font-family:var(--serif);font-style:italic;font-size:13px;color:rgba(255,255,255,.4);
+  pointer-events:none;padding:0 30px;transition:opacity .6s}
+#hintLine.gone{opacity:0}
+
+/* bottom bar */
+#bar{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;gap:9px;align-items:center;
+  padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(6,9,20,0),rgba(6,9,20,.65) 45%,rgba(6,9,20,.9))}
+#release{flex:1;height:54px;border-radius:18px;font-family:var(--dsp);font-weight:900;font-size:16px;
+  background:linear-gradient(180deg,#ffdca4,var(--amber));color:#3a2408;
+  box-shadow:0 6px 0 #b57c2c,0 10px 30px rgba(255,196,107,.25);display:flex;align-items:center;
+  justify-content:center;gap:8px;border:1px solid rgba(255,255,255,.35)}
+#release:active{transform:translateY(4px);box-shadow:0 2px 0 #b57c2c}
+.sqbtn{width:54px;height:54px;border-radius:18px;background:var(--panel);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:20px;flex:none;backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);transition:transform .12s}
+.sqbtn:active{transform:translateY(3px)}
+
+/* sheets */
+.scrim{position:absolute;inset:0;z-index:60;display:none;background:rgba(4,6,16,.72);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;
+  padding:14px}
+.scrim.on{display:flex;animation:fade .22s ease}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:430px;max-height:90%;background:linear-gradient(180deg,#1b2246,#0e1329);
+  border:1px solid var(--line2);border-radius:24px;display:flex;flex-direction:column;overflow:hidden;
+  animation:pops .32s cubic-bezier(.2,1.25,.4,1);box-shadow:0 26px 70px rgba(0,0,0,.7)}
+@keyframes pops{from{transform:scale(.9) translateY(14px);opacity:0}}
+.shead{padding:16px 20px 11px;flex:none;border-bottom:1px solid rgba(255,255,255,.09)}
+.shead h2{font-family:var(--dsp);font-size:21px;font-weight:900}
+.shead p{font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--amber2);
+  opacity:.85;margin-top:3px}
+.sbody{padding:14px 18px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sfoot{padding:10px 16px calc(14px + env(safe-area-inset-bottom));flex:none;display:flex;gap:8px;
+  border-top:1px solid rgba(255,255,255,.09)}
+.btn{flex:1;padding:13px 14px;border-radius:15px;font-family:var(--dsp);font-weight:900;font-size:15px;
+  background:rgba(255,255,255,.08);border:1px solid var(--line2);transition:transform .1s}
+.btn:active{transform:translateY(2px)}
+.btn.pri{background:linear-gradient(180deg,#ffdca4,var(--amber));color:#3a2408;box-shadow:0 4px 0 #b57c2c;
+  border-color:rgba(255,255,255,.35)}
+.btn.pri:active{box-shadow:0 1px 0 #b57c2c}
+.btn.quiet{background:transparent;border-color:rgba(255,255,255,.16);color:var(--dim)}
+
+#wishText{width:100%;min-height:104px;resize:none;border-radius:16px;padding:13px 14px;
+  background:rgba(0,0,0,.3);border:1px solid var(--line);color:var(--ink);font-family:var(--serif);
+  font-size:16px;line-height:1.6;outline:none}
+#wishText:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,196,107,.15)}
+#wishText::placeholder{color:rgba(255,255,255,.28);font-style:italic}
+.cnt{text-align:right;font-size:10.5px;color:var(--dim);margin-top:4px;font-family:var(--mono)}
+.lbl{font-size:10.5px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);
+  margin:14px 0 7px}
+.pickRow{display:flex;gap:7px;flex-wrap:wrap}
+.pk{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.06);
+  border:1px solid var(--line);display:grid;place-items:center;position:relative;transition:transform .12s}
+.pk:active{transform:scale(.92)}
+.pk.on{border-color:var(--amber);box-shadow:0 0 0 2px rgba(255,196,107,.55)}
+.pk.locked{opacity:.3}
+.pk .lk{position:absolute;bottom:1px;right:2px;font-size:8px}
+.pk canvas{width:34px;height:34px;display:block}
+.sw{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 -4px 8px rgba(0,0,0,.3)}
+.prompts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pchip{padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);
+  font-size:11.5px;font-weight:800;font-family:var(--serif);font-style:italic}
+
+/* wish reading card */
+.wishCard{font-family:var(--serif);font-size:17px;line-height:1.65;padding:6px 2px 4px;
+  white-space:pre-wrap;word-break:break-word}
+.wishMeta{font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);
+  margin-top:12px;display:flex;align-items:center;gap:8px}
+.wishMeta .dotc{width:9px;height:9px;border-radius:50%}
+
+/* book */
+.bkItem{display:flex;gap:11px;align-items:flex-start;padding:11px 8px;border-bottom:1px solid rgba(255,255,255,.07)}
+.bkItem .lg{width:30px;height:30px;flex:none;display:grid;place-items:center}
+.bkItem .tx{flex:1;min-width:0}
+.bkItem .tx .t{font-family:var(--serif);font-size:14px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.bkItem .tx .d{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+  margin-top:4px}
+.bkItem.done .tx .t{color:var(--gold)}
+.bkItem .act{padding:6px 9px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid var(--line);
+  font-size:11px;font-weight:900;flex:none;white-space:nowrap}
+.bkItem .act.on{background:var(--gold);color:#31240a;border-color:transparent}
+.statGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:rgba(0,0,0,.26);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.stat small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stat b{font-size:22px;font-family:var(--dsp);font-weight:900}
+.note{font-size:12.5px;color:var(--dim);line-height:1.6;margin-top:10px}
+.note b{color:var(--amber2)}
+.help li{margin:0 0 10px 16px;font-size:13.5px;line-height:1.55;color:#e6e2f2}
+.help li b{color:var(--amber2)}
+
+#toast{position:absolute;left:50%;top:24%;transform:translateX(-50%);z-index:55;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px}
+.tst{background:rgba(10,14,30,.86);border:1px solid var(--line2);border-radius:999px;padding:8px 16px;
+  font-weight:800;font-size:13px;animation:tup 2.2s ease forwards;white-space:nowrap;
+  font-family:var(--serif);font-style:italic}
+@keyframes tup{0%{transform:translateY(12px);opacity:0}12%{transform:none;opacity:1}
+  76%{opacity:1}100%{transform:translateY(-20px);opacity:0}}
+
+#title{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding:28px;text-align:center;background:rgba(6,9,20,.55);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#title.hide{display:none}
+#title h1{font-family:var(--dsp);font-size:38px;font-weight:900;letter-spacing:-.02em;
+  text-shadow:0 6px 26px rgba(255,196,107,.35)}
+#title .tag{color:var(--amber2);font-size:11.5px;font-weight:800;letter-spacing:.26em;text-transform:uppercase;
+  margin-bottom:24px}
+#title .btns{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+#title .btn{max-width:260px;width:100%;flex:none}
+#titleLantern{width:120px;height:150px;display:block;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="sky"></canvas>
+
+  <div class="hud">
+    <div class="chip n">🏮<b id="hCount">0</b></div>
+    <div class="chip">🌙 Night <b id="hNights">1</b></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="bBook">📓</button>
+    <button class="icbtn" id="bHelp">？</button>
+    <button class="icbtn" id="bSound">🔊</button>
+  </div>
+
+  <div id="hintLine">drag the sky · tap a lantern to read it</div>
+
+  <div id="bar">
+    <button id="release">🏮 Write a wish</button>
+    <button class="sqbtn" id="bCentre">🎯</button>
+  </div>
+
+  <div id="toast"></div>
+  <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+  <div id="title">
+    <canvas id="titleLantern" width="240" height="300"></canvas>
+    <h1>Lantern Festival</h1>
+    <div class="tag">Write · release · watch it fill</div>
+    <div class="btns">
+      <button class="btn pri" id="tPlay">Come to the river</button>
+      <button class="btn quiet" id="tHelp">What is this</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   Lantern Festival — write a wish, let it go, and come back to a sky that
+   still has it in it. Every lantern is kept; old ones drift higher each day
+   until they sit among the stars.
+   ========================================================================== */
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const lerp = (a,b,t) => a+(b-a)*t;
+const rnd = (a,b) => a + Math.random()*(b-a);
+const SAVE_KEY = 'lanternfestival.save.v1';
+const DAY = 86400000;
+
+/* deterministic per-lantern randomness so the sky never rearranges itself */
+function hashSeed(n){
+  let h = (n ^ 0x9e3779b9) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+const seedAt = (id, k) => hashSeed(id*97 + k*7919);
+
+/* ------------------------------ palettes ------------------------------ */
+const SHAPES = [
+  {id:'classic', n:'Paper',   need:0},
+  {id:'round',   n:'Round',   need:3},
+  {id:'star',    n:'Star',    need:8},
+  {id:'blossom', n:'Blossom', need:15},
+  {id:'koi',     n:'Koi',     need:25},
+  {id:'crane',   n:'Crane',   need:40},
+  {id:'moth',    n:'Moth',    need:60},
+  {id:'house',   n:'Home',    need:90},
+];
+const HUES = [
+  {id:'amber',  n:'Amber',   c:'#ffb457', need:0},
+  {id:'rose',   n:'Rose',    c:'#ff8fa8', need:0},
+  {id:'ivory',  n:'Ivory',   c:'#ffeccd', need:0},
+  {id:'jade',   n:'Jade',    c:'#84dcae', need:5},
+  {id:'sea',    n:'Sea',     c:'#79c2ff', need:12},
+  {id:'plum',   n:'Plum',    c:'#c79cff', need:20},
+  {id:'coral',  n:'Coral',   c:'#ff7d6a', need:35},
+  {id:'gold',   n:'Gold',    c:'#ffd84d', need:55},
+];
+const SKIES = [
+  {top:'#080d20', mid:'#152045', low:'#2a2f5c', h:'#3d3a6b'},
+  {top:'#0a0a1e', mid:'#1c1840', low:'#3a2450', h:'#5a3060'},
+  {top:'#061520', mid:'#10304a', low:'#1d4a5c', h:'#2c6b6b'},
+  {top:'#100a1c', mid:'#2a1636', low:'#4a2040', h:'#6b2e4a'},
+  {top:'#08111a', mid:'#12283a', low:'#233f4a', h:'#375c5c'},
+  {top:'#0d0818', mid:'#241436', low:'#3c1e46', h:'#5c2c58'},
+];
+const PROMPTS = [
+  'I hope that…', 'For someone I miss…', 'Let me be braver about…',
+  'Thank you for…', 'Next year, I want…', 'Please look after…',
+  'I am ready to let go of…', 'One small thing:…',
+];
+const RELEASE_LINES = [
+  'It lifts, wobbles, and steadies.',
+  'The river takes the light and keeps a copy.',
+  'Off it goes, over the water.',
+  'It joins the others without a sound.',
+  'Somewhere above the mountain, it finds the wind.',
+  'You watch until you cannot tell it from the rest.',
+];
+
+/* ------------------------------ state ------------------------------ */
+let S = {lanterns:[], nextId:1, nights:[], sound:true, seen:false, skyIdx:0};
+let cam = {x:0, target:0, drag:null, auto:true, idle:0, dir:1};
+let launch = null;              // the lantern currently rising from your hands
+let stars = [], embers = [], shooting = null, shootTimer = 12;
+let running = false, lastT = 0, T = 0;
+
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY)||'null');
+    if(d && typeof d === 'object'){
+      S = Object.assign(S, d);
+      S.lanterns = S.lanterns || []; S.nights = S.nights || [];
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+const dayKey = t => new Date(t).toISOString().slice(0,10);
+function markNight(){
+  const k = dayKey(Date.now());
+  if(!S.nights.includes(k)){ S.nights.push(k); S.skyIdx = (S.nights.length-1) % SKIES.length; }
+}
+const total = () => S.lanterns.length;
+const shapeOK = s => total() >= s.need;
+const hueOK = h => total() >= h.need;
+function streak(){
+  if(!S.nights.length) return 0;
+  const sorted = [...S.nights].sort();
+  let run = 1;
+  for(let i=sorted.length-1;i>0;i--){
+    const a = new Date(sorted[i]+'T00:00:00Z').getTime();
+    const b = new Date(sorted[i-1]+'T00:00:00Z').getTime();
+    if(Math.round((a-b)/DAY) === 1) run++; else break;
+  }
+  const last = new Date(sorted[sorted.length-1]+'T00:00:00Z').getTime();
+  const today = new Date(dayKey(Date.now())+'T00:00:00Z').getTime();
+  if(Math.round((today-last)/DAY) > 1) return 0;
+  return run;
+}
+
+/* ------------------------------ audio ------------------------------ */
+let AC = null;
+function tone(f, d, type, v, at){
+  if(!S.sound) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const t0 = AC.currentTime + (at||0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(v||.05, t0+.03);
+    g.gain.exponentialRampToValueAtTime(.0001, t0+(d||.5));
+    o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0+(d||.5)+.05);
+  }catch(e){}
+}
+const sfx = {
+  tap:  ()=>tone(560,.12,'sine',.04),
+  light:()=>{ [392,523,659].forEach((f,i)=>tone(f,.9,'sine',.045,i*.14)); },
+  read: ()=>tone(700,.3,'sine',.035),
+  star: ()=>{ [880,1175,1568].forEach((f,i)=>tone(f,.7,'sine',.04,i*.1)); },
+  soft: ()=>tone(300,.4,'sine',.03),
+};
+
+/* ------------------------------ canvas ------------------------------ */
+const cv = $('#sky'), ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1,WORLD=0;
+function sizeCanvas(){
+  const r = $('#app').getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = Math.max(50, r.width); H = Math.max(50, r.height);
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  WORLD = W * 2.6;
+  cam.x = clamp(cam.x, 0, WORLD-W);
+  buildStars();
+}
+window.addEventListener('resize', sizeCanvas);
+
+function buildStars(){
+  stars = [];
+  const n = Math.round(WORLD*H/9000);
+  for(let i=0;i<n;i++){
+    stars.push({x: hashSeed(i*13)*WORLD, y: hashSeed(i*29)*H*0.66,
+      r: 0.5 + hashSeed(i*41)*1.4, tw: hashSeed(i*57)*6.283,
+      d: 0.35 + hashSeed(i*71)*0.4});
+  }
+}
+const waterline = () => H*0.80;
+
+/* -------- where a lantern sits, from its age and its seed -------- */
+function lanternPos(l, now){
+  const ageH = Math.max(0, (now - l.ts) / 3600000);
+  const rise = 1 - 1/(1 + ageH/2.2);                 // 0 at release, →1 over a day
+  const band = 0.06 + seedAt(l.id,3)*0.10;
+  const alt = clamp(0.05 + rise*(0.80 - band) + band*seedAt(l.id,4), 0, 0.93);
+  const depth = 0.42 + seedAt(l.id,5)*0.58;          // small+far ⟶ big+near
+  const driftSpeed = (6 + seedAt(l.id,6)*10) * depth;
+  const baseX = seedAt(l.id,1)*WORLD;
+  const x = (baseX + ageH*driftSpeed*3 + T*driftSpeed*0.35) % WORLD;
+  const sway = Math.sin(T*(0.25+seedAt(l.id,7)*0.3) + seedAt(l.id,8)*6.283) * (7+10*depth);
+  const bob  = Math.cos(T*(0.4+seedAt(l.id,9)*0.4) + seedAt(l.id,2)*6.283) * 4;
+  const y = waterline() - 26 - alt*(waterline()-40);
+  return {x, y: y+bob, sway, depth, alt};
+}
+function screenOf(l, now){
+  const p = lanternPos(l, now);
+  // parallax: distant lanterns move less as you pan
+  let sx = p.x - cam.x*p.depth + p.sway;
+  const span = WORLD;
+  while(sx < -120) sx += span;
+  while(sx > span-120) sx -= span;
+  return {x: sx, y: p.y, depth: p.depth, alt: p.alt};
+}
+
+/* ------------------------------ shapes ------------------------------ */
+function hueOf(id){ const h = HUES.find(x=>x.id===id); return h ? h.c : '#ffb457'; }
+function drawLanternShape(c, shape, r, col, glow){
+  c.save();
+  if(glow){
+    const g = c.createRadialGradient(0,0,r*0.2,0,0,r*4.2);
+    g.addColorStop(0, hexA(col,.55)); g.addColorStop(.4, hexA(col,.16)); g.addColorStop(1, hexA(col,0));
+    c.fillStyle = g;
+    c.beginPath(); c.arc(0,0,r*4.2,0,6.283); c.fill();
+  }
+  c.fillStyle = col;
+  c.strokeStyle = hexA('#000',.28); c.lineWidth = Math.max(1, r*0.09);
+  if(shape === 'round'){
+    c.beginPath(); c.arc(0,0,r,0,6.283); c.fill(); c.stroke();
+  }else if(shape === 'star'){
+    c.beginPath();
+    for(let i=0;i<10;i++){
+      const a = -Math.PI/2 + i*Math.PI/5, rr = i%2 ? r*0.46 : r;
+      const x = Math.cos(a)*rr, y = Math.sin(a)*rr;
+      i ? c.lineTo(x,y) : c.moveTo(x,y);
+    }
+    c.closePath(); c.fill(); c.stroke();
+  }else if(shape === 'blossom'){
+    for(let i=0;i<5;i++){
+      const a = -Math.PI/2 + i*1.2566;
+      c.beginPath();
+      c.ellipse(Math.cos(a)*r*0.52, Math.sin(a)*r*0.52, r*0.5, r*0.34, a, 0, 6.283);
+      c.fill();
+    }
+    c.fillStyle = hexA('#fff',.8);
+    c.beginPath(); c.arc(0,0,r*0.24,0,6.283); c.fill();
+  }else if(shape === 'koi'){
+    c.beginPath();
+    c.moveTo(r*0.95, 0);
+    c.quadraticCurveTo(r*0.2, -r*0.72, -r*0.5, -r*0.28);
+    c.quadraticCurveTo(-r*0.85, 0, -r*0.5, r*0.28);
+    c.quadraticCurveTo(r*0.2, r*0.72, r*0.95, 0);
+    c.fill(); c.stroke();
+    c.beginPath();
+    c.moveTo(-r*0.5,-r*0.26); c.lineTo(-r*1.15,-r*0.66);
+    c.lineTo(-r*1.0, 0); c.lineTo(-r*1.15, r*0.66); c.lineTo(-r*0.5, r*0.26);
+    c.closePath(); c.fill();
+    c.fillStyle = hexA('#000',.5);
+    c.beginPath(); c.arc(r*0.55,-r*0.1, r*0.09, 0, 6.283); c.fill();
+  }else if(shape === 'crane'){
+    c.beginPath();
+    c.moveTo(-r, r*0.3); c.lineTo(0, -r*0.15); c.lineTo(r, r*0.3);
+    c.lineTo(r*0.3, r*0.1); c.lineTo(0, r*0.72); c.lineTo(-r*0.3, r*0.1);
+    c.closePath(); c.fill(); c.stroke();
+    c.beginPath();
+    c.moveTo(0,-r*0.15); c.lineTo(r*0.24,-r*0.85); c.lineTo(r*0.52,-r*0.7);
+    c.closePath(); c.fill();
+  }else if(shape === 'moth'){
+    [-1,1].forEach(s => {
+      c.beginPath();
+      c.ellipse(s*r*0.5, -r*0.18, r*0.55, r*0.4, s*0.5, 0, 6.283); c.fill();
+      c.beginPath();
+      c.ellipse(s*r*0.42, r*0.36, r*0.4, r*0.3, -s*0.4, 0, 6.283); c.fill();
+    });
+    c.fillStyle = hexA('#000',.35);
+    c.beginPath(); c.ellipse(0,0,r*0.14,r*0.62,0,0,6.283); c.fill();
+  }else if(shape === 'house'){
+    c.beginPath();
+    c.moveTo(-r*0.72, -r*0.1); c.lineTo(0, -r*0.85); c.lineTo(r*0.72, -r*0.1);
+    c.closePath(); c.fill(); c.stroke();
+    c.beginPath();
+    c.rect(-r*0.56, -r*0.12, r*1.12, r*0.86); c.fill(); c.stroke();
+    c.fillStyle = hexA('#fff',.55);
+    c.fillRect(-r*0.18, r*0.14, r*0.36, r*0.46);
+  }else{ /* classic paper lantern */
+    c.beginPath();
+    c.moveTo(-r*0.52, -r*0.78);
+    c.quadraticCurveTo(-r*1.02, 0, -r*0.52, r*0.78);
+    c.lineTo(r*0.52, r*0.78);
+    c.quadraticCurveTo(r*1.02, 0, r*0.52, -r*0.78);
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = hexA('#000',.22);
+    c.fillRect(-r*0.56, -r*0.86, r*1.12, r*0.14);
+    c.fillRect(-r*0.5, r*0.72, r*1.0, r*0.14);
+    c.globalAlpha = .3; c.strokeStyle = '#000'; c.lineWidth = Math.max(.7, r*0.05);
+    for(let i=-1;i<=1;i++){
+      c.beginPath();
+      c.moveTo(i*r*0.3, -r*0.74);
+      c.quadraticCurveTo(i*r*0.52, 0, i*r*0.3, r*0.74);
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+  }
+  // the little flame
+  c.fillStyle = hexA('#fff8e0', .85);
+  c.beginPath(); c.arc(0, r*0.18, r*0.2, 0, 6.283); c.fill();
+  c.restore();
+}
+function hexA(hex, a){
+  if(hex[0] !== '#') return hex;
+  const n = parseInt(hex.slice(1), 16);
+  const r = hex.length === 7 ? (n>>16)&255 : ((n>>8)&15)*17;
+  const g = hex.length === 7 ? (n>>8)&255  : ((n>>4)&15)*17;
+  const b = hex.length === 7 ? n&255       : (n&15)*17;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ------------------------------ scene ------------------------------ */
+function drawScene(dt){
+  const sky = SKIES[S.skyIdx % SKIES.length];
+  const wl = waterline();
+
+  const g = ctx.createLinearGradient(0,0,0,wl);
+  g.addColorStop(0, sky.top); g.addColorStop(.52, sky.mid); g.addColorStop(1, sky.low);
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,wl);
+
+  /* stars — fulfilled wishes burn brightest */
+  stars.forEach((s,i) => {
+    let sx = s.x - cam.x*0.15;
+    while(sx < -5) sx += WORLD;
+    while(sx > WORLD-5) sx -= WORLD;
+    if(sx > W+5) return;
+    const tw = 0.55 + 0.45*Math.sin(T*1.4 + s.tw);
+    ctx.globalAlpha = s.d*tw;
+    ctx.fillStyle = '#fff8e8';
+    ctx.beginPath(); ctx.arc(sx, s.y, s.r, 0, 6.283); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  drawFulfilled();
+
+  /* moon, its phase turning with the nights you have come */
+  const mx = W*0.78 - cam.x*0.08, my = H*0.16;
+  const phase = (S.nights.length % 8) / 8;
+  ctx.save();
+  const mg = ctx.createRadialGradient(mx,my,4,mx,my,64);
+  mg.addColorStop(0,'rgba(255,246,220,.30)'); mg.addColorStop(1,'rgba(255,246,220,0)');
+  ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx,my,64,0,6.283); ctx.fill();
+  ctx.fillStyle = '#f6efd8';
+  ctx.beginPath(); ctx.arc(mx,my,20,0,6.283); ctx.fill();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath(); ctx.arc(mx + Math.cos(phase*6.283)*26, my, 20, 0, 6.283); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+
+  /* shooting star */
+  shootTimer -= dt;
+  if(!shooting && shootTimer <= 0){
+    shooting = {x: rnd(0,W), y: rnd(10,H*0.3), vx: rnd(-260,-140), vy: rnd(60,120), life:1};
+    shootTimer = rnd(16, 40);
+  }
+  if(shooting){
+    shooting.life -= dt*0.7;
+    shooting.x += shooting.vx*dt; shooting.y += shooting.vy*dt;
+    if(shooting.life <= 0) shooting = null;
+    else{
+      ctx.globalAlpha = clamp(shooting.life,0,1);
+      const gr = ctx.createLinearGradient(shooting.x, shooting.y, shooting.x-shooting.vx*0.12, shooting.y-shooting.vy*0.12);
+      gr.addColorStop(0,'rgba(255,255,240,.95)'); gr.addColorStop(1,'rgba(255,255,240,0)');
+      ctx.strokeStyle = gr; ctx.lineWidth = 2; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(shooting.x, shooting.y);
+      ctx.lineTo(shooting.x-shooting.vx*0.12, shooting.y-shooting.vy*0.12); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* mountains */
+  ridge(wl, 0.10, H*0.20, sky.h, .55, 0.0);
+  ridge(wl, 0.18, H*0.14, '#0d1226', .95, 1.7);
+
+  /* water */
+  const wg = ctx.createLinearGradient(0,wl,0,H);
+  wg.addColorStop(0, '#101a34'); wg.addColorStop(1, '#060a18');
+  ctx.fillStyle = wg; ctx.fillRect(0,wl,W,H-wl);
+  ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 1;
+  for(let i=0;i<9;i++){
+    const y = wl + 6 + i*((H-wl)/9);
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=14) ctx.lineTo(x, y + Math.sin((x*0.03) + T*(0.6+i*0.1) + i)*1.8);
+    ctx.stroke();
+  }
+
+  /* lanterns (far first) */
+  const now = Date.now();
+  const live = S.lanterns.filter(l => !l.done);
+  const drawn = live.map(l => ({l, s: screenOf(l, now)}))
+    .filter(o => o.s.x > -70 && o.s.x < W+70)
+    .sort((a,b) => a.s.depth - b.s.depth);
+
+  drawn.forEach(o => {
+    const r = 9 + o.s.depth*15;
+    // reflection on the water
+    if(o.s.y < wl){
+      ctx.save();
+      ctx.globalAlpha = 0.16 * o.s.depth;
+      ctx.translate(o.s.x + Math.sin(T*1.2 + o.l.id)*3, wl + (wl - o.s.y)*0.22);
+      ctx.scale(1, -0.5);
+      drawLanternShape(ctx, o.l.shape, r, hueOf(o.l.hue), false);
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.translate(o.s.x, o.s.y);
+    ctx.globalAlpha = 0.55 + o.s.depth*0.45;
+    drawLanternShape(ctx, o.l.shape, r, hueOf(o.l.hue), true);
+    ctx.restore();
+  });
+
+  /* the one currently going up */
+  if(launch){
+    launch.t += dt;
+    const p = clamp(launch.t/3.4, 0, 1);
+    const ease = 1 - Math.pow(1-p, 2.2);
+    const dest = screenOf(launch.l, now);          // recomputed, so panning cannot strand it
+    const x = lerp(W*0.5, dest.x, ease) + Math.sin(launch.t*1.6)*8*(1-ease*0.6);
+    const y = lerp(wl - 18, dest.y, ease);
+    ctx.save();
+    ctx.translate(x, y);
+    const r = lerp(30, 9 + dest.depth*15, ease);
+    drawLanternShape(ctx, launch.l.shape, r, hueOf(launch.l.hue), true);
+    ctx.restore();
+    if(Math.random() < 0.5) embers.push({x: x+rnd(-8,8), y: y+rnd(-6,6),
+      vx: rnd(-.25,.25), vy: rnd(-.7,-.25), life:1, c: hueOf(launch.l.hue)});
+    if(p >= 1) launch = null;
+  }
+
+  /* embers */
+  for(let i=embers.length-1;i>=0;i--){
+    const e = embers[i];
+    e.life -= dt*0.55; e.x += e.vx*dt*60; e.y += e.vy*dt*60;
+    if(e.life <= 0){ embers.splice(i,1); continue; }
+    ctx.globalAlpha = e.life*.8; ctx.fillStyle = e.c;
+    ctx.beginPath(); ctx.arc(e.x, e.y, 1.8*e.life+.6, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  /* bank in the foreground */
+  ctx.fillStyle = '#05070f';
+  ctx.beginPath();
+  ctx.moveTo(0,H); ctx.lineTo(0,H-14);
+  for(let x=0;x<=W;x+=20) ctx.lineTo(x, H-14 + Math.sin(x*0.05)*3);
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+}
+function drawFulfilled(){
+  const done = S.lanterns.filter(l => l.done);
+  done.forEach((l,i) => {
+    let sx = (seedAt(l.id,1)*WORLD) - cam.x*0.15;
+    while(sx < -5) sx += WORLD;
+    while(sx > WORLD-5) sx -= WORLD;
+    if(sx > W+8) return;
+    const y = 14 + seedAt(l.id,11)*H*0.34;
+    const tw = 0.6 + 0.4*Math.sin(T*2.2 + l.id);
+    const r = 1.6 + tw*1.6;
+    ctx.save();
+    ctx.globalAlpha = .9;
+    const g = ctx.createRadialGradient(sx,y,0,sx,y,r*7);
+    g.addColorStop(0, hexA(hueOf(l.hue), .85));
+    g.addColorStop(.35, hexA(hueOf(l.hue), .22));
+    g.addColorStop(1, hexA(hueOf(l.hue), 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx,y,r*7,0,6.283); ctx.fill();
+    ctx.fillStyle = '#fffdf4';
+    ctx.beginPath(); ctx.arc(sx,y,r,0,6.283); ctx.fill();
+    // four-point sparkle
+    ctx.strokeStyle = hexA('#fff8e0',.7); ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx-r*3.4,y); ctx.lineTo(sx+r*3.4,y);
+    ctx.moveTo(sx,y-r*3.4); ctx.lineTo(sx,y+r*3.4); ctx.stroke();
+    ctx.restore();
+  });
+  ctx.globalAlpha = 1;
+}
+function ridge(wl, amp, height, col, alpha, off){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(0, wl);
+  const px = cam.x*(off ? 0.34 : 0.18);
+  for(let x=0;x<=W;x+=8){
+    const wx = (x + px)*0.006;
+    const y = wl - height*(0.5 + 0.5*Math.sin(wx + off) * Math.cos(wx*0.6 + off*1.3)) - height*amp;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, wl); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/* ------------------------------ loop ------------------------------ */
+function loop(now){
+  if(!running) return;
+  const dt = Math.min(.05, (now-lastT)/1000);
+  lastT = now; T += dt;
+  if(!cam.drag){
+    cam.idle += dt;
+    if(cam.auto && cam.idle > 5){
+      cam.target += dt*7*cam.dir;
+      if(cam.target > WORLD-W){ cam.target = WORLD-W; cam.dir = -1; }
+      if(cam.target < 0){ cam.target = 0; cam.dir = 1; }
+    }
+    cam.target = clamp(cam.target, 0, WORLD-W);
+    cam.x = lerp(cam.x, cam.target, 1 - Math.pow(0.001, dt));
+  }
+  drawScene(dt);
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------ input ------------------------------ */
+let ptr = null;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  const r = cv.getBoundingClientRect();
+  ptr = {x: e.clientX-r.left, y: e.clientY-r.top, sx: e.clientX-r.left, camX: cam.x,
+         t: performance.now(), moved: 0};
+  cam.drag = true; cam.idle = 0;
+});
+cv.addEventListener('pointermove', e => {
+  if(!ptr) return;
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX-r.left;
+  ptr.moved = Math.max(ptr.moved, Math.abs(x - ptr.sx));
+  cam.x = clamp(ptr.camX - (x - ptr.sx), 0, WORLD-W);
+  cam.target = cam.x;
+});
+function endPtr(e){
+  if(!ptr) return;
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const quick = performance.now() - ptr.t < 400;
+  cam.drag = null; cam.idle = 0;
+  const wasTap = ptr.moved < 10 && quick;
+  ptr = null;
+  if(wasTap) tapAt(x, y);
+}
+cv.addEventListener('pointerup', endPtr);
+cv.addEventListener('pointercancel', () => { cam.drag = null; ptr = null; });
+
+function tapAt(x, y){
+  const now = Date.now();
+  let best = null, bd = 46;
+  S.lanterns.filter(l => !l.done).forEach(l => {
+    const s = screenOf(l, now);
+    const r = 9 + s.depth*15;
+    const d = Math.hypot(s.x-x, s.y-y);
+    if(d < Math.max(26, r*1.7) && d < bd){ bd = d; best = l; }
+  });
+  if(best){ readWish(best); return; }
+  // a tap on the empty sky nudges a few embers up
+  for(let i=0;i<7;i++) embers.push({x:x+rnd(-6,6), y:y+rnd(-6,6), vx:rnd(-.3,.3), vy:rnd(-.8,-.3),
+    life:1, c:'#ffe3ac'});
+  sfx.soft();
+}
+
+/* ------------------------------ writing a wish ------------------------------ */
+let draft = {shape:'classic', hue:'amber'};
+function swatchCanvas(shape, hue){
+  const c = document.createElement('canvas');
+  c.width = 68; c.height = 68;
+  const x = c.getContext('2d');
+  x.translate(34,34);
+  drawLanternShape(x, shape, 20, hue, false);
+  return c.toDataURL();
+}
+function writeSheet(){
+  const shapeCells = SHAPES.map(s => {
+    const ok = shapeOK(s);
+    return `<button class="pk ${draft.shape===s.id?'on':''} ${ok?'':'locked'}" data-s="${s.id}" title="${s.n}">
+      <img src="${swatchCanvas(s.id, hueOf(draft.hue))}" width="34" height="34" alt="${s.n}">
+      ${ok?'':`<span class="lk">🔒${s.need}</span>`}</button>`;
+  }).join('');
+  const hueCells = HUES.map(h => {
+    const ok = hueOK(h);
+    return `<button class="pk ${draft.hue===h.id?'on':''} ${ok?'':'locked'}" data-h="${h.id}" title="${h.n}">
+      <span class="sw" style="background:${h.c}"></span>
+      ${ok?'':`<span class="lk">🔒${h.need}</span>`}</button>`;
+  }).join('');
+  openSheet(`
+    <div class="shead"><h2>Write a wish</h2><p>Nobody else will read it</p></div>
+    <div class="sbody">
+      <textarea id="wishText" maxlength="240" placeholder="Say the thing you would not say out loud…"></textarea>
+      <div class="cnt"><span id="cnt">0</span>/240</div>
+      <div class="prompts">${PROMPTS.map(p=>`<button class="pchip" data-p="${p}">${p}</button>`).join('')}</div>
+      <div class="lbl">Lantern</div>
+      <div class="pickRow" id="shapeRow">${shapeCells}</div>
+      <div class="lbl">Light</div>
+      <div class="pickRow" id="hueRow">${hueCells}</div>
+      <p class="note">Shapes and colours arrive as the sky fills — <b>${total()}</b> lanterns so far.</p>
+    </div>
+    <div class="sfoot">
+      <button class="btn quiet" id="sCancel">Not tonight</button>
+      <button class="btn pri" id="sGo">🏮 Release</button>
+    </div>`);
+  const ta = $('#wishText');
+  setTimeout(()=>ta.focus(), 220);
+  ta.addEventListener('input', () => { $('#cnt').textContent = ta.value.length; });
+  $$('#sheet .pchip').forEach(b => b.onclick = () => {
+    ta.value = (ta.value ? ta.value.replace(/\s*$/,'') + ' ' : '') + b.dataset.p + ' ';
+    $('#cnt').textContent = ta.value.length; ta.focus(); sfx.tap();
+  });
+  $$('#shapeRow .pk').forEach(b => b.onclick = () => {
+    const s = SHAPES.find(x => x.id === b.dataset.s);
+    if(!shapeOK(s)){ toast(`${s.n} arrives at ${s.need} lanterns`); return; }
+    draft.shape = s.id; sfx.tap();
+    const keep = ta.value; writeSheet(); $('#wishText').value = keep; $('#cnt').textContent = keep.length;
+  });
+  $$('#hueRow .pk').forEach(b => b.onclick = () => {
+    const h = HUES.find(x => x.id === b.dataset.h);
+    if(!hueOK(h)){ toast(`${h.n} arrives at ${h.need} lanterns`); return; }
+    draft.hue = h.id; sfx.tap();
+    const keep = ta.value; writeSheet(); $('#wishText').value = keep; $('#cnt').textContent = keep.length;
+  });
+  $('#sCancel').onclick = closeSheet;
+  $('#sGo').onclick = () => {
+    const txt = ta.value.trim();
+    if(!txt){ toast('A lantern needs something written on it'); ta.focus(); return; }
+    closeSheet();
+    releaseLantern(txt);
+  };
+}
+function releaseLantern(text){
+  const l = {id: S.nextId++, t: text, shape: draft.shape, hue: draft.hue, ts: Date.now(), done:false};
+  S.lanterns.push(l);
+  markNight();
+  save();
+  launch = {t:0, l};
+  cam.idle = 0;
+  sfx.light();
+  renderHUD();
+  toast(RELEASE_LINES[(S.lanterns.length-1) % RELEASE_LINES.length]);
+  $('#hintLine').classList.add('gone');
+  const un = [...SHAPES.filter(x=>x.need===total()), ...HUES.filter(x=>x.need===total())];
+  if(un.length) setTimeout(()=>{ toast(`Unlocked: ${un.map(x=>x.n).join(' · ')}`); sfx.star(); }, 2400);
+}
+
+/* ------------------------------ reading ------------------------------ */
+function readWish(l){
+  sfx.read();
+  const d = new Date(l.ts);
+  const when = d.toLocaleDateString(undefined, {day:'numeric', month:'long', year:'numeric'});
+  const ageD = Math.floor((Date.now()-l.ts)/DAY);
+  openSheet(`
+    <div class="shead"><h2>A lantern</h2><p>${ageD < 1 ? 'released tonight' : ageD === 1 ? 'one day up' : ageD + ' days up'}</p></div>
+    <div class="sbody">
+      <div class="wishCard">${esc(l.t)}</div>
+      <div class="wishMeta"><span class="dotc" style="background:${hueOf(l.hue)}"></span>
+        ${SHAPES.find(s=>s.id===l.shape)?.n || 'Paper'} · ${when}</div>
+      <p class="note">If this one has come true, you can set it among the stars. It stops drifting and
+      starts shining — and it stays in the book either way.</p>
+    </div>
+    <div class="sfoot">
+      <button class="btn quiet" id="sClose">Leave it flying</button>
+      <button class="btn pri" id="sDone">✨ It came true</button>
+    </div>`);
+  $('#sClose').onclick = closeSheet;
+  $('#sDone').onclick = () => { fulfil(l); closeSheet(); };
+}
+function fulfil(l){
+  l.done = true; l.doneTs = Date.now();
+  save(); renderHUD(); sfx.star();
+  toast('It goes up among the stars.');
+}
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ------------------------------ the book ------------------------------ */
+function bookSheet(){
+  const ls = [...S.lanterns].sort((a,b)=>b.ts-a.ts);
+  const rows = ls.length ? ls.map(l => {
+    const d = new Date(l.ts).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+    return `<div class="bkItem ${l.done?'done':''}">
+      <div class="lg"><img src="${swatchCanvas(l.shape, hueOf(l.hue))}" width="30" height="30" alt=""></div>
+      <div class="tx"><div class="t">${esc(l.t)}</div><div class="d">${d}${l.done?' · came true':''}</div></div>
+      <button class="act ${l.done?'on':''}" data-id="${l.id}">${l.done?'✨':'mark'}</button></div>`;
+  }).join('') : `<p class="note" style="margin-top:0">Nothing written yet. The first one is the hardest.</p>`;
+  const st = streak();
+  openSheet(`
+    <div class="shead"><h2>📓 The book</h2><p>every wish, kept</p></div>
+    <div class="sbody">
+      <div class="statGrid">
+        <div class="stat"><small>Lanterns</small><b>${total()}</b></div>
+        <div class="stat"><small>Nights</small><b>${S.nights.length}</b></div>
+        <div class="stat"><small>Came true</small><b>${S.lanterns.filter(l=>l.done).length}</b></div>
+        <div class="stat"><small>Streak</small><b>${st} 🌙</b></div>
+      </div>
+      ${rows}
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Close</button></div>`);
+  $('#sOk').onclick = closeSheet;
+  $$('#sheet .act').forEach(b => b.onclick = () => {
+    const l = S.lanterns.find(x => x.id === +b.dataset.id);
+    if(!l) return;
+    l.done = !l.done;
+    if(l.done){ l.doneTs = Date.now(); sfx.star(); } else sfx.tap();
+    save(); renderHUD(); bookSheet();
+  });
+}
+function helpSheet(){
+  openSheet(`
+    <div class="shead"><h2>What this is</h2><p>Not much, on purpose</p></div>
+    <div class="sbody">
+      <ul class="help">
+        <li><b>Write something and let it go.</b> It rises off the water and joins the sky.</li>
+        <li><b>Nothing is lost.</b> Every lantern stays. Come back tomorrow and the old ones will have
+          drifted higher — after a day or so they sit up near the stars.</li>
+        <li><b>Drag</b> to look along the river. <b>Tap a lantern</b> to read what it says and when
+          you sent it up.</li>
+        <li><b>If a wish comes true,</b> say so. It stops drifting and becomes a star, and it keeps
+          shining in the sky from then on.</li>
+        <li><b>The sky changes</b> with the nights you attend, and new lantern shapes and colours
+          arrive as it fills.</li>
+      </ul>
+      <p class="note">Everything is stored on this device only. Nobody else sees any of it.</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Alright</button></div>`);
+  $('#sOk').onclick = closeSheet;
+}
+
+/* ------------------------------ shell ------------------------------ */
+function renderHUD(){
+  $('#hCount').textContent = total();
+  $('#hNights').textContent = Math.max(1, S.nights.length);
+}
+function toast(m){
+  const d = document.createElement('div');
+  d.className = 'tst'; d.textContent = m;
+  $('#toast').appendChild(d); setTimeout(()=>d.remove(), 2200);
+}
+function openSheet(h){ $('#sheet').innerHTML = h; $('#scrim').classList.add('on'); }
+function closeSheet(){ $('#scrim').classList.remove('on'); }
+$('#scrim').addEventListener('click', e => { if(e.target === $('#scrim')) closeSheet(); });
+$('#release').onclick = () => { sfx.tap(); writeSheet(); };
+$('#bCentre').onclick = () => {
+  // jump to the newest lantern still flying
+  const live = S.lanterns.filter(l=>!l.done);
+  if(!live.length){ cam.target = (WORLD-W)/2; toast('Nothing up there yet'); return; }
+  const l = live[live.length-1];
+  const p = lanternPos(l, Date.now());
+  // screen x is p.x - cam.x*depth, so solve for the cam that centres it
+  cam.target = clamp((p.x - W/2) / Math.max(.05, p.depth), 0, WORLD-W);
+  cam.idle = 0; sfx.tap();
+};
+$('#bBook').onclick = bookSheet;
+$('#bHelp').onclick = helpSheet;
+$('#bSound').onclick = () => {
+  S.sound = !S.sound; save();
+  $('#bSound').textContent = S.sound ? '🔊' : '🔇';
+  $('#bSound').classList.toggle('off', !S.sound);
+};
+$('#tHelp').onclick = helpSheet;
+$('#tPlay').onclick = () => {
+  $('#title').classList.add('hide');
+  S.seen = true; markNight(); save(); renderHUD();
+  if(total() > 0) $('#hintLine').classList.add('gone');
+  setTimeout(()=>$('#hintLine').classList.add('gone'), 9000);
+};
+
+/* title-card lantern */
+(function titleArt(){
+  const c = $('#titleLantern'), x = c.getContext('2d');
+  let t = 0;
+  (function spin(){
+    x.clearRect(0,0,240,300);
+    x.save(); x.translate(120, 150 + Math.sin(t)*10);
+    drawLanternShape(x, 'classic', 52, '#ffb457', true);
+    x.restore();
+    t += 0.02;
+    if(!$('#title').classList.contains('hide')) requestAnimationFrame(spin);
+  })();
+})();
+
+load();
+$('#bSound').textContent = S.sound ? '🔊' : '🔇';
+$('#bSound').classList.toggle('off', !S.sound);
+if(S.seen && total() > 0) $('#tPlay').textContent = 'Back to the river';
+renderHUD();
+sizeCanvas();
+setTimeout(sizeCanvas, 120);
+running = true; lastT = performance.now();
+cam.x = cam.target = (WORLD-W)/2;
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

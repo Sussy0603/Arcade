@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#2a1d15"/>
+<title>Butterfold — Bakery</title>
+<style>
+:root{
+  --bg:#1d1410; --room:#2a1d15; --panel:#38271d; --panelIn:#463124;
+  --line:rgba(255,255,255,.15); --line2:rgba(255,255,255,.28);
+  --text:#f7ecd9; --dim:#c0a893;
+  --crust:#c98b4b; --crust2:#e8b877; --butter:#f4d98c; --jam:#c2544f;
+  --good:#8fc98a; --bad:#e2705f; --gold:#f0c24a;
+  --ui:'Nunito','Segoe UI',system-ui,-apple-system,sans-serif;
+  --dsp:ui-rounded,'SF Pro Rounded','Baloo 2','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  --mono:'SFMono-Regular',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+body{font-family:var(--ui);background:#120c09;color:var(--text);display:flex;align-items:center;
+  justify-content:center;user-select:none;-webkit-user-select:none}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+#app{position:relative;width:100%;height:100%;max-width:540px;max-height:100vh;overflow:hidden;
+  background:radial-gradient(120% 55% at 50% 0%,#40291c 0%,transparent 62%),
+    linear-gradient(180deg,#2a1d15,#1d1410 62%,#170f0b);
+  box-shadow:0 0 90px rgba(0,0,0,.65);display:flex;flex-direction:column}
+@media(min-width:760px){#app{max-width:min(94vw,620px)}}
+
+.hud{position:relative;z-index:20;display:flex;gap:7px;align-items:center;
+  padding:calc(9px + env(safe-area-inset-top)) 11px 6px}
+.chip{background:rgba(20,12,8,.55);border:1px solid var(--line);border-radius:999px;padding:6px 12px;
+  display:flex;align-items:center;gap:6px;font-weight:800;font-size:13.5px;white-space:nowrap;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.chip b{font-family:var(--mono);letter-spacing:-.3px}
+.chip.coins{color:var(--gold)} .chip.lvl{color:var(--crust2)}
+.spacer{flex:1}
+.icbtn{width:37px;height:37px;border-radius:50%;border:1px solid var(--line);flex:none;
+  background:rgba(20,12,8,.55);display:grid;place-items:center;font-size:16px;transition:transform .12s;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.icbtn:active{transform:scale(.9)}
+.icbtn.off{opacity:.42}
+
+/* recipe strip */
+#recipeBar{position:relative;z-index:12;display:flex;align-items:center;gap:8px;margin:2px 11px 4px;
+  background:linear-gradient(180deg,var(--panel),#2c1e16);border:1px solid var(--line);
+  border-radius:14px;padding:7px 10px}
+#recipeBar .em{font-size:24px;flex:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+#recipeBar .tx{flex:1;min-width:0}
+#recipeBar .tx b{display:block;font-family:var(--dsp);font-size:15px;font-weight:900}
+#steps{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.stepChip{font-size:8.5px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;
+  padding:2.5px 7px;border-radius:999px;background:rgba(0,0,0,.32);color:var(--dim);
+  border:1px solid rgba(255,255,255,.08)}
+.stepChip.done{background:rgba(143,201,138,.2);color:var(--good);border-color:rgba(143,201,138,.4)}
+.stepChip.now{background:var(--crust);color:#2c1a09;border-color:#f0c98f;animation:glow 1.5s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 3px rgba(201,139,75,.25)}}
+#quitBake{width:30px;height:30px;border-radius:9px;background:rgba(0,0,0,.3);border:1px solid var(--line);
+  font-size:12px;flex:none;display:grid;place-items:center;color:#ffb8ae}
+
+/* bench */
+#benchWrap{position:relative;flex:1;min-height:0;margin:0 11px;border-radius:18px;overflow:hidden;
+  background:linear-gradient(180deg,#4a3325,#3a2619);border:1px solid var(--line);
+  box-shadow:inset 0 10px 30px rgba(0,0,0,.4)}
+#bench{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#benchMsg{position:absolute;left:0;right:0;top:9px;text-align:center;font-family:var(--dsp);
+  font-weight:900;font-size:14px;letter-spacing:.02em;text-shadow:0 2px 8px rgba(0,0,0,.7);
+  pointer-events:none;padding:0 14px;z-index:3}
+#benchSub{position:absolute;left:0;right:0;top:29px;text-align:center;font-size:10.5px;font-weight:800;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--crust2);opacity:.9;pointer-events:none;
+  text-shadow:0 2px 6px rgba(0,0,0,.7);z-index:3}
+#ghost{position:fixed;z-index:80;pointer-events:none;font-size:34px;transform:translate(-50%,-50%);
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.6));display:none}
+
+/* action band */
+#band{position:relative;z-index:12;min-height:0;display:flex;align-items:center;gap:9px;
+  padding:8px 12px 0}
+#band:empty{padding:0}
+#track{flex:1;height:34px;border-radius:11px;background:rgba(0,0,0,.4);border:1px solid var(--line);
+  position:relative;overflow:hidden;display:none}
+#track.on{display:block}
+#trackZone{position:absolute;top:0;bottom:0;background:rgba(143,201,138,.3);
+  border-left:2px solid #bde5b8;border-right:2px solid #bde5b8}
+#trackFill{position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,#e8d7ae,#c98b4b 62%,#6b3a1c)}
+#trackMark{position:absolute;top:-2px;bottom:-2px;width:3px;background:#fff;
+  box-shadow:0 0 8px rgba(255,255,255,.9);border-radius:2px}
+#trackTxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--dsp);font-weight:900;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  text-shadow:0 2px 6px rgba(0,0,0,.85)}
+#actBtn{min-width:112px;height:46px;border-radius:14px;padding:0 16px;display:none;
+  align-items:center;justify-content:center;gap:6px;font-family:var(--dsp);font-weight:900;font-size:14px;
+  background:linear-gradient(180deg,var(--crust2),var(--crust));color:#33200c;
+  box-shadow:0 5px 0 #8c5a28;border:1px solid rgba(255,255,255,.25)}
+#actBtn.on{display:flex}
+#actBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #8c5a28}
+#beatDots{display:flex;gap:5px;align-items:center}
+.bd{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.16)}
+.bd.hit{background:var(--good)} .bd.ok{background:var(--gold)} .bd.miss{background:var(--bad)}
+
+/* pantry */
+#pantryWrap{position:relative;z-index:12;padding:4px 8px calc(9px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(90,60,40,0),rgba(90,60,40,.3) 30%,rgba(50,32,20,.6));
+  border-top:1px solid rgba(255,255,255,.07);margin-top:4px}
+#pantry{display:flex;gap:6px;overflow-x:auto;padding:4px 2px;scrollbar-width:none}
+#pantry::-webkit-scrollbar{display:none}
+.ing{flex:0 0 auto;width:58px;border-radius:13px;padding:6px 3px 5px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#4d3527,#33221a);display:flex;flex-direction:column;align-items:center;
+  gap:2px;transition:transform .12s,box-shadow .2s;position:relative;touch-action:none}
+.ing .em{font-size:20px;line-height:1;pointer-events:none}
+.ing .nm{font-size:8px;font-weight:900;text-align:center;line-height:1.1;pointer-events:none}
+.ing.need{box-shadow:0 0 0 1.6px rgba(232,184,119,.75)}
+.ing.done{opacity:.35}
+.ing.drag{transform:scale(.9);opacity:.5}
+#caseRow{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+#caseRow::-webkit-scrollbar{display:none}
+.rcard{flex:0 0 auto;width:88px;border-radius:14px;padding:8px 5px 6px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#4d3527,#33221a);display:flex;flex-direction:column;align-items:center;
+  gap:2px;position:relative;transition:transform .12s}
+.rcard:active{transform:translateY(2px) scale(.97)}
+.rcard .em{font-size:26px;line-height:1}
+.rcard .nm{font-size:9.5px;font-weight:900;text-align:center;line-height:1.15}
+.rcard .pr{font-size:9px;font-family:var(--mono);color:var(--gold)}
+.rcard.locked{opacity:.35;filter:grayscale(.6)}
+.rcard .lk{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:900;
+  background:rgba(0,0,0,.4);border-radius:14px}
+.rcard .bstars{font-size:8px;color:var(--gold);letter-spacing:.5px;height:10px}
+#pantryLbl{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  padding:2px 4px 0}
+
+/* sheets & toast (shared idiom) */
+.scrim{position:absolute;inset:0;z-index:60;display:none;background:rgba(14,8,5,.68);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);align-items:center;justify-content:center;padding:16px}
+.scrim.on{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:420px;max-height:86%;background:linear-gradient(180deg,#3d2a1e,#221710);
+  border:1px solid var(--line2);border-radius:22px;display:flex;flex-direction:column;overflow:hidden;
+  animation:pop .3s cubic-bezier(.2,1.25,.4,1);box-shadow:0 24px 60px rgba(0,0,0,.6)}
+@keyframes pop{from{transform:scale(.88);opacity:0}}
+.shead{padding:15px 18px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.09)}
+.shead h2{font-family:var(--dsp);font-size:21px;font-weight:900}
+.shead p{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--crust2);
+  opacity:.85;margin-top:2px}
+.sbody{padding:14px 18px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sfoot{padding:10px 16px calc(14px + env(safe-area-inset-bottom));flex:none;display:flex;gap:8px;
+  border-top:1px solid rgba(255,255,255,.09)}
+.btn{flex:1;padding:13px 14px;border-radius:14px;font-family:var(--dsp);font-weight:900;font-size:15px;
+  background:var(--panelIn);border:1px solid var(--line2);transition:transform .1s}
+.btn:active{transform:translateY(2px)}
+.btn.pri{background:linear-gradient(180deg,var(--crust2),var(--crust));color:#33200c;
+  box-shadow:0 4px 0 #8c5a28;border-color:rgba(255,255,255,.25)}
+.btn.pri:active{box-shadow:0 1px 0 #8c5a28}
+.row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.row:last-child{border-bottom:none}
+.row .ic{width:40px;height:40px;border-radius:12px;background:var(--panelIn);display:grid;place-items:center;
+  font-size:19px;flex:none;border:1px solid var(--line)}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-size:14px;font-weight:900}
+.row .tx small{display:block;font-size:11px;color:var(--dim);line-height:1.35;margin-top:1px}
+.row .buy{padding:8px 12px;border-radius:11px;background:var(--gold);color:#31240a;font-weight:900;
+  font-size:12px;white-space:nowrap;flex:none}
+.row .buy.no{background:rgba(255,255,255,.09);color:var(--dim)}
+.row .buy.max{background:rgba(143,201,138,.2);color:var(--good)}
+.statGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 12px}
+.stat{background:rgba(0,0,0,.26);border:1px solid var(--line);border-radius:13px;padding:9px 11px}
+.stat small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stat b{font-size:20px;font-family:var(--dsp);font-weight:900}
+.help li{margin:0 0 9px 16px;font-size:13px;line-height:1.5;color:#ecdfd0}
+.help li b{color:var(--crust2)}
+.bigStars{text-align:center;font-size:38px;letter-spacing:6px;color:var(--gold);
+  text-shadow:0 4px 14px rgba(240,194,74,.4);margin:2px 0 6px}
+.gradeName{text-align:center;font-family:var(--dsp);font-weight:900;font-size:24px}
+.gradeSub{text-align:center;color:var(--dim);font-size:13px;line-height:1.5;margin-top:6px}
+.breakdown{margin-top:12px}
+.breakdown .ln{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.breakdown .ln b{margin-left:auto;font-family:var(--mono)}
+.mini{height:5px;flex:1;max-width:110px;border-radius:9px;background:rgba(0,0,0,.4);overflow:hidden}
+.mini i{display:block;height:100%;background:linear-gradient(90deg,var(--crust),var(--good))}
+
+#toast{position:absolute;left:50%;top:46%;transform:translateX(-50%);z-index:55;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px}
+.tst{background:rgba(18,10,6,.86);border:1px solid var(--line2);border-radius:999px;padding:7px 15px;
+  font-weight:900;font-size:13px;animation:tup 1.5s ease forwards;white-space:nowrap}
+@keyframes tup{0%{transform:translateY(10px) scale(.9);opacity:0}14%{transform:none;opacity:1}
+  72%{opacity:1}100%{transform:translateY(-22px);opacity:0}}
+.tst.good{color:#bde5b8} .tst.bad{color:#ffb0a4} .tst.gold{color:var(--gold)}
+
+#title{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding:26px;text-align:center;
+  background:radial-gradient(90% 60% at 50% 34%,#4a3223,#170f0b 74%)}
+#title.hide{display:none}
+#title .logo{font-size:60px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6));animation:bob 3.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-9px)}}
+#title h1{font-family:var(--dsp);font-size:40px;font-weight:900;letter-spacing:-.02em;margin-top:4px}
+#title .tag{color:var(--crust2);font-size:12px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;
+  margin-bottom:20px}
+#title .btns{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+#title .btn{max-width:250px;width:100%;flex:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="chip coins">🪙<b id="hCoins">0</b></div>
+    <div class="chip lvl">🥐<b id="hBakes">0</b></div>
+    <div class="chip">⭐<b id="hStars">0</b></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="bShop">🛒</button>
+    <button class="icbtn" id="bHelp">？</button>
+    <button class="icbtn" id="bSound">🔊</button>
+  </div>
+
+  <div id="recipeBar">
+    <div class="em" id="rEm">🧺</div>
+    <div class="tx"><b id="rName">Choose something to bake</b><div id="steps"></div></div>
+    <button id="quitBake" style="display:none">✕</button>
+  </div>
+
+  <div id="benchWrap">
+    <canvas id="bench"></canvas>
+    <div id="benchMsg"></div>
+    <div id="benchSub"></div>
+  </div>
+
+  <div id="band">
+    <div id="track"><div id="trackFill"></div><div id="trackZone"></div><div id="trackMark"></div>
+      <div id="trackTxt"></div></div>
+    <div id="beatDots"></div>
+    <button id="actBtn">Take out</button>
+  </div>
+
+  <div id="pantryWrap">
+    <div id="pantryLbl">Display case</div>
+    <div id="caseRow"></div>
+    <div id="pantry"></div>
+  </div>
+
+  <div id="ghost"></div>
+  <div id="toast"></div>
+  <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+  <div id="title">
+    <div class="logo">🥐</div>
+    <h1>Butterfold</h1>
+    <div class="tag">A very small bakery</div>
+    <div class="btns">
+      <button class="btn pri" id="tPlay">Tie the apron</button>
+      <button class="btn" id="tHelp">How it works</button>
+      <button class="btn" id="tReset" style="display:none">Start over</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   Butterfold — drag the ingredients in, then hit the beats:
+   knead, fold, proof, score, bake. Everything is a small window of time.
+   ========================================================================== */
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rnd = (a,b) => a + Math.random()*(b-a);
+const lerp = (a,b,t) => a + (b-a)*t;
+const SAVE_KEY = 'butterfold.save.v1';
+
+/* ------------------------------ pantry ------------------------------ */
+const ING = {
+  flour:  {n:'Flour',    em:'🌾', c:[239,227,200]},
+  water:  {n:'Water',    em:'💧', c:[196,222,236]},
+  salt:   {n:'Salt',     em:'🧂', c:[250,250,246]},
+  yeast:  {n:'Yeast',    em:'🫧', c:[232,220,192]},
+  butter: {n:'Butter',   em:'🧈', c:[244,217,140]},
+  milk:   {n:'Milk',     em:'🥛', c:[246,241,230]},
+  sugar:  {n:'Sugar',    em:'🍬', c:[247,242,228]},
+  egg:    {n:'Egg',      em:'🥚', c:[243,210,122]},
+  cinn:   {n:'Cinnamon', em:'🍂', c:[181,118, 63]},
+  choc:   {n:'Chocolate',em:'🍫', c:[107, 67, 42]},
+  rose:   {n:'Rosemary', em:'🌿', c:[127,160,106]},
+  oil:    {n:'Olive oil',em:'🫒', c:[201,192,110]},
+  starter:{n:'Starter',  em:'🫙', c:[222,208,172]},
+  honey:  {n:'Honey',    em:'🍯', c:[226,169, 63]},
+  berry:  {n:'Berries',  em:'🫐', c:[122, 75,125]},
+  cheese: {n:'Cheese',   em:'🧀', c:[236,198, 90]},
+};
+
+/* steps: add | knead(n) | fold(n) | proof | score | bake | finish(n) */
+const RECIPES = [
+  {id:'loaf',  n:'Cottage Loaf', em:'🍞', need:0,  price:16,
+   ing:['flour','water','salt','yeast'],
+   steps:[{k:'add'},{k:'knead',n:5},{k:'proof',sp:1},{k:'score'},{k:'bake',sp:1}]},
+  {id:'cookie',n:'Choc Cookies', em:'🍪', need:2,  price:20,
+   ing:['flour','butter','sugar','egg','choc'],
+   steps:[{k:'add'},{k:'knead',n:4},{k:'finish',n:5},{k:'bake',sp:1.15}]},
+  {id:'focac', n:'Focaccia',     em:'🫓', need:5,  price:26,
+   ing:['flour','water','oil','salt','rose'],
+   steps:[{k:'add'},{k:'fold',n:3},{k:'proof',sp:1.1},{k:'finish',n:6},{k:'bake',sp:1.1}]},
+  {id:'roll',  n:'Cinnamon Roll',em:'🍥', need:9,  price:32,
+   ing:['flour','milk','butter','sugar','cinn'],
+   steps:[{k:'add'},{k:'knead',n:5},{k:'fold',n:3},{k:'proof',sp:1.15},{k:'bake',sp:1.2},{k:'finish',n:4}]},
+  {id:'crois', n:'Croissant',    em:'🥐', need:14, price:40,
+   ing:['flour','butter','milk','yeast','egg'],
+   steps:[{k:'add'},{k:'fold',n:5},{k:'proof',sp:1.2},{k:'bake',sp:1.25}]},
+  {id:'sour',  n:'Sourdough',    em:'🥖', need:20, price:48,
+   ing:['flour','water','salt','starter'],
+   steps:[{k:'add'},{k:'fold',n:4},{k:'proof',sp:.85},{k:'score'},{k:'bake',sp:1.3}]},
+  {id:'brio',  n:'Brioche',      em:'🍮', need:27, price:56,
+   ing:['flour','egg','butter','sugar','yeast','milk'],
+   steps:[{k:'add'},{k:'knead',n:7},{k:'proof',sp:1.25},{k:'finish',n:3},{k:'bake',sp:1.3}]},
+  {id:'tart',  n:'Berry Tart',   em:'🥧', need:35, price:66,
+   ing:['flour','butter','sugar','egg','berry','honey'],
+   steps:[{k:'add'},{k:'knead',n:5},{k:'score'},{k:'bake',sp:1.35},{k:'finish',n:7}]},
+];
+
+const UPGRADES = [
+  {id:'stone', n:'Stone oven',     em:'🧱', max:3, cost:l=>90*(l+1),
+   d:l=>`Golden window ${20+l*18}% → ${20+(l+1)*18}% wider.`},
+  {id:'box',   n:'Proofing box',   em:'📦', max:2, cost:l=>110*(l+1),
+   d:l=>`Rise window ${25+l*25}% → ${25+(l+1)*25}% wider.`},
+  {id:'marble',n:'Marble bench',   em:'⬜', max:2, cost:l=>80*(l+1),
+   d:()=>'Kneading and folding judge you more kindly.'},
+  {id:'sign',  n:'Window sign',    em:'🪧', max:3, cost:l=>140*(l+1),
+   d:l=>`+${(l+1)*15}% on every sale.`},
+];
+
+/* ------------------------------ state ------------------------------ */
+let S = {coins:0, bakes:0, stars:0, up:{}, best:{}, sound:true};
+let B = null;                       // the bake in progress
+let running = false, lastT = 0, T = 0;
+
+const lv = id => S.up[id] || 0;
+const ovenBand = () => .13 * (1 + lv('stone')*.18*1.4);
+const proofBand = () => .12 * (1 + lv('box')*.25*1.6);
+const forgive = () => 1 + lv('marble')*.16;
+const priceMul = () => 1 + lv('sign')*.15;
+const unlocked = r => S.bakes >= r.need;
+
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){} }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if(d && typeof d === 'object'){ S = Object.assign(S, d); S.up = S.up||{}; S.best = S.best||{}; return true; }
+  }catch(e){}
+  return false;
+}
+
+/* ------------------------------ audio ------------------------------ */
+let AC = null;
+function beep(f, d, t, v){
+  if(!S.sound) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = t||'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, AC.currentTime);
+    g.gain.linearRampToValueAtTime(v||.07, AC.currentTime+.012);
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime+(d||.15));
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+(d||.15)+.02);
+  }catch(e){}
+}
+const sfx = {
+  tap:  ()=>beep(440,.06,'triangle',.05),
+  drop: ()=>beep(220,.16,'sine',.07),
+  puff: ()=>beep(120,.2,'sawtooth',.04),
+  hit:  ()=>beep(720,.08,'triangle',.06),
+  perf: ()=>{beep(880,.08,'sine',.06); setTimeout(()=>beep(1320,.14,'sine',.06),70);},
+  miss: ()=>beep(150,.22,'square',.04),
+  ding: ()=>{beep(660,.12,'sine',.06); setTimeout(()=>beep(990,.24,'sine',.06),110);},
+  win:  ()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.18,'sine',.06),i*95));},
+  coin: ()=>beep(1040,.1,'square',.04),
+};
+
+/* ------------------------------ canvas ------------------------------ */
+const cv = $('#bench'), ctx = cv.getContext('2d');
+let W=0, H=0, DPR=1;
+function sizeCanvas(){
+  const r = $('#benchWrap').getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = Math.max(50, r.width); H = Math.max(50, r.height);
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', ()=>{ sizeCanvas(); });
+
+let puffs = [];
+function puff(x,y,col,n){
+  for(let i=0;i<(n||10);i++){
+    const a = rnd(0,6.283), s = rnd(.4,2.6);
+    puffs.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-.6,r:rnd(2,6),life:1,dec:rnd(.014,.03),col:col||'#efe3c8'});
+  }
+}
+function drawPuffs(dt){
+  for(let i=puffs.length-1;i>=0;i--){
+    const p = puffs[i];
+    p.life -= p.dec*dt*60;
+    if(p.life<=0){ puffs.splice(i,1); continue; }
+    p.vy += .05*dt*60; p.x += p.vx*dt*60; p.y += p.vy*dt*60;
+    ctx.globalAlpha = p.life*.85; ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* dough blob */
+function doughColor(){
+  if(!B) return [239,227,200];
+  const used = B.added.length ? B.added : ['flour'];
+  let r=0,g=0,b=0;
+  used.forEach(k => { const c = ING[k].c; r+=c[0]; g+=c[1]; b+=c[2]; });
+  let col = [r/used.length, g/used.length, b/used.length];
+  // browning during the bake
+  const br = B.brown || 0;
+  const target = br > 1 ? [58,34,20] : [176,110,52];
+  const t = clamp(br, 0, 1.35) * (br > 1 ? 1 : .85);
+  return col.map((v,i) => lerp(v, target[i], clamp(t,0,1)));
+}
+function drawDough(t){
+  const cx = W/2, cy = H*0.55;
+  const base = Math.min(W,H) * 0.24;
+  const rise = 1 + (B ? B.rise*0.42 : 0);
+  const R = base * rise * (B ? B.squash : 1);
+  const col = doughColor();
+  const rgb = `rgb(${col[0]|0},${col[1]|0},${col[2]|0})`;
+  const dark = `rgb(${col[0]*.72|0},${col[1]*.72|0},${col[2]*.72|0})`;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(B ? B.rot : 0);
+  // shadow
+  ctx.globalAlpha = .3; ctx.fillStyle = '#1a0f08';
+  ctx.beginPath(); ctx.ellipse(0, R*0.82, R*1.06, R*0.3, 0, 0, 6.283); ctx.fill();
+  ctx.globalAlpha = 1;
+  // blob
+  ctx.beginPath();
+  const N = 44;
+  for(let i=0;i<=N;i++){
+    const a = i/N*6.283;
+    const wob = 1 + Math.sin(a*3 + t*1.1)*0.035 + Math.sin(a*5 - t*.7)*0.022
+              + (B ? Math.sin(a*7 + B.kneads*1.7)*0.02*B.kneadWobble : 0);
+    const rr = R * wob * (1 - (B ? B.flat : 0)*0.34*Math.abs(Math.sin(a)));
+    const x = Math.cos(a)*rr, y = Math.sin(a)*rr*0.82;
+    i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+  }
+  ctx.closePath();
+  const grd = ctx.createRadialGradient(-R*.3,-R*.4,R*.1,0,0,R*1.2);
+  grd.addColorStop(0, `rgb(${Math.min(255,col[0]*1.12)|0},${Math.min(255,col[1]*1.12)|0},${Math.min(255,col[2]*1.12)|0})`);
+  grd.addColorStop(1, dark);
+  ctx.fillStyle = grd; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = 2; ctx.stroke();
+
+  // flour speckle
+  ctx.globalAlpha = .18; ctx.fillStyle = '#fff';
+  for(let i=0;i<16;i++){
+    const a = (i*2.399), rr = R*Math.sqrt((i%7)/7)*.85;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*rr, Math.sin(a)*rr*.8, 1.6, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // score marks
+  if(B && B.scoreLine){
+    ctx.strokeStyle = 'rgba(60,32,16,.8)'; ctx.lineWidth = 5; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(B.scoreLine.x1-cx, B.scoreLine.y1-cy);
+    ctx.lineTo(B.scoreLine.x2-cx, B.scoreLine.y2-cy);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,240,210,.55)'; ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  // toppings
+  if(B) B.tops.forEach(p => {
+    ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = .35; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(p.x-p.r*.3, p.y-p.r*.3, p.r*.4, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+  ctx.restore();
+  return {cx, cy, R};
+}
+
+function draw(dt){
+  ctx.clearRect(0,0,W,H);
+  // bench wood grain
+  ctx.globalAlpha = .07; ctx.strokeStyle = '#f7ecd9'; ctx.lineWidth = 1;
+  for(let y=18;y<H;y+=26){
+    ctx.beginPath(); ctx.moveTo(0,y);
+    for(let x=0;x<=W;x+=18) ctx.lineTo(x, y + Math.sin((x+y)*0.03)*2.2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  if(!B){ drawPuffs(dt); return; }
+  const st = curStep();
+  const geo = drawDough(T);
+
+  if(st && st.k === 'add'){
+    ctx.setLineDash([7,7]);
+    ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(geo.cx, geo.cy, geo.R*1.55, geo.R*1.3, 0, 0, 6.283); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if(st && st.k === 'knead'){
+    const ph = B.beatPhase;
+    const rr = lerp(geo.R*2.0, geo.R*0.72, ph);
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(geo.cx, geo.cy, rr, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = 'rgba(143,201,138,.95)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(geo.cx, geo.cy, geo.R*0.95, 0, 6.283); ctx.stroke();
+  }
+  if(st && st.k === 'fold'){
+    const d = B.foldDir, len = Math.min(W,H)*0.28;
+    const ax = geo.cx - d.x*len, ay = geo.cy - d.y*len;
+    const bx = geo.cx + d.x*len, by = geo.cy + d.y*len;
+    const pulse = .5 + .5*Math.sin(T*4);
+    ctx.strokeStyle = `rgba(240,201,143,${.35+pulse*.45})`; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.setLineDash([12,10]); ctx.lineDashOffset = -T*30;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+    ctx.setLineDash([]);
+    // arrow head
+    ctx.fillStyle = `rgba(240,201,143,${.6+pulse*.4})`;
+    const a = Math.atan2(d.y, d.x);
+    ctx.save(); ctx.translate(bx,by); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(-8,9); ctx.lineTo(-8,-9); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  if(st && st.k === 'score'){
+    const g = B.guide;
+    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 3;
+    ctx.setLineDash([9,9]); ctx.lineDashOffset = -T*20;
+    ctx.beginPath(); ctx.moveTo(g.x1,g.y1); ctx.lineTo(g.x2,g.y2); ctx.stroke();
+    ctx.setLineDash([]);
+    if(B.drag){
+      ctx.strokeStyle = 'rgba(143,201,138,.9)'; ctx.lineWidth = 4; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(B.drag.x1,B.drag.y1); ctx.lineTo(B.drag.x2,B.drag.y2); ctx.stroke();
+    }
+  }
+  if(st && st.k === 'finish'){
+    B.spots.forEach(s => {
+      if(s.hit) return;
+      const pulse = .6 + .4*Math.sin(T*5 + s.ph);
+      ctx.strokeStyle = `rgba(255,255,255,${.35*pulse})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(s.x, s.y, 15*pulse, 0, 6.283); ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,255,${.14*pulse})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, 12, 0, 6.283); ctx.fill();
+    });
+  }
+  if(st && st.k === 'bake'){
+    // oven glow
+    const g2 = ctx.createRadialGradient(W/2, H*0.55, 10, W/2, H*0.55, Math.max(W,H)*.7);
+    g2.addColorStop(0, `rgba(255,150,40,${.12 + B.brown*.16})`);
+    g2.addColorStop(1, 'rgba(255,90,20,0)');
+    ctx.fillStyle = g2; ctx.fillRect(0,0,W,H);
+    // oven bars
+    ctx.globalAlpha = .3; ctx.strokeStyle = '#120c09'; ctx.lineWidth = 6;
+    for(let y=H*.18;y<H;y+=Math.max(34,H*.19)){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  if(st && st.k === 'proof'){
+    ctx.globalAlpha = .12 + .06*Math.sin(T*2);
+    ctx.fillStyle = '#fff5dd';
+    ctx.beginPath(); ctx.ellipse(W/2, H*.55, geo.R*1.9, geo.R*1.6, 0, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  drawPuffs(dt);
+}
+
+/* ------------------------------ bake flow ------------------------------ */
+function curStep(){ return B ? B.recipe.steps[B.si] : null; }
+
+function startBake(r){
+  B = {
+    recipe:r, si:-1, scores:[], added:[], wrong:0,
+    rise:0, brown:0, squash:1, rot:0, flat:0, kneadWobble:0,
+    kneads:0, beatPhase:0, beatN:0, beatHits:[], beatSpeed:1,
+    folds:0, foldDir:{x:1,y:0}, guide:null, drag:null, scoreLine:null,
+    spots:[], tops:[], trackVal:0, trackDir:1, done:false,
+  };
+  $('#rEm').textContent = r.em;
+  $('#rName').textContent = r.n;
+  $('#quitBake').style.display = '';
+  renderPantry(); renderSteps();
+  nextStep();
+  if(!running){ running = true; lastT = performance.now(); requestAnimationFrame(loop); }
+}
+function renderSteps(){
+  const el = $('#steps');
+  if(!B){ el.innerHTML = ''; return; }
+  el.innerHTML = B.recipe.steps.map((s,i) => {
+    const label = {add:'ingredients',knead:'knead',fold:'fold',proof:'prove',score:'score',
+                   bake:'bake',finish:'finish'}[s.k];
+    return `<div class="stepChip ${i < B.si ? 'done' : i === B.si ? 'now' : ''}">${label}</div>`;
+  }).join('');
+}
+function nextStep(){
+  B.si++;
+  B.drag = null;
+  B.resolving = false;      // a step is resolved exactly once, however it was triggered
+  $('#track').classList.remove('on');
+  $('#actBtn').classList.remove('on');
+  $('#beatDots').innerHTML = '';
+  renderSteps(); renderPantry();
+  if(B.si >= B.recipe.steps.length){ finishBake(); return; }
+  const st = curStep();
+  if(st.k === 'add'){
+    say('Drag in the ingredients', B.recipe.ing.map(i=>ING[i].n).join(' · '));
+  }else if(st.k === 'knead'){
+    B.beatN = 0; B.beatHits = []; B.beatPhase = 0; B.beatSpeed = 1;
+    say('Knead on the beat', 'tap when the ring meets the dough');
+    dots(st.n);
+  }else if(st.k === 'fold'){
+    B.folds = 0; newFold();
+    say('Fold the dough', 'swipe along the arrow');
+    dots(st.n);
+  }else if(st.k === 'proof'){
+    B.rise = 0;
+    say('Let it prove', 'tap when the rise sits in the window');
+    trackOn(proofBand(), 'Rise');
+    $('#actBtn').textContent = '🫱 Take it';
+    $('#actBtn').classList.add('on');
+  }else if(st.k === 'score'){
+    newGuide();
+    say('Score the top', 'drag one clean line along the guide');
+  }else if(st.k === 'bake'){
+    B.brown = 0;
+    say('Into the oven', 'pull it out while it is golden');
+    trackOn(ovenBand(), 'Bake');
+    $('#actBtn').textContent = '🧤 Take out';
+    $('#actBtn').classList.add('on');
+  }else if(st.k === 'finish'){
+    newSpots(st.n);
+    say(B.recipe.id === 'tart' ? 'Arrange the fruit' : 'Finish the top', 'tap each glowing spot');
+  }
+}
+function say(a, b){ $('#benchMsg').textContent = a; $('#benchSub').textContent = b || ''; }
+function dots(n){
+  $('#beatDots').innerHTML = Array.from({length:n}, ()=>'<div class="bd"></div>').join('');
+}
+function markDot(i, cls){
+  const d = $('#beatDots').children[i];
+  if(d) d.className = 'bd ' + cls;
+}
+function trackOn(band, label){
+  const t = $('#track');
+  t.classList.add('on');
+  const centre = 0.74;
+  B.zoneLo = centre - band; B.zoneHi = centre + band;
+  $('#trackZone').style.left = (B.zoneLo*100) + '%';
+  $('#trackZone').style.width = ((B.zoneHi-B.zoneLo)*100) + '%';
+  $('#trackTxt').textContent = label;
+}
+
+function newFold(){
+  const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:.7,y:.7},{x:-.7,y:.7},{x:.7,y:-.7},{x:-.7,y:-.7}];
+  B.foldDir = dirs[Math.floor(Math.random()*dirs.length)];
+}
+function newGuide(){
+  const cx = W/2, cy = H*0.55, R = Math.min(W,H)*0.24 * (1 + B.rise*0.42);
+  const a = rnd(-0.7, 0.7) + (Math.random()<.5 ? 0 : 1.57);
+  B.guide = {x1: cx - Math.cos(a)*R*.85, y1: cy - Math.sin(a)*R*.7,
+             x2: cx + Math.cos(a)*R*.85, y2: cy + Math.sin(a)*R*.7};
+}
+function newSpots(n){
+  const cx = W/2, cy = H*0.55, R = Math.min(W,H)*0.24 * (1 + B.rise*0.42);
+  B.spots = [];
+  for(let i=0;i<n;i++){
+    const a = (i/n)*6.283 + rnd(-.3,.3), rr = R*rnd(.15,.72);
+    B.spots.push({x: cx+Math.cos(a)*rr, y: cy+Math.sin(a)*rr*.82, hit:false, ph:rnd(0,6.283)});
+  }
+  B.spotT = 0; B.spotHits = 0;
+}
+
+/* ---- input on the bench ---- */
+let down = null;
+cv.addEventListener('pointerdown', e => {
+  if(!B) return;
+  cv.setPointerCapture(e.pointerId);
+  const r = cv.getBoundingClientRect();
+  down = {x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now()};
+  const st = curStep();
+  if(st && st.k === 'score'){ B.drag = {x1:down.x, y1:down.y, x2:down.x, y2:down.y}; }
+});
+cv.addEventListener('pointermove', e => {
+  if(!B || !down) return;
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  if(B.drag){ B.drag.x2 = x; B.drag.y2 = y; }
+});
+cv.addEventListener('pointerup', e => {
+  if(!B || !down) return;
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const dx = x - down.x, dy = y - down.y;
+  const dist = Math.hypot(dx, dy);
+  const st = curStep();
+  down = null;
+  if(!st) return;
+
+  if(st.k === 'knead' && dist < 30){ kneadTap(); }
+  else if(st.k === 'fold' && dist > 34){ foldSwipe(dx, dy, dist); }
+  else if(st.k === 'score' && B.drag){ scoreDrag(); }
+  else if(st.k === 'finish' && dist < 30){ finishTap(x, y); }
+  else if(st.k === 'proof' && dist < 30){ takeProof(); }
+  else if(st.k === 'bake' && dist < 30){ takeBake(); }
+});
+cv.addEventListener('pointercancel', ()=>{ down = null; if(B) B.drag = null; });
+
+function kneadTap(){
+  if(B.resolving) return;
+  const st = curStep();
+  const acc = 1 - Math.abs(B.beatPhase - 1) * 2.2 / forgive();
+  const a = clamp(acc, 0, 1);
+  B.beatHits.push(a);
+  markDot(B.beatN, a > .8 ? 'hit' : a > .45 ? 'ok' : 'miss');
+  B.beatN++;
+  B.squash = 0.86; B.kneadWobble = 1; B.kneads++;
+  const cx = W/2, cy = H*0.55;
+  puff(cx + rnd(-30,30), cy + rnd(-20,20), '#efe3c8', a > .8 ? 12 : 5);
+  if(a > .8) sfx.perf(); else if(a > .45) sfx.hit(); else sfx.miss();
+  B.beatPhase = 0;
+  B.beatSpeed = 1 + B.beatN*0.06;
+  if(B.beatN >= st.n){
+    const avg = B.beatHits.reduce((s,v)=>s+v,0) / B.beatHits.length;
+    B.scores.push({n:'Knead', v:avg});
+    B.resolving = true;
+    setTimeout(nextStep, 420);
+  }
+}
+function foldSwipe(dx, dy, dist){
+  if(B.resolving) return;
+  const st = curStep();
+  const len = Math.hypot(B.foldDir.x, B.foldDir.y);
+  const dot = (dx*B.foldDir.x + dy*B.foldDir.y) / (dist*len);
+  const acc = clamp((dot - 0.35) / 0.6, 0, 1) * clamp(dist/70, .4, 1);
+  const a = clamp(acc * forgive(), 0, 1);
+  markDot(B.folds, a > .8 ? 'hit' : a > .45 ? 'ok' : 'miss');
+  B.beatHits.push(a);
+  B.folds++;
+  B.rot += (Math.random()<.5?-1:1) * 0.42;
+  B.flat = 0.5; B.squash = 1.06;
+  const cx = W/2, cy = H*0.55;
+  puff(cx + B.foldDir.x*40, cy + B.foldDir.y*40, '#efe3c8', a>.8?12:5);
+  if(a > .8) sfx.perf(); else if(a > .45) sfx.hit(); else sfx.miss();
+  if(B.folds >= st.n){
+    const arr = B.beatHits.slice(-st.n);
+    B.scores.push({n:'Fold', v: arr.reduce((s,v)=>s+v,0)/arr.length});
+    B.beatHits = [];
+    B.resolving = true;
+    setTimeout(nextStep, 420);
+  }else newFold();
+}
+function scoreDrag(){
+  if(B.resolving) return;
+  const g = B.guide, d = B.drag;
+  const gLen = Math.hypot(g.x2-g.x1, g.y2-g.y1);
+  const dLen = Math.hypot(d.x2-d.x1, d.y2-d.y1);
+  if(dLen < 24){ B.drag = null; return; }
+  const cosang = Math.abs(((g.x2-g.x1)*(d.x2-d.x1) + (g.y2-g.y1)*(d.y2-d.y1)) / (gLen*dLen));
+  const lenScore = clamp(1 - Math.abs(dLen - gLen)/gLen, 0, 1);
+  const midD = Math.hypot((d.x1+d.x2)/2 - (g.x1+g.x2)/2, (d.y1+d.y2)/2 - (g.y1+g.y2)/2);
+  const posScore = clamp(1 - midD/(gLen*.55), 0, 1);
+  const v = clamp((cosang*.45 + lenScore*.28 + posScore*.27) * forgive(), 0, 1);
+  B.resolving = true;
+  B.scoreLine = {x1:d.x1, y1:d.y1, x2:d.x2, y2:d.y2};
+  B.scores.push({n:'Score', v});
+  B.drag = null;
+  puff((d.x1+d.x2)/2, (d.y1+d.y2)/2, '#f7ecd9', 10);
+  if(v > .8){ sfx.perf(); flash('clean cut', 'good'); }
+  else if(v > .45){ sfx.hit(); flash('a bit crooked'); }
+  else { sfx.miss(); flash('ragged', 'bad'); }
+  setTimeout(nextStep, 520);
+}
+function finishTap(x, y){
+  if(B.resolving) return;
+  const st = curStep();
+  let best = null, bd = 1e9;
+  B.spots.forEach(s => { if(s.hit) return; const d = Math.hypot(s.x-x, s.y-y); if(d < bd){ bd = d; best = s; } });
+  if(!best || bd > 46){ sfx.miss(); B.spotHits = (B.spotHits||0); B.wrongTap = (B.wrongTap||0)+1; puff(x,y,'#c2544f',5); return; }
+  best.hit = true;
+  const acc = clamp(1 - bd/46, 0, 1);
+  B.beatHits.push(acc);
+  const cols = {tart:'#7a4b7d', roll:'#f6f1e6', focac:'#7fa06a', cookie:'#6b432a', brio:'#f3d27a'};
+  B.tops.push({x: best.x - W/2, y: best.y - H*0.55, r: rnd(5,8), c: cols[B.recipe.id] || '#f6f1e6'});
+  puff(best.x, best.y, '#fff', 7);
+  sfx.tap();
+  if(B.spots.every(s => s.hit)){
+    const arr = B.beatHits.slice(-st.n);
+    const pen = (B.wrongTap||0)*0.08;
+    B.scores.push({n:'Finish', v: clamp(arr.reduce((s,v)=>s+v,0)/arr.length - pen, 0, 1)});
+    B.beatHits = []; B.wrongTap = 0;
+    B.resolving = true;
+    sfx.ding();
+    setTimeout(nextStep, 420);
+  }
+}
+function takeProof(){
+  if(B.resolving) return;
+  B.resolving = true;
+  const v = windowScore(B.rise / 1.6);
+  B.scores.push({n:'Prove', v});
+  flash(v > .8 ? 'beautifully risen' : v > .45 ? 'nearly there' : (B.rise/1.6 > B.zoneHi ? 'over-proved' : 'under-proved'),
+        v > .8 ? 'good' : v > .45 ? '' : 'bad');
+  if(v > .8) sfx.perf(); else if(v > .45) sfx.hit(); else sfx.miss();
+  setTimeout(nextStep, 520);
+}
+function takeBake(){
+  if(B.resolving) return;
+  B.resolving = true;
+  const v = windowScore(B.brown / 1.6);
+  B.scores.push({n:'Bake', v});
+  flash(v > .8 ? 'golden!' : v > .45 ? 'close' : (B.brown/1.6 > B.zoneHi ? 'burnt' : 'pale'),
+        v > .8 ? 'good' : v > .45 ? '' : 'bad');
+  if(v > .8) sfx.perf(); else if(v > .45) sfx.hit(); else sfx.miss();
+  setTimeout(nextStep, 620);
+}
+function windowScore(p){
+  const lo = B.zoneLo, hi = B.zoneHi, mid = (lo+hi)/2, half = (hi-lo)/2;
+  const d = Math.abs(p - mid);
+  if(d <= half) return 1 - (d/half)*0.12;
+  const over = (d - half) / 0.26;
+  return clamp(1 - over*over - 0.12, 0, 1);
+}
+function flash(txt, kind){ say(txt, ''); toast(txt, kind); }
+$('#actBtn').addEventListener('click', () => {
+  const st = curStep();
+  if(!st) return;
+  if(st.k === 'proof') takeProof();
+  else if(st.k === 'bake') takeBake();
+});
+
+/* ---- ingredient dragging ---- */
+let dragIng = null;
+function renderPantry(){
+  const p = $('#pantry');
+  const st = curStep();
+  const showing = B && st && st.k === 'add';
+  $('#pantryLbl').textContent = showing ? 'Pantry — drag onto the bench' : 'Display case';
+  p.style.display = showing ? '' : 'none';
+  $('#caseRow').style.display = showing ? 'none' : '';
+  if(!showing){ renderCase(); return; }
+  const keys = Object.keys(ING);
+  p.innerHTML = keys.map(k => {
+    const need = B.recipe.ing.includes(k), done = B.added.includes(k);
+    return `<div class="ing ${need&&!done?'need':''} ${done?'done':''}" data-k="${k}">
+      <div class="em">${ING[k].em}</div><div class="nm">${ING[k].n}</div></div>`;
+  }).join('');
+  $$('#pantry .ing').forEach(el => {
+    el.addEventListener('pointerdown', ev => {
+      if(el.classList.contains('done')) return;
+      ev.preventDefault();
+      dragIng = {k: el.dataset.k, el};
+      el.classList.add('drag');
+      const g = $('#ghost');
+      g.textContent = ING[el.dataset.k].em;
+      g.style.display = 'block';
+      g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px';
+      el.setPointerCapture(ev.pointerId);
+      sfx.tap();
+    });
+    el.addEventListener('pointermove', ev => {
+      if(!dragIng) return;
+      const g = $('#ghost');
+      g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px';
+    });
+    el.addEventListener('pointerup', ev => {
+      if(!dragIng) return;
+      const k = dragIng.k;
+      dragIng.el.classList.remove('drag');
+      dragIng = null;
+      $('#ghost').style.display = 'none';
+      const r = $('#benchWrap').getBoundingClientRect();
+      if(ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom){
+        dropIngredient(k, ev.clientX - r.left, ev.clientY - r.top);
+      }
+    });
+    el.addEventListener('pointercancel', () => {
+      if(dragIng){ dragIng.el.classList.remove('drag'); dragIng = null; $('#ghost').style.display='none'; }
+    });
+  });
+}
+function renderCase(){
+  const c = $('#caseRow');
+  c.innerHTML = RECIPES.map(r => {
+    const ok = unlocked(r), best = S.best[r.id] || 0;
+    return `<div class="rcard ${ok?'':'locked'}" data-r="${r.id}">
+      <div class="em">${r.em}</div><div class="nm">${r.n}</div>
+      <div class="pr">${Math.round(r.price*priceMul())}🪙</div>
+      <div class="bstars">${best ? '★'.repeat(best) : ''}</div>
+      ${ok ? '' : `<div class="lk">🔒 ${r.need} bakes</div>`}</div>`;
+  }).join('');
+  $$('#caseRow .rcard').forEach(el => el.onclick = () => {
+    const r = RECIPES.find(x => x.id === el.dataset.r);
+    if(!unlocked(r)){ toast(`Bake ${r.need - S.bakes} more first`, 'bad'); sfx.miss(); return; }
+    if(B) return;
+    sfx.drop();
+    startBake(r);
+  });
+}
+function dropIngredient(k, x, y){
+  const st = curStep();
+  if(!st || st.k !== 'add') return;
+  if(B.added.includes(k)) return;
+  if(!B.recipe.ing.includes(k)){
+    B.wrong++;
+    puff(x, y, '#c2544f', 12);
+    sfx.puff();
+    toast('Not in this one', 'bad');
+    return;
+  }
+  B.added.push(k);
+  const c = ING[k].c;
+  puff(x, y, `rgb(${c[0]},${c[1]},${c[2]})`, 14);
+  sfx.drop();
+  renderPantry();
+  if(B.recipe.ing.every(i => B.added.includes(i))){
+    B.scores.push({n:'Mise en place', v: clamp(1 - B.wrong*0.18, 0, 1)});
+    B.resolving = true;
+    sfx.ding();
+    setTimeout(nextStep, 400);
+  }
+}
+
+/* ------------------------------ finish ------------------------------ */
+function finishBake(){
+  if(B.done) return;
+  B.done = true;
+  const r = B.recipe;
+  const q = B.scores.reduce((s,x)=>s+x.v, 0) / Math.max(1, B.scores.length);
+  const stars = q >= .88 ? 3 : q >= .64 ? 2 : q >= .38 ? 1 : 0;
+  const pay = Math.round(r.price * (0.4 + q*0.95) * priceMul());
+  S.coins += pay; S.bakes++; S.stars += stars;
+  if(stars > (S.best[r.id]||0)) S.best[r.id] = stars;
+  save(); renderHUD();
+  sfx.win(); sfx.coin();
+
+  const names = ['A brick, honestly.','Perfectly fine.','Really rather good.','The best one all week.'];
+  const lines = [
+    'It happens. The oven forgives.',
+    'Someone will be happy with this.',
+    'Crackling crust, soft crumb.',
+    'You will be thinking about this one tomorrow.'];
+  const rows = B.scores.map(s =>
+    `<div class="ln"><span>${s.n}</span><div class="mini"><i style="width:${(s.v*100).toFixed(0)}%"></i></div>` +
+    `<b>${Math.round(s.v*100)}</b></div>`).join('');
+  const newly = RECIPES.filter(x => x.need === S.bakes);
+
+  openSheet(`
+    <div class="shead"><h2>${r.em} ${r.n}</h2><p>Out of the oven</p></div>
+    <div class="sbody">
+      <div class="bigStars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>
+      <div class="gradeName">${names[stars]}</div>
+      <div class="gradeSub">${lines[stars]}</div>
+      <div class="statGrid" style="margin-top:14px">
+        <div class="stat"><small>Sold for</small><b>${pay}🪙</b></div>
+        <div class="stat"><small>Bakes</small><b>${S.bakes}</b></div>
+      </div>
+      <div class="breakdown">${rows}</div>
+      ${newly.length ? `<p style="margin-top:12px;color:#f0c24a;font-weight:900;font-size:13px">
+        New in the case: ${newly.map(x=>x.em+' '+x.n).join(', ')}</p>` : ''}
+    </div>
+    <div class="sfoot">
+      <button class="btn" id="sShop">🛒 Shop</button>
+      <button class="btn pri" id="sAgain">Back to the case</button>
+    </div>`);
+  $('#sAgain').onclick = () => { closeSheet(); clearBake(); };
+  $('#sShop').onclick = () => openShop(true);
+}
+function clearBake(){
+  B = null;
+  $('#rEm').textContent = '🧺';
+  $('#rName').textContent = 'Choose something to bake';
+  $('#steps').innerHTML = '';
+  $('#quitBake').style.display = 'none';
+  $('#track').classList.remove('on');
+  $('#actBtn').classList.remove('on');
+  $('#beatDots').innerHTML = '';
+  say('', '');
+  renderPantry();
+}
+$('#quitBake').onclick = () => {
+  if(!B) return;
+  if(!confirm('Throw this one out?')) return;
+  puff(W/2, H*.55, '#c2544f', 20);
+  clearBake();
+};
+
+/* ------------------------------ loop ------------------------------ */
+function loop(now){
+  if(!running) return;
+  const dt = Math.min(.05, (now-lastT)/1000);
+  lastT = now; T += dt;
+  step(dt);
+  draw(dt);
+  requestAnimationFrame(loop);
+}
+function step(dt){
+  if(!B) return;
+  B.squash += (1 - B.squash) * dt*8;
+  B.flat   += (0 - B.flat) * dt*3;
+  B.kneadWobble += (0 - B.kneadWobble) * dt*3;
+  const st = curStep();
+  if(!st) return;
+  if(B.resolving) return;
+  if(st.k === 'knead'){
+    B.beatPhase += dt * 0.85 * B.beatSpeed;
+    if(B.beatPhase > 1.35){
+      B.beatPhase = 0;
+      B.beatHits.push(0);
+      markDot(B.beatN, 'miss');
+      B.beatN++;
+      sfx.miss();
+      if(B.beatN >= st.n){
+        const avg = B.beatHits.reduce((s,v)=>s+v,0)/B.beatHits.length;
+        B.scores.push({n:'Knead', v:avg});
+        B.resolving = true;
+        setTimeout(nextStep, 400);
+      }
+    }
+  }else if(st.k === 'proof'){
+    B.rise += dt * 0.20 * st.sp;
+    updTrack(B.rise/1.6);
+    if(B.rise/1.6 > 1.25){ takeProof(); }
+  }else if(st.k === 'bake'){
+    B.brown += dt * 0.20 * st.sp;
+    updTrack(B.brown/1.6);
+    if(B.brown/1.6 > 1.3){ takeBake(); }
+  }
+}
+function updTrack(p){
+  $('#trackFill').style.width = clamp(p,0,1)*100 + '%';
+  $('#trackMark').style.left = clamp(p,0,1)*100 + '%';
+  const inZone = p >= B.zoneLo && p <= B.zoneHi;
+  $('#trackTxt').style.color = inZone ? '#bde5b8' : '';
+  $('#actBtn').style.filter = inZone ? 'brightness(1.18)' : '';
+}
+
+/* ------------------------------ shell ------------------------------ */
+function renderHUD(){
+  $('#hCoins').textContent = Math.floor(S.coins);
+  $('#hBakes').textContent = S.bakes;
+  $('#hStars').textContent = S.stars;
+}
+function toast(msg, kind){
+  const d = document.createElement('div');
+  d.className = 'tst ' + (kind||''); d.textContent = msg;
+  $('#toast').appendChild(d);
+  setTimeout(()=>d.remove(), 1500);
+}
+function openSheet(html){ $('#sheet').innerHTML = html; $('#scrim').classList.add('on'); }
+function closeSheet(){ $('#scrim').classList.remove('on'); }
+
+function openShop(fromEnd){
+  const rows = UPGRADES.map(u => {
+    const l = lv(u.id), maxed = l >= u.max, cost = u.cost(l), afford = S.coins >= cost;
+    return `<div class="row"><div class="ic">${u.em}</div>
+      <div class="tx"><b>${u.n} ${l?'· Lv'+l:''}</b><small>${maxed?'Fully upgraded.':u.d(l)}</small></div>
+      <button class="buy ${maxed?'max':afford?'':'no'}" data-u="${u.id}">${maxed?'MAX':cost+'🪙'}</button></div>`;
+  }).join('');
+  openSheet(`
+    <div class="shead"><h2>Supplier</h2><p>${Math.floor(S.coins)} coins</p></div>
+    <div class="sbody">${rows}
+      <p style="font-size:12px;color:#c0a893;margin-top:12px;line-height:1.5">
+        New recipes arrive on their own — just keep baking.</p></div>
+    <div class="sfoot"><button class="btn pri" id="sClose">${fromEnd?'Back to the case':'Close'}</button></div>`);
+  $$('#sheet .buy').forEach(b => b.onclick = () => {
+    const u = UPGRADES.find(x => x.id === b.dataset.u), l = lv(u.id);
+    if(l >= u.max) return;
+    const cost = u.cost(l);
+    if(S.coins < cost){ toast('Not enough coins', 'bad'); sfx.miss(); return; }
+    S.coins -= cost; S.up[u.id] = l+1; save(); sfx.coin(); toast(u.n+' ✓','good');
+    renderHUD(); openShop(fromEnd);
+  });
+  $('#sClose').onclick = () => { closeSheet(); if(fromEnd) clearBake(); };
+}
+function helpSheet(){
+  openSheet(`
+    <div class="shead"><h2>How it works</h2><p>Five kinds of beat</p></div>
+    <div class="sbody">
+      <ol class="help">
+        <li><b>Ingredients.</b> Drag each one from the pantry onto the bench. Wrong ones cost you.</li>
+        <li><b>Knead.</b> A ring closes in on the dough. Tap the bench the moment it lands on the green edge — and it speeds up.</li>
+        <li><b>Fold.</b> Swipe along the arrow, all the way through.</li>
+        <li><b>Prove.</b> The dough rises on its own. Take it while the marker sits in the green window; leave it and it over-proves.</li>
+        <li><b>Score.</b> Drag one clean line along the dashed guide — direction, length and position all count.</li>
+        <li><b>Bake.</b> Same window, less patience. Pull it out golden.</li>
+        <li><b>Finish.</b> Tap each glowing spot to top it.</li>
+      </ol>
+      <p style="font-size:13px;color:#c0a893;line-height:1.55">
+        Every step is scored, and the average sets your stars and your price. Bake often — the case fills up as you go.</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Got it</button></div>`);
+  $('#sOk').onclick = closeSheet;
+}
+$('#scrim').addEventListener('click', e => { if(e.target === $('#scrim')) closeSheet(); });
+$('#bShop').onclick = () => openShop(false);
+$('#bHelp').onclick = helpSheet;
+$('#bSound').onclick = () => {
+  S.sound = !S.sound; save();
+  $('#bSound').textContent = S.sound ? '🔊' : '🔇';
+  $('#bSound').classList.toggle('off', !S.sound);
+};
+$('#tHelp').onclick = helpSheet;
+$('#tPlay').onclick = () => {
+  $('#title').classList.add('hide');
+  sizeCanvas(); renderCase();
+  running = true; lastT = performance.now(); requestAnimationFrame(loop);
+};
+$('#tReset').onclick = () => {
+  if(!confirm('Clear the bakery and start over?')) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+};
+
+const had = load();
+$('#bSound').textContent = S.sound ? '🔊' : '🔇';
+$('#bSound').classList.toggle('off', !S.sound);
+if(had && S.bakes > 0){
+  $('#tPlay').textContent = 'Back to the bakery';
+  $('#tReset').style.display = '';
+}
+renderHUD(); renderCase();
+sizeCanvas();
+setTimeout(sizeCanvas, 120);
+</script>
+</body>
+</html>

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0A1018">
+<title>Soundscape Mixer</title>
+<style>
+:root{
+  --bg:#0A1018; --bg2:#131E2B; --panel:rgba(255,255,255,.06); --panel-line:rgba(255,255,255,.10);
+  --text:#E8EEF5; --muted:#8FA3B8;
+  --rain:#6FB3E0; --fire:#FF8A3D; --waves:#3FC7B4; --night:#A98CE0;
+  --radius:18px; --radius-sm:12px;
+  --font-display:'Avenir Next','Segoe UI',system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--font-body); color:var(--text); background:var(--bg);
+  overflow:hidden; overscroll-behavior:none;
+  -webkit-user-select:none; user-select:none;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--rain);outline-offset:3px}
+
+#scene{position:fixed;inset:0;z-index:1;display:block}
+
+#app{position:relative;z-index:2;height:100dvh;display:flex;flex-direction:column;pointer-events:none}
+#app>*{pointer-events:auto}
+
+.topbar{
+  display:flex;align-items:center;gap:12px;padding:14px 18px;
+  background:linear-gradient(180deg,rgba(10,16,24,.85),rgba(10,16,24,0));
+}
+.brand{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:.2px}
+.brand .sub{display:block;font-family:var(--font-body);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:1.4px;text-transform:uppercase}
+.spacer{flex:1}
+.iconbtn{
+  width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:17px;
+  background:var(--panel);border:1px solid var(--panel-line);transition:transform .15s ease,background .2s ease;
+}
+.iconbtn:hover{background:rgba(255,255,255,.12)}
+.iconbtn:active{transform:scale(.92)}
+
+/* ---------- start gate ----------
+   Browsers refuse to start an AudioContext without a gesture, so the mixer
+   opens behind this rather than silently producing nothing. */
+#gate{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:rgba(6,10,16,.86);backdrop-filter:blur(6px);text-align:center;padding:24px}
+#gate.hidden{display:none}
+#gate h1{font-family:var(--font-display);font-size:clamp(28px,7vw,44px);margin:0 0 10px;font-weight:800}
+#gate p{color:var(--muted);max-width:34ch;margin:0 auto 26px;line-height:1.6}
+.btn{
+  padding:14px 30px;border-radius:999px;font-weight:700;font-size:16px;
+  background:linear-gradient(135deg,var(--rain),var(--waves));color:#06121B;
+  box-shadow:0 10px 30px rgba(63,199,180,.28);transition:transform .15s ease;
+}
+.btn:active{transform:scale(.96)}
+
+/* ---------- mixer ---------- */
+.mixer{
+  margin-top:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  display:grid;gap:10px;
+  background:linear-gradient(0deg,rgba(8,13,20,.86) 55%,rgba(8,13,20,0));
+}
+.channels{display:grid;gap:10px;max-width:640px;width:100%;margin:0 auto}
+.ch{
+  display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:12px;
+  padding:11px 14px;border-radius:var(--radius);
+  background:var(--panel);border:1px solid var(--panel-line);
+  transition:border-color .25s ease,background .25s ease;
+}
+.ch[data-on="1"]{background:rgba(255,255,255,.10)}
+.ch .glyph{
+  width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:20px;
+  background:var(--tint,rgba(255,255,255,.1));color:#08121A;
+  transition:box-shadow .3s ease,opacity .3s ease;opacity:.45;
+}
+.ch[data-on="1"] .glyph{opacity:1;box-shadow:0 0 22px var(--tint)}
+.ch .meta{min-width:0}
+.ch .name{font-family:var(--font-display);font-weight:700;font-size:15px}
+.ch .hint{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch input[type=range]{
+  grid-column:1/-1;width:100%;height:30px;margin:2px 0 0;background:none;-webkit-appearance:none;appearance:none;
+}
+.ch input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:rgba(255,255,255,.14)}
+.ch input[type=range]::-moz-range-track{height:6px;border-radius:99px;background:rgba(255,255,255,.14)}
+.ch input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:22px;height:22px;border-radius:50%;margin-top:-8px;
+  background:var(--tint);box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:grab;
+}
+.ch input[type=range]::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:var(--tint);cursor:grab}
+.pct{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:36px;text-align:right}
+
+.presets{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:640px;margin:2px auto 0}
+.chip{
+  padding:8px 15px;border-radius:999px;font-size:12.5px;font-weight:600;
+  background:var(--panel);border:1px solid var(--panel-line);color:var(--muted);
+  transition:color .2s ease,border-color .2s ease;
+}
+.chip:hover,.chip.on{color:var(--text);border-color:rgba(255,255,255,.28)}
+
+@media (max-width:420px){
+  .ch{grid-template-columns:38px 1fr auto;padding:9px 11px;gap:10px}
+  .ch .glyph{width:38px;height:38px;font-size:17px}
+  .ch .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .btn:active,.iconbtn:active{transform:none}
+}
+</style>
+</head>
+<body>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">Soundscape<span class="sub">Mixer</span></div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnMute" aria-label="Mute all" title="Mute">&#128266;</button>
+  </div>
+
+  <div class="mixer">
+    <div class="presets" id="presets"></div>
+    <div class="channels" id="channels"></div>
+  </div>
+</div>
+
+<div id="gate">
+  <div>
+    <h1>Soundscape Mixer</h1>
+    <p>Four weathers, no recordings — every sound here is generated live. Blend them and watch the scene answer.</p>
+    <button class="btn" id="btnStart">Begin listening</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Soundscape Mixer
+
+   Everything audible is synthesised in the browser: there is not one
+   sample file in this folder. Rain, fire and waves are all shaped from
+   the same noise buffer through different filters and envelopes, and
+   night is a drone plus scheduled cricket chirps. That is the whole
+   reason this game is small — the "assets" are a few hundred lines of
+   filter settings.
+
+   The visualiser is not decoration bolted on afterwards: each layer
+   reads its own channel's live analyser, so what you see is what that
+   channel is actually doing, not a loop timed to look plausible.
+   ===================================================================== */
+
+var STORE = 'soundscape.mix.v1';
+var TAU = Math.PI * 2;
+
+// Glyphs are code points rather than literal characters: the emoji here are
+// astral (above U+FFFF), so pasting them raw makes the file's encoding
+// load-bearing. fromCodePoint builds the surrogate pair itself.
+var CHANNELS = [
+  { id:'rain',  name:'Rain',  cp:0x1F327, tint:'#6FB3E0', hint:'Steady fall, soft roof' },
+  { id:'fire',  name:'Fire',  cp:0x1F525, tint:'#FF8A3D', hint:'Low burn and crackle' },
+  { id:'waves', name:'Waves', cp:0x1F30A, tint:'#3FC7B4', hint:'Slow swell, long breath' },
+  { id:'night', name:'Night', cp:0x1F319, tint:'#A98CE0', hint:'Crickets under a drone' }
+];
+CHANNELS.forEach(function(c){ c.glyph = String.fromCodePoint(c.cp); });
+
+var PRESETS = {
+  'Downpour':   { rain:.85, fire:.10, waves:.15, night:0   },
+  'Hearth':     { rain:.25, fire:.80, waves:0,   night:.15 },
+  'Shoreline':  { rain:0,   fire:.05, waves:.80, night:.25 },
+  'Camp':       { rain:.12, fire:.55, waves:.08, night:.60 },
+  'Silence':    { rain:0,   fire:0,   waves:0,   night:0   }
+};
+
+var levels = { rain:0, fire:0, waves:0, night:0 };
+try {
+  var saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+  if (saved) for (var k in levels) if (typeof saved[k] === 'number') levels[k] = saved[k];
+} catch (e) { /* first run, or storage disabled */ }
+
+var ctx = null, master = null, muted = false;
+var nodes = {};      // per-channel { gain, analyser, data }
+var started = false;
+
+/* ---------- noise ----------
+   One second of white noise, generated once and looped. Every noise-based
+   channel reads this same buffer through its own filter chain; generating
+   a fresh buffer per channel would cost memory for a difference nobody
+   can hear. */
+function noiseBuffer(audio){
+  var len = audio.sampleRate * 2;
+  var buf = audio.createBuffer(1, len, audio.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function looper(audio, buf){
+  var src = audio.createBufferSource();
+  src.buffer = buf; src.loop = true; src.start(0);
+  return src;
+}
+
+function channelOut(audio, id){
+  var g = audio.createGain();
+  g.gain.value = 0;
+  var an = audio.createAnalyser();
+  an.fftSize = 128;
+  an.smoothingTimeConstant = .82;
+  g.connect(an);
+  an.connect(master);
+  nodes[id] = { gain:g, analyser:an, data:new Uint8Array(an.frequencyBinCount), level:0 };
+  return g;
+}
+
+function buildRain(audio, buf){
+  var out = channelOut(audio, 'rain');
+  // Hiss: the body of the sound, a wide band well above the fire.
+  var hp = audio.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+  var bp = audio.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = .55;
+  looper(audio, buf).connect(hp); hp.connect(bp); bp.connect(out);
+
+  // Roof patter: the same noise, low-passed and wobbled, so the rain has
+  // weight under the hiss instead of sounding like radio static.
+  var body = audio.createBiquadFilter(); body.type = 'lowpass'; body.frequency.value = 520;
+  var bodyGain = audio.createGain(); bodyGain.gain.value = .55;
+  looper(audio, buf).connect(body); body.connect(bodyGain); bodyGain.connect(out);
+
+  var lfo = audio.createOscillator(); lfo.frequency.value = .09;
+  var lfoAmt = audio.createGain(); lfoAmt.gain.value = 260;
+  lfo.connect(lfoAmt); lfoAmt.connect(bp.frequency); lfo.start();
+  return out;
+}
+
+function buildFire(audio, buf){
+  var out = channelOut(audio, 'fire');
+  // Bed: heavily low-passed noise is the roar.
+  var lp = audio.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = .7;
+  var bedGain = audio.createGain(); bedGain.gain.value = .9;
+  looper(audio, buf).connect(lp); lp.connect(bedGain); bedGain.connect(out);
+
+  var lfo = audio.createOscillator(); lfo.frequency.value = .21;
+  var lfoAmt = audio.createGain(); lfoAmt.gain.value = 130;
+  lfo.connect(lfoAmt); lfoAmt.connect(lp.frequency); lfo.start();
+
+  // Crackle: short filtered bursts at random intervals. This is what makes
+  // it read as fire rather than as wind — a steady roar alone doesn't.
+  var crackleBus = audio.createGain(); crackleBus.gain.value = 1; crackleBus.connect(out);
+  function pop(){
+    if (!started) return;
+    var t = audio.currentTime;
+    var s = audio.createBufferSource(); s.buffer = buf;
+    s.playbackRate.value = .8 + Math.random() * .8;
+    var f = audio.createBiquadFilter(); f.type = 'bandpass';
+    f.frequency.value = 900 + Math.random() * 2600; f.Q.value = 4 + Math.random() * 6;
+    var g = audio.createGain();
+    var peak = .18 + Math.random() * .5;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + .004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + .05 + Math.random() * .12);
+    s.connect(f); f.connect(g); g.connect(crackleBus);
+    s.start(t); s.stop(t + .3);
+    setTimeout(pop, 40 + Math.random() * 420);
+  }
+  setTimeout(pop, 300);
+  return out;
+}
+
+function buildWaves(audio, buf){
+  var out = channelOut(audio, 'waves');
+  var lp = audio.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.Q.value = .6;
+  var swell = audio.createGain(); swell.gain.value = .35;
+  looper(audio, buf).connect(lp); lp.connect(swell); swell.connect(out);
+
+  // One slow LFO drives both loudness and brightness, which is what a
+  // breaking wave actually does — it gets louder *and* hissier together.
+  var lfo = audio.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 1 / 11;
+  var toGain = audio.createGain(); toGain.gain.value = .3;
+  var toFreq = audio.createGain(); toFreq.gain.value = 620;
+  lfo.connect(toGain); toGain.connect(swell.gain);
+  lfo.connect(toFreq); toFreq.connect(lp.frequency);
+  lfo.start();
+
+  // A second, slightly out-of-step swell so the pattern never repeats
+  // audibly on a short loop.
+  var lfo2 = audio.createOscillator(); lfo2.type = 'sine'; lfo2.frequency.value = 1 / 17;
+  var toGain2 = audio.createGain(); toGain2.gain.value = .16;
+  lfo2.connect(toGain2); toGain2.connect(swell.gain); lfo2.start();
+  return out;
+}
+
+function buildNight(audio){
+  var out = channelOut(audio, 'night');
+  // Drone: two detuned low sines, quiet, to give the night a floor.
+  [55, 82.5].forEach(function(f, i){
+    var o = audio.createOscillator(); o.type = 'sine'; o.frequency.value = f + (i ? .3 : 0);
+    var g = audio.createGain(); g.gain.value = i ? .05 : .07;
+    o.connect(g); g.connect(out); o.start();
+  });
+
+  // Crickets: a chirp is a handful of fast pulses, then a gap. Scheduling
+  // each pulse individually is what stops it sounding like a beep.
+  function chirp(){
+    if (!started) return;
+    var t0 = audio.currentTime + Math.random() * .1;
+    var pulses = 3 + (Math.random() * 3 | 0);
+    var base = 3700 + Math.random() * 1100;
+    for (var i = 0; i < pulses; i++) {
+      var t = t0 + i * .035;
+      var o = audio.createOscillator(); o.type = 'triangle'; o.frequency.value = base;
+      var g = audio.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(.09, t + .005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + .028);
+      o.connect(g); g.connect(out);
+      o.start(t); o.stop(t + .06);
+    }
+    setTimeout(chirp, 500 + Math.random() * 2600);
+  }
+  setTimeout(chirp, 700);
+  return out;
+}
+
+function startAudio(){
+  if (ctx) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  ctx = new AC();
+  master = ctx.createGain();
+  master.gain.value = .9;
+  master.connect(ctx.destination);
+  var buf = noiseBuffer(ctx);
+  buildRain(ctx, buf);
+  buildFire(ctx, buf);
+  buildWaves(ctx, buf);
+  buildNight(ctx);
+  started = true;
+  CHANNELS.forEach(function(c){ applyLevel(c.id, levels[c.id], 0); });
+}
+
+// Ramped, never set directly: a jump in gain is an audible click.
+function applyLevel(id, v, time){
+  levels[id] = v;
+  if (!nodes[id]) return;
+  var t = ctx.currentTime;
+  var target = Math.max(0.0001, v * v);   // perceptual-ish curve
+  nodes[id].gain.gain.cancelScheduledValues(t);
+  nodes[id].gain.gain.setValueAtTime(Math.max(0.0001, nodes[id].gain.gain.value), t);
+  nodes[id].gain.gain.exponentialRampToValueAtTime(target, t + (time === 0 ? .01 : .35));
+}
+
+function save(){
+  try { localStorage.setItem(STORE, JSON.stringify(levels)); } catch (e) {}
+}
+
+/* ---------- UI ---------- */
+var chEl = document.getElementById('channels');
+CHANNELS.forEach(function(c){
+  var row = document.createElement('div');
+  row.className = 'ch';
+  row.style.setProperty('--tint', c.tint);
+  row.dataset.on = levels[c.id] > .02 ? '1' : '0';
+  row.innerHTML =
+    '<div class="glyph">' + c.glyph + '</div>' +
+    '<div class="meta"><div class="name">' + c.name + '</div><div class="hint">' + c.hint + '</div></div>' +
+    '<div class="pct" id="pct-' + c.id + '">' + Math.round(levels[c.id] * 100) + '%</div>' +
+    '<input type="range" min="0" max="100" value="' + Math.round(levels[c.id] * 100) +
+    '" aria-label="' + c.name + ' volume">';
+  chEl.appendChild(row);
+  var range = row.querySelector('input');
+  var pct = row.querySelector('.pct');
+  range.addEventListener('input', function(){
+    var v = range.value / 100;
+    applyLevel(c.id, v);
+    pct.textContent = Math.round(v * 100) + '%';
+    row.dataset.on = v > .02 ? '1' : '0';
+    markPreset(null);
+    save();
+  });
+  c._range = range; c._pct = pct; c._row = row;
+});
+
+var presetEl = document.getElementById('presets');
+Object.keys(PRESETS).forEach(function(name){
+  var b = document.createElement('button');
+  b.className = 'chip'; b.textContent = name;
+  b.addEventListener('click', function(){
+    var p = PRESETS[name];
+    CHANNELS.forEach(function(c){
+      var v = p[c.id] || 0;
+      applyLevel(c.id, v);
+      c._range.value = Math.round(v * 100);
+      c._pct.textContent = Math.round(v * 100) + '%';
+      c._row.dataset.on = v > .02 ? '1' : '0';
+    });
+    markPreset(name);
+    save();
+  });
+  presetEl.appendChild(b);
+});
+function markPreset(name){
+  presetEl.querySelectorAll('.chip').forEach(function(el){
+    el.classList.toggle('on', el.textContent === name);
+  });
+}
+
+var btnMute = document.getElementById('btnMute');
+btnMute.addEventListener('click', function(){
+  muted = !muted;
+  btnMute.textContent = muted ? '🔇' : '🔊';
+  btnMute.setAttribute('aria-label', muted ? 'Unmute' : 'Mute all');
+  if (master) {
+    var t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(muted ? 0 : .9, t + .25);
+  }
+});
+
+var gate = document.getElementById('gate');
+document.getElementById('btnStart').addEventListener('click', function(){
+  startAudio();
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+  gate.classList.add('hidden');
+  // Nothing audible on a cold open is a confusing first impression, so an
+  // untouched mixer starts on a gentle default rather than at zero.
+  var anything = CHANNELS.some(function(c){ return levels[c.id] > .02; });
+  if (!anything) presetEl.querySelectorAll('.chip')[2].click();  // Shoreline
+});
+
+// A phone locking the screen suspends the context; resume on return.
+document.addEventListener('visibilitychange', function(){
+  if (!ctx) return;
+  if (document.hidden) { if (ctx.state === 'running') ctx.suspend(); }
+  else if (!muted && ctx.state === 'suspended') ctx.resume();
+});
+
+/* =====================================================================
+   The scene
+
+   Four layers, back to front: night sky, waves, rain, fire. Each one's
+   opacity follows its channel's slider, and its motion follows that
+   channel's live analyser — so turning fire up brightens the embers
+   *and* makes them jump with the crackle.
+   ===================================================================== */
+var cv = document.getElementById('scene');
+var g = cv.getContext('2d');
+var W = 0, H = 0, DPR = 1;
+var HORIZON = 0.52;   // fraction of viewport height the sea starts at
+var reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  seed();
+}
+window.addEventListener('resize', resize, { passive:true });
+
+var stars = [], drops = [], embers = [];
+function seed(){
+  stars = []; drops = []; embers = [];
+  var starN = Math.round(W * H / 9000);
+  for (var i = 0; i < starN; i++) {
+    stars.push({ x:Math.random() * W, y:Math.random() * H * HORIZON, r:Math.random() * 1.3 + .3, p:Math.random() * TAU });
+  }
+  for (var j = 0; j < 260; j++) {
+    drops.push({ x:Math.random() * W, y:Math.random() * H, len:8 + Math.random() * 22, sp:380 + Math.random() * 520, w:Math.random() * .9 + .5 });
+  }
+  for (var k = 0; k < 90; k++) embers.push(newEmber());
+}
+function newEmber(){
+  return { x:W * .5 + (Math.random() - .5) * W * .5, y:H * (HORIZON + .22) + Math.random() * 30,
+           vx:(Math.random() - .5) * 14, vy:-(20 + Math.random() * 60),
+           life:0, max:2 + Math.random() * 3, r:.8 + Math.random() * 1.8 };
+}
+
+// Live amplitude of one channel, 0..1 — the average of its analyser bins,
+// which is enough to drive brightness and jitter without a full FFT read.
+function amp(id){
+  var n = nodes[id];
+  if (!n || !started) return 0;
+  n.analyser.getByteFrequencyData(n.data);
+  var s = 0;
+  for (var i = 0; i < n.data.length; i++) s += n.data[i];
+  var v = s / n.data.length / 255;
+  n.level += (v - n.level) * .25;
+  return n.level;
+}
+
+var last = performance.now();
+function frame(now){
+  var dt = Math.min((now - last) / 1000, .05); last = now;
+
+  var lr = levels.rain, lf = levels.fire, lw = levels.waves, ln = levels.night;
+  var ar = amp('rain'), af = amp('fire'), aw = amp('waves'), an = amp('night');
+
+  // Sky: darkens toward night, warms toward fire.
+  var sky = g.createLinearGradient(0, 0, 0, H);
+  var nightMix = ln * .8;
+  sky.addColorStop(0, 'rgb(' + Math.round(10 + nightMix * 6) + ',' + Math.round(16 + nightMix * 4) + ',' + Math.round(24 + nightMix * 22) + ')');
+  sky.addColorStop(.62, 'rgb(' + Math.round(15 + lf * 26) + ',' + Math.round(26 + lf * 8) + ',' + Math.round(40 + nightMix * 14) + ')');
+  sky.addColorStop(1, 'rgb(' + Math.round(8 + lf * 40) + ',' + Math.round(13 + lf * 12) + ',' + Math.round(20) + ')');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+
+  // --- night: stars + moon ---
+  if (ln > .01) {
+    var starA = ln * (.55 + an * .8);
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      if (!reduceMotion) s.p += dt * 1.6;
+      var tw = .55 + Math.sin(s.p) * .45;
+      g.globalAlpha = starA * tw;
+      g.fillStyle = '#DCE8FF';
+      g.beginPath(); g.arc(s.x, s.y, s.r, 0, TAU); g.fill();
+    }
+    g.globalAlpha = ln * .5;
+    var mx = W * .8, my = H * .19, mr = Math.min(W, H) * .07;
+    var moon = g.createRadialGradient(mx, my, 0, mx, my, mr * 4);
+    moon.addColorStop(0, 'rgba(214,226,255,.95)');
+    moon.addColorStop(.18, 'rgba(190,205,240,.35)');
+    moon.addColorStop(1, 'rgba(160,180,230,0)');
+    g.fillStyle = moon; g.beginPath(); g.arc(mx, my, mr * 4, 0, TAU); g.fill();
+    g.globalAlpha = 1;
+  }
+
+  // --- waves: stacked sine bands that swell with the channel ---
+  // HORIZON sits above the mixer panel on purpose. The first cut drew the
+  // sea from 74% down, which is exactly where the sliders are — every
+  // wave was painted underneath the UI and the visualiser looked dead.
+  if (lw > .01) {
+    var baseY = H * HORIZON;
+    for (var b = 0; b < 5; b++) {
+      var depth = b / 4;
+      var y0 = baseY + depth * H * .20;
+      var amp2 = (6 + aw * 26) * (1 - depth * .45) * lw;
+      g.beginPath();
+      g.moveTo(0, H);
+      g.lineTo(0, y0);
+      for (var x = 0; x <= W; x += 12) {
+        var t = now / 1000;
+        var y = y0
+          + Math.sin(x * .009 + t * (.5 + b * .13)) * amp2
+          + Math.sin(x * .021 - t * (.8 + b * .1)) * amp2 * .45;
+        g.lineTo(x, y);
+      }
+      g.lineTo(W, H); g.closePath();
+      g.globalAlpha = lw * (.16 + depth * .13);
+      g.fillStyle = b % 2 ? '#2FA898' : '#3FC7B4';
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+
+  // --- rain: streaks, faster and denser with the slider ---
+  if (lr > .01) {
+    var count = Math.round(drops.length * lr);
+    g.lineCap = 'round';
+    for (var d = 0; d < count; d++) {
+      var p = drops[d];
+      if (!reduceMotion) {
+        p.y += p.sp * dt * (.6 + ar * .8);
+        p.x += 26 * dt;
+        if (p.y > H) { p.y = -p.len; p.x = Math.random() * W; }
+        if (p.x > W) p.x -= W;
+      }
+      g.globalAlpha = lr * (.20 + ar * .34) * (p.w * .7);
+      g.strokeStyle = '#9FD4F5';
+      g.lineWidth = p.w;
+      g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - 3, p.y + p.len); g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+
+  // --- fire: hearth glow + rising embers ---
+  if (lf > .01) {
+    var fx = W * .5, fy = H * (HORIZON + .22);
+    var flick = 1 + af * .5 + Math.sin(now / 90) * .06;
+    var glow = g.createRadialGradient(fx, fy, 0, fx, fy, Math.min(W, H) * .55 * flick);
+    glow.addColorStop(0, 'rgba(255,190,110,' + (.42 * lf) + ')');
+    glow.addColorStop(.35, 'rgba(255,120,45,' + (.20 * lf) + ')');
+    glow.addColorStop(1, 'rgba(120,30,0,0)');
+    g.fillStyle = glow; g.fillRect(0, 0, W, H);
+
+    var eCount = Math.round(embers.length * lf);
+    for (var e = 0; e < eCount; e++) {
+      var m = embers[e];
+      if (!reduceMotion) {
+        m.life += dt;
+        m.x += m.vx * dt + Math.sin(now / 400 + e) * 8 * dt;
+        m.y += m.vy * dt * (.7 + af * .9);
+        if (m.life > m.max || m.y < H * .12) embers[e] = newEmber();
+      }
+      var k = 1 - m.life / m.max;
+      g.globalAlpha = lf * Math.max(0, k) * (.5 + af * .5);
+      g.fillStyle = k > .5 ? '#FFD9A0' : '#FF7A2E';
+      g.beginPath(); g.arc(m.x, m.y, m.r, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+
+  requestAnimationFrame(frame);
+}
+
+resize();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

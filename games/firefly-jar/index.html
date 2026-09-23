@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#070B10">
+<title>Firefly Jar</title>
+<style>
+:root{
+  --bg:#070B10; --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.11);
+  --text:#E9F0E6; --muted:#8A9A8C; --glow:#C6F06A;
+  --font-display:'Avenir Next','Segoe UI',system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--font-body);color:var(--text);background:var(--bg);
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+button:focus-visible{outline:3px solid var(--glow);outline-offset:3px}
+
+#scene{position:fixed;inset:0;display:block;touch-action:none;cursor:crosshair;z-index:1}
+
+#ui{position:relative;z-index:2;height:100dvh;display:flex;flex-direction:column;pointer-events:none}
+#ui>*{pointer-events:auto}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 18px}
+.brand{font-family:var(--font-display);font-weight:800;font-size:18px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
+.brand span{display:block;font-family:var(--font-body);font-weight:400;font-size:10.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.spacer{flex:1}
+
+.stat{
+  display:flex;flex-direction:column;align-items:flex-end;gap:2px;
+  background:rgba(8,14,18,.5);border:1px solid var(--line);border-radius:14px;padding:8px 13px;backdrop-filter:blur(6px);
+}
+.stat .n{font-family:var(--font-display);font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;line-height:1}
+.stat .l{font-size:9.5px;color:var(--muted);letter-spacing:1.1px;text-transform:uppercase}
+
+.syncwrap{margin:0 18px;max-width:420px}
+.syncbar{height:5px;border-radius:99px;background:rgba(255,255,255,.11);overflow:hidden}
+.syncfill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6A8F3C,var(--glow));transition:width .3s ease}
+.synclabel{font-size:10.5px;color:var(--muted);letter-spacing:.8px;margin:7px 0 0;text-transform:uppercase}
+
+.bottom{margin-top:auto;padding:16px 18px calc(18px + env(safe-area-inset-bottom));display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.btn{padding:11px 19px;border-radius:999px;font-size:13.5px;font-weight:600;background:rgba(8,14,18,.62);border:1px solid var(--line);backdrop-filter:blur(6px);transition:background .2s,transform .15s}
+.btn:hover{background:rgba(255,255,255,.13)}
+.btn:active{transform:scale(.95)}
+
+.hint{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;
+  color:var(--muted);font-size:14px;line-height:1.7;pointer-events:none;z-index:3;
+  transition:opacity .6s ease;max-width:26ch;text-shadow:0 2px 10px rgba(0,0,0,.9);
+}
+.hint.gone{opacity:0}
+
+@media (max-width:400px){ .brand span{display:none} }
+@media (prefers-reduced-motion:reduce){ .btn{transition:none} }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div id="ui">
+  <div class="topbar">
+    <div class="brand">Firefly Jar<span>A summer evening</span></div>
+    <div class="spacer"></div>
+    <div class="stat"><div class="n" id="count">0</div><div class="l">In the jar</div></div>
+  </div>
+
+  <div class="syncwrap">
+    <div class="syncbar"><div class="syncfill" id="syncfill"></div></div>
+    <p class="synclabel" id="synclabel">Catch a few &mdash; they blink alone at first</p>
+  </div>
+
+  <div class="bottom">
+    <button class="btn" id="btnRelease">Open the jar</button>
+    <button class="btn" id="btnMore">More fireflies</button>
+  </div>
+</div>
+
+<p class="hint" id="hint">Drag across the meadow to sweep them up.</p>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Firefly Jar
+
+   Two systems, and the second one is the point.
+
+   In the meadow the fireflies are boids-lite: separation and cohesion
+   against near neighbours plus a wandering heading, which is enough to
+   get drifting clusters that pull apart and re-form without ever
+   settling into a flock.
+
+   In the jar they run a Kuramoto model. Each firefly has its own natural
+   blink rate and nudges its phase toward the ones it can see; couple
+   them and the whole jar drifts into step over a minute or so, entirely
+   on its own. Real fireflies do this — Southeast Asian species blink in
+   unison along a riverbank — and it is the same equation. The bar at the
+   top is the order parameter, which is the standard measure of how
+   synchronised a set of oscillators is.
+   ===================================================================== */
+
+var TAU = Math.PI * 2;
+var STORE = 'fireflyjar.v1';
+
+var cv = document.getElementById('scene');
+var g = cv.getContext('2d');
+var W = 0, H = 0, DPR = 1;
+var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var flies = [];
+var stars = [];
+var jar = { x:0, y:0, w:0, h:0 };
+var net = { on:false, x:0, y:0, r:0 };
+var caught = 0;
+var glowSprite = null, GLOW_R = 32;
+
+// Coupling strength. High enough to converge while somebody is watching,
+// low enough that you can see it happen rather than arriving pre-synced.
+var K = 2.6;
+
+function rand(a, b){ return a + Math.random() * (b - a); }
+
+function newFly(x, y){
+  return {
+    x: x != null ? x : rand(0, W),
+    y: y != null ? y : rand(H * .12, H * .78),
+    vx: rand(-14, 14), vy: rand(-10, 10),
+    wander: rand(0, TAU),
+    phase: Math.random() * TAU,
+    // Each one blinks at its own rate; without this spread they would
+    // start in sync and the whole mechanic would be invisible.
+    omega: rand(1.5, 2.6),
+    state: 'free',
+    t: 0,
+    hue: rand(66, 92)
+  };
+}
+
+function buildGlow(){
+  var r = Math.ceil(GLOW_R * DPR);
+  var c = document.createElement('canvas');
+  c.width = c.height = r * 2;
+  var x = c.getContext('2d');
+  var grad = x.createRadialGradient(r, r, 0, r, r, r);
+  grad.addColorStop(0,   'rgba(255,255,235,1)');
+  grad.addColorStop(.14, 'rgba(226,255,150,.92)');
+  grad.addColorStop(.36, 'rgba(150,220,70,.34)');
+  grad.addColorStop(1,   'rgba(90,160,40,0)');
+  x.fillStyle = grad;
+  x.fillRect(0, 0, r * 2, r * 2);
+  glowSprite = c;
+}
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  jar.w = Math.min(W * .42, 210);
+  jar.h = jar.w * 1.22;
+  jar.x = W / 2;
+  jar.y = H - jar.h * .5 - 92;
+
+  stars = [];
+  var n = Math.round(W * H / 11000);
+  for (var i = 0; i < n; i++) stars.push({ x:rand(0, W), y:rand(0, H * .6), r:rand(.3, 1.2), p:rand(0, TAU) });
+
+  buildGlow();
+}
+window.addEventListener('resize', resize, { passive:true });
+
+/* ---------- flocking ----------
+   Neighbour search is the naive O(n^2) loop. With ~70 fireflies that is
+   under 5,000 comparisons a frame, which is nothing; a spatial grid here
+   would be more code than the behaviour it accelerates. */
+function stepFree(f, dt, all){
+  var sepX = 0, sepY = 0, cohX = 0, cohY = 0, n = 0;
+  for (var i = 0; i < all.length; i++) {
+    var o = all[i];
+    if (o === f || o.state !== 'free') continue;
+    var dx = o.x - f.x, dy = o.y - f.y;
+    var d2 = dx * dx + dy * dy;
+    if (d2 > 26000 || d2 < .01) continue;
+    var d = Math.sqrt(d2);
+    cohX += o.x; cohY += o.y; n++;
+    if (d < 42) { sepX -= dx / d; sepY -= dy / d; }
+  }
+  if (n > 0) {
+    cohX = cohX / n - f.x; cohY = cohY / n - f.y;
+    var cl = Math.hypot(cohX, cohY) || 1;
+    f.vx += (cohX / cl) * 5 * dt;
+    f.vy += (cohY / cl) * 5 * dt;
+  }
+  f.vx += sepX * 26 * dt;
+  f.vy += sepY * 26 * dt;
+
+  // Wander: a slowly turning heading, which is what keeps them looking
+  // alive when there is no neighbour nearby to react to.
+  f.wander += rand(-2.4, 2.4) * dt;
+  f.vx += Math.cos(f.wander) * 16 * dt;
+  f.vy += Math.sin(f.wander) * 16 * dt;
+
+  // Soft bounds — they drift back rather than bouncing off a wall.
+  if (f.x < 30) f.vx += 30 * dt; if (f.x > W - 30) f.vx -= 30 * dt;
+  if (f.y < H * .10) f.vy += 30 * dt; if (f.y > H * .80) f.vy -= 30 * dt;
+
+  var sp = Math.hypot(f.vx, f.vy), max = 44;
+  if (sp > max) { f.vx = f.vx / sp * max; f.vy = f.vy / sp * max; }
+
+  f.x += f.vx * dt; f.y += f.vy * dt;
+  f.phase += f.omega * dt;
+}
+
+function stepFlying(f, dt){
+  f.t += dt;
+  var k = Math.min(1, f.t / .75);
+  var e = 1 - Math.pow(1 - k, 3);
+  f.x = f.fromX + (jar.x - f.fromX) * e;
+  f.y = f.fromY + (jar.y - f.fromY) * e;
+  f.phase += f.omega * dt;
+  if (k >= 1) {
+    f.state = 'jarred';
+    f.ang = Math.random() * TAU;
+    f.rad = rand(.15, .78);
+    f.spin = rand(-.5, .5);
+    f.bob = Math.random() * TAU;
+  }
+}
+
+// The Kuramoto step. Each jarred firefly pulls its phase toward the mean
+// of every other jarred one; the sum of sines is what does it.
+function stepJar(list, dt){
+  if (!list.length) return;
+  var n = list.length;
+  for (var i = 0; i < n; i++) {
+    var f = list[i], sum = 0;
+    for (var j = 0; j < n; j++) if (j !== i) sum += Math.sin(list[j].phase - f.phase);
+    f.phase += (f.omega + (K / n) * sum) * dt;
+
+    f.ang += f.spin * dt;
+    f.bob += dt * 1.5;
+    var rx = Math.cos(f.ang) * f.rad * jar.w * .36;
+    var ry = Math.sin(f.ang) * f.rad * jar.h * .30 + Math.sin(f.bob) * 4;
+    f.x = jar.x + rx;
+    f.y = jar.y + ry;
+  }
+}
+
+// Order parameter: 0 when phases are scattered, 1 when identical.
+function order(list){
+  if (list.length < 2) return 0;
+  var sx = 0, sy = 0;
+  for (var i = 0; i < list.length; i++) { sx += Math.cos(list[i].phase); sy += Math.sin(list[i].phase); }
+  return Math.hypot(sx, sy) / list.length;
+}
+
+/* ---------- input ---------- */
+function netAt(e){
+  var r = cv.getBoundingClientRect();
+  net.x = e.clientX - r.left;
+  net.y = e.clientY - r.top;
+  net.r = Math.min(W, H) * .11;
+}
+cv.addEventListener('pointerdown', function(e){
+  cv.setPointerCapture(e.pointerId);
+  net.on = true; netAt(e); sweep();
+  hideHint();
+  e.preventDefault();
+});
+cv.addEventListener('pointermove', function(e){
+  if (!net.on) return;
+  netAt(e); sweep();
+  e.preventDefault();
+});
+function endNet(e){
+  net.on = false;
+  if (e && e.pointerId != null && cv.hasPointerCapture(e.pointerId)) cv.releasePointerCapture(e.pointerId);
+}
+cv.addEventListener('pointerup', endNet);
+cv.addEventListener('pointercancel', endNet);
+
+function sweep(){
+  for (var i = 0; i < flies.length; i++) {
+    var f = flies[i];
+    if (f.state !== 'free') continue;
+    if (Math.hypot(f.x - net.x, f.y - net.y) < net.r) {
+      f.state = 'flying'; f.t = 0; f.fromX = f.x; f.fromY = f.y;
+      caught++;
+    }
+  }
+  updateStats();
+}
+
+function release(){
+  for (var i = 0; i < flies.length; i++) {
+    var f = flies[i];
+    if (f.state === 'jarred' || f.state === 'flying') {
+      f.state = 'free';
+      f.vx = rand(-30, 30); f.vy = rand(-40, -10);
+      // They keep the phase they left with, so a synced jar visibly
+      // scatters again over the next half minute instead of resetting.
+    }
+  }
+  caught = 0;
+  updateStats();
+}
+
+/* ---------- render ---------- */
+function drawJar(){
+  var x = jar.x, y = jar.y, w = jar.w, h = jar.h;
+  var l = x - w / 2, t = y - h / 2;
+
+  g.save();
+  // Body
+  g.beginPath();
+  g.moveTo(l + w * .12, t + h * .16);
+  g.quadraticCurveTo(l, t + h * .34, l, t + h * .58);
+  g.lineTo(l, t + h * .90);
+  g.quadraticCurveTo(l, t + h, l + w * .12, t + h);
+  g.lineTo(l + w * .88, t + h);
+  g.quadraticCurveTo(l + w, t + h, l + w, t + h * .90);
+  g.lineTo(l + w, t + h * .58);
+  g.quadraticCurveTo(l + w, t + h * .34, l + w * .88, t + h * .16);
+  g.closePath();
+
+  var glass = g.createLinearGradient(l, t, l + w, t + h);
+  glass.addColorStop(0, 'rgba(180,220,235,.11)');
+  glass.addColorStop(.45, 'rgba(140,190,210,.05)');
+  glass.addColorStop(1, 'rgba(190,225,240,.13)');
+  g.fillStyle = glass; g.fill();
+  g.strokeStyle = 'rgba(200,235,250,.30)'; g.lineWidth = 1.6; g.stroke();
+
+  // Neck and lid
+  g.beginPath();
+  g.roundRect ? g.roundRect(l + w * .22, t + h * .02, w * .56, h * .15, 6)
+              : g.rect(l + w * .22, t + h * .02, w * .56, h * .15);
+  g.fillStyle = 'rgba(150,140,110,.30)';
+  g.fill();
+  g.strokeStyle = 'rgba(220,210,180,.35)'; g.lineWidth = 1.4; g.stroke();
+
+  // Highlight down the left shoulder — the one detail that makes it read
+  // as glass instead of as a grey outline.
+  g.beginPath();
+  g.moveTo(l + w * .17, t + h * .26);
+  g.quadraticCurveTo(l + w * .09, t + h * .5, l + w * .13, t + h * .82);
+  g.strokeStyle = 'rgba(255,255,255,.20)'; g.lineWidth = 3.5; g.lineCap = 'round';
+  g.stroke();
+  g.restore();
+}
+
+function drawFly(f, boost){
+  // Blink: a sharp peak rather than a sine, so it reads as a pulse.
+  var s = (Math.sin(f.phase) + 1) / 2;
+  var b = Math.pow(s, 3.2);
+  var a = .18 + b * .82;
+  var r = GLOW_R * (.5 + b * .95) * (boost || 1);
+  g.globalAlpha = a;
+  g.drawImage(glowSprite, f.x - r, f.y - r, r * 2, r * 2);
+  // Core
+  g.globalAlpha = Math.min(1, .35 + b);
+  g.fillStyle = '#FBFFE8';
+  g.beginPath(); g.arc(f.x, f.y, 1.5 + b * 1.5, 0, TAU); g.fill();
+}
+
+var last = performance.now();
+function frame(now){
+  var dt = Math.min((now - last) / 1000, .05); last = now;
+
+  // Sky
+  var sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#070B12');
+  sky.addColorStop(.55, '#0B1420');
+  sky.addColorStop(1, '#0A1410');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+
+  for (var i = 0; i < stars.length; i++) {
+    var s = stars[i];
+    if (!reduce) s.p += dt * 1.1;
+    g.globalAlpha = .30 + Math.sin(s.p) * .22;
+    g.fillStyle = '#CFE0FF';
+    g.beginPath(); g.arc(s.x, s.y, s.r, 0, TAU); g.fill();
+  }
+  g.globalAlpha = 1;
+
+  // Meadow
+  var grass = g.createLinearGradient(0, H * .74, 0, H);
+  grass.addColorStop(0, 'rgba(12,26,16,0)');
+  grass.addColorStop(1, 'rgba(9,20,13,.95)');
+  g.fillStyle = grass; g.fillRect(0, H * .74, W, H * .26);
+
+  // Update
+  var jarred = [];
+  for (var k = 0; k < flies.length; k++) {
+    var f = flies[k];
+    if (f.state === 'free') { if (!reduce) stepFree(f, dt, flies); else f.phase += f.omega * dt; }
+    else if (f.state === 'flying') stepFlying(f, dt);
+    else jarred.push(f);
+  }
+  stepJar(jarred, dt);
+
+  drawJar();
+
+  // Fireflies, additively so overlapping glows build light.
+  g.globalCompositeOperation = 'lighter';
+  for (var m = 0; m < flies.length; m++) {
+    var fl = flies[m];
+    drawFly(fl, fl.state === 'jarred' ? .8 : 1);
+  }
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+
+  // Net
+  if (net.on) {
+    var ng = g.createRadialGradient(net.x, net.y, 0, net.x, net.y, net.r);
+    ng.addColorStop(0, 'rgba(198,240,106,.13)');
+    ng.addColorStop(.75, 'rgba(198,240,106,.06)');
+    ng.addColorStop(1, 'rgba(198,240,106,0)');
+    g.fillStyle = ng;
+    g.beginPath(); g.arc(net.x, net.y, net.r, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(214,255,140,.42)'; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(net.x, net.y, net.r, 0, TAU); g.stroke();
+  }
+
+  // Sync readout, a few times a second rather than every frame.
+  syncAcc += dt;
+  if (syncAcc > .2) {
+    syncAcc = 0;
+    var r = order(jarred);
+    fill.style.width = Math.round(r * 100) + '%';
+    label.textContent = jarred.length < 2
+      ? 'Catch a few — they blink alone at first'
+      : r > .95 ? 'In perfect unison'
+      : r > .7  ? 'Falling into step…'
+      : r > .4  ? 'Finding each other'
+      : 'Blinking on their own';
+  }
+
+  requestAnimationFrame(frame);
+}
+var syncAcc = 0;
+
+/* ---------- ui ---------- */
+var countEl = document.getElementById('count');
+var fill = document.getElementById('syncfill');
+var label = document.getElementById('synclabel');
+function updateStats(){ countEl.textContent = caught; }
+
+var hint = document.getElementById('hint'), hintGone = false;
+function hideHint(){ if (!hintGone) { hintGone = true; hint.classList.add('gone'); } }
+setTimeout(hideHint, 9000);
+
+document.getElementById('btnRelease').addEventListener('click', release);
+document.getElementById('btnMore').addEventListener('click', function(){
+  for (var i = 0; i < 12; i++) flies.push(newFly());
+  if (flies.length > 140) flies.splice(0, flies.length - 140);
+});
+
+resize();
+for (var i = 0; i < 46; i++) flies.push(newFly());
+updateStats();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

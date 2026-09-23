@@ -1,0 +1,3047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#243b45"/>
+<title>Bird Feeder</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --line:rgba(255,255,255,.22);
+    --gold:#e8c88a; --gold2:#c9a05e;
+    --accent:#9ec9c2; --accent2:#e8a888;
+    --ui-font:'Nunito',system-ui,sans-serif;
+    --dis-font:'Baloo 2',system-ui,sans-serif;
+    --r:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{font-family:var(--ui-font);background:#141c20;color:#fff;
+    display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+  #app{position:relative;width:100%;height:100%;max-width:520px;max-height:100vh;
+    overflow:hidden;background:#243b45;box-shadow:0 0 80px rgba(0,0,0,.6)}
+  @media(min-width:700px){#app{max-width:min(92vw,900px)}}
+  canvas#scene{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  .hud{position:absolute;top:0;left:0;right:0;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+    display:flex;gap:8px;align-items:flex-start;z-index:20;pointer-events:none}
+  .hud>*{pointer-events:auto}
+  .chip{background:rgba(16,26,30,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:999px;padding:7px 13px;display:flex;align-items:center;gap:7px;
+    font-weight:800;font-size:13.5px;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
+  .chip small{font-weight:700;font-size:11px;opacity:.72}
+  .icbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(16,26,30,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    display:grid;place-items:center;font-size:17px;cursor:pointer;color:#fff;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .12s;flex:none}
+  .icbtn:active{transform:scale(.9)}
+  .spacer{flex:1}
+
+  .dock{position:absolute;left:0;right:0;bottom:0;z-index:20;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));display:flex;gap:7px;justify-content:center}
+  .tool{position:relative;flex:1;max-width:110px;border-radius:16px;cursor:pointer;padding:9px 4px 7px;
+    font-family:var(--ui-font);color:#fff;background:rgba(16,26,30,.55);border:1px solid var(--line);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    transition:transform .12s,background .2s;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .tool:active{transform:translateY(2px) scale(.96)}
+  .tool .ic{font-size:20px;line-height:1}
+  .tool .tx{font-size:10px;font-weight:800;letter-spacing:.03em;opacity:.9}
+  .tool .fill{position:absolute;left:0;bottom:0;height:3px;background:var(--gold);
+    transition:width .3s;border-radius:0 3px 3px 0}
+  .tool.low .fill{background:var(--accent2)}
+  .tool.empty{background:rgba(16,26,30,.3)}
+  .tool.empty .ic{opacity:.4}
+
+  .sheet{position:absolute;inset:0;z-index:40;background:rgba(10,16,19,.72);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:none;align-items:flex-end;justify-content:center}
+  .sheet.on{display:flex}
+  .panel{width:100%;max-height:88%;background:#1d2f37;border:1px solid var(--line);
+    border-radius:var(--r) var(--r) 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:12px;animation:rise .24s ease-out;overflow:hidden}
+  @keyframes rise{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+  .panel h2{font-family:var(--dis-font);font-size:21px;font-weight:800;letter-spacing:.01em}
+  .panel .head{display:flex;align-items:center;gap:10px}
+  .panel .head .spacer{flex:1}
+  .scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;margin:0 -4px;padding:0 4px}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+    padding:8px 6px 7px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+    transition:transform .12s,background .2s}
+  .card:active{transform:scale(.95)}
+  .card canvas{width:74px;height:56px;display:block}
+  .card .nm{font-size:10.5px;font-weight:800;text-align:center;line-height:1.15;min-height:24px;
+    display:flex;align-items:center}
+  .card.locked{opacity:.55}
+  .card.locked .nm{opacity:.5}
+  .card .cnt{position:absolute}
+  .card.r3{background:linear-gradient(160deg,rgba(158,201,194,.18),rgba(255,255,255,.04))}
+  .card.r4{background:linear-gradient(160deg,rgba(232,200,138,.20),rgba(255,255,255,.04))}
+  .card.r5{background:linear-gradient(160deg,rgba(198,160,232,.24),rgba(158,201,194,.10))}
+  .card.r6{background:linear-gradient(160deg,rgba(255,214,120,.30),rgba(232,120,180,.18))}
+  .badge{font-size:9px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;
+    padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.12)}
+  .badge.r2{background:rgba(180,206,158,.25);color:#dcecc8}
+  .badge.r3{background:rgba(158,201,194,.25);color:#cdeee8}
+  .badge.r4{background:rgba(232,200,138,.25);color:var(--gold)}
+  .badge.r5{background:rgba(198,160,232,.28);color:#e6d0ff}
+  .badge.r6{background:linear-gradient(90deg,rgba(255,214,120,.38),rgba(232,120,180,.32));color:#fff0c8}
+  .badge.fx{background:rgba(158,201,194,.2);color:#cdeee8;text-transform:none;letter-spacing:.02em}
+  .badge.bd{background:rgba(240,143,168,.24);color:#ffd3de;text-transform:none;letter-spacing:.02em}
+
+  /* Field guide, at two hundred species: a search box, filter chips, family
+     headings, and portraits that are only drawn once they scroll into view. */
+  .gbar{display:flex;flex-direction:column;gap:8px}
+  .ginput{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;padding:10px 12px;color:#fff;font-family:var(--ui-font);font-weight:700;font-size:13.5px}
+  .ginput::placeholder{color:rgba(255,255,255,.4)}
+  .gchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .gchips::-webkit-scrollbar{display:none}
+  .gchip{flex:none;font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;cursor:pointer;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);white-space:nowrap;
+    transition:background .15s}
+  .gchip.on{background:var(--gold);color:#2a2115;border-color:transparent}
+  .ghead{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:12px 2px 0;
+    font-family:var(--dis-font);font-size:14.5px;font-weight:800;letter-spacing:.02em}
+  .ghead:first-child{margin-top:0}
+  .ghead b{flex:1}
+  .ghead span{font-size:11px;font-weight:800;opacity:.5;font-family:var(--ui-font)}
+  .card img{width:74px;height:56px;display:block}
+  .card .pips{margin-top:-1px}
+
+  /* Bond: one pip per level of trust, filled as you pet a species. */
+  .pips{display:flex;gap:3px}
+  .pip{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15)}
+  .pip.on{background:#f08fa8;box-shadow:0 0 7px rgba(240,143,168,.5)}
+  .bondbox{display:flex;flex-direction:column;gap:7px;align-items:center;
+    background:rgba(240,143,168,.09);border:1px solid rgba(240,143,168,.2);
+    border-radius:14px;padding:11px 14px;width:100%;max-width:340px}
+  .bondbox .bt{font-size:12.5px;font-weight:800}
+  .bondbox .bs{font-size:11.5px;opacity:.68;font-weight:600;line-height:1.45;text-align:center}
+
+  .row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.09);border-radius:13px}
+  .row .lab{flex:1;font-weight:700;font-size:14px}
+  .row .sub{font-size:11.5px;opacity:.66;font-weight:600;margin-top:2px}
+  .sw{width:50px;height:29px;border-radius:999px;background:rgba(255,255,255,.16);position:relative;
+    cursor:pointer;flex:none;transition:background .2s}
+  .sw::after{content:'';position:absolute;top:3px;left:3px;width:23px;height:23px;border-radius:50%;
+    background:#fff;transition:transform .2s}
+  .sw.on{background:var(--gold2)}
+  .sw.on::after{transform:translateX(21px)}
+
+  .btn{border:1px solid var(--line);background:rgba(255,255,255,.08);color:#fff;font-family:var(--ui-font);
+    font-weight:800;font-size:14px;padding:12px 16px;border-radius:13px;cursor:pointer;transition:transform .12s}
+  .btn:active{transform:scale(.96)}
+  .btn.pri{background:linear-gradient(160deg,var(--gold),var(--gold2));color:#2a2115;border-color:transparent}
+
+  /* The chip row is the tightest thing on the screen. On a phone the trailing
+     sub-labels are the first to go: the season and the canopy percentage are
+     both readable elsewhere, and losing them keeps the row on one line instead
+     of wrapping under the buttons. */
+  @media(max-width:470px){.hud .chip small{display:none}}
+  /* Seven tools on a narrow phone: the dock gives up its padding and its
+     label size before it gives up a station. */
+  @media(max-width:430px){
+    .dock{gap:5px;padding-left:6px;padding-right:6px}
+    .tool{padding:8px 2px 6px}
+    .tool .ic{font-size:18px}
+    .tool .tx{font-size:9px;letter-spacing:0}
+  }
+
+  /* The tree chip splits its two readings the way the others do: the number
+     goes in the span and the stage name in the <small>, so the rule above
+     drops "Spreading" on a narrow phone and leaves 🌳 42% — which is the
+     half you actually check — standing. */
+
+  .detail{display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+  .detail canvas{width:190px;height:140px}
+  .detail .latin{font-style:italic;opacity:.6;font-size:12.5px;font-weight:600}
+  .detail .note{font-size:13px;line-height:1.5;opacity:.86;max-width:340px}
+  .facts{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+  .fact{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.09)}
+
+  .toast{position:absolute;left:50%;top:calc(62px + env(safe-area-inset-top));transform:translateX(-50%);
+    z-index:30;background:rgba(16,26,30,.82);backdrop-filter:blur(14px);border:1px solid var(--line);
+    border-radius:14px;padding:9px 15px;font-weight:800;font-size:13px;white-space:nowrap;
+    opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 8px 26px rgba(0,0,0,.4)}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(4px)}
+
+  .pop{position:absolute;inset:0;z-index:45;display:none;align-items:center;justify-content:center;
+    background:rgba(10,16,19,.7);backdrop-filter:blur(10px);padding:20px}
+  .pop.on{display:flex}
+  .popcard{background:linear-gradient(165deg,#2a4450,#1b2c34);border:1px solid var(--line);border-radius:22px;
+    padding:20px 18px;max-width:330px;width:100%;text-align:center;display:flex;flex-direction:column;
+    gap:10px;align-items:center;animation:pop .3s cubic-bezier(.2,1.4,.5,1);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+  .popcard .kicker{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .popcard h3{font-family:var(--dis-font);font-size:24px;font-weight:800}
+  .popcard canvas{width:170px;height:126px}
+  .empty-note{opacity:.6;font-size:13px;text-align:center;padding:20px;line-height:1.5}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <div class="hud">
+    <div class="chip" id="cTime">🌤 <span id="tTime">Morning</span> <small id="tSeason">Spring</small></div>
+    <div class="chip" id="cTree">🌳 <span id="tTreePct">0%</span> <small id="tTree">Sapling</small></div>
+    <div class="chip" id="cCount">📖 <span id="tCount">0</span><small>/200</small></div>
+    <div class="spacer"></div>
+    <div class="icbtn" id="bGuide">📖</div>
+    <div class="icbtn" id="bSet">⚙️</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="dock" id="dock"></div>
+
+  <!-- Field guide -->
+  <div class="sheet" id="shGuide">
+    <div class="panel">
+      <div class="head">
+        <h2>Field Guide</h2><div class="spacer"></div>
+        <div class="chip" id="gCount">0 / 27</div>
+        <div class="icbtn" data-close>✕</div>
+      </div>
+      <div class="gbar">
+        <input class="ginput" id="gSearch" type="search" placeholder="Search two hundred species…"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="gchips" id="gChips"></div>
+      </div>
+      <div class="scroll" id="guideScroll"><div class="grid" id="guideGrid"></div></div>
+    </div>
+  </div>
+
+  <!-- Species detail -->
+  <div class="sheet" id="shDetail">
+    <div class="panel">
+      <div class="head"><h2 id="dTitle">Species</h2><div class="spacer"></div><div class="icbtn" data-close>✕</div></div>
+      <div class="scroll"><div class="detail" id="detailBody"></div></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="sheet" id="shSet">
+    <div class="panel">
+      <div class="head"><h2>Settings</h2><div class="spacer"></div><div class="icbtn" data-close>✕</div></div>
+      <div class="scroll" style="display:flex;flex-direction:column;gap:9px">
+        <div class="row">
+          <div style="flex:1">
+            <div class="lab">Follow real time</div>
+            <div class="sub" id="setClockSub">The feeder runs on your clock and calendar.</div>
+          </div>
+          <div class="sw on" id="swClock"></div>
+        </div>
+        <div class="row">
+          <div style="flex:1">
+            <div class="lab">Motion</div>
+            <div class="sub">Weather and wind particles.</div>
+          </div>
+          <div class="sw on" id="swWeather"></div>
+        </div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
+          <div class="lab">Your feeder</div>
+          <div class="sub" id="statLine">—</div>
+        </div>
+        <button class="btn" id="bReset" style="color:#ff9a8f">Start a new logbook</button>
+        <div class="empty-note">Tap a bird to identify it and add it to your field guide.
+          Different species come at different hours, in different seasons, for different food.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New species celebration -->
+  <div class="pop" id="popNew">
+    <div class="popcard">
+      <div class="kicker" id="npKick">New species</div>
+      <canvas id="npArt" width="340" height="252"></canvas>
+      <h3 id="npName">—</h3>
+      <div class="latin" id="npLatin" style="font-style:italic;opacity:.6;font-size:12.5px"></div>
+      <div class="note" id="npNote" style="font-size:13px;line-height:1.5;opacity:.86"></div>
+      <button class="btn pri" id="npOk" style="width:100%">Log it</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ========================================================================
+   Bird Feeder — a window onto a feeding station.
+   Species arrive according to the hour, the season, and what is on offer.
+   Two hundred of them, across six rarities from Common to Mythic.
+
+   The first tap on a bird identifies it into the field guide. Every tap after
+   that pets it, and petting is the long game: trust is kept per species, and
+   a species that trusts you visits more often, stays longer, and eventually
+   stops caring what season it is.
+
+   Half the guide also *does* something — drums, sings, murmurates, buries
+   seed that comes up as sprouts, brings the snow with it. See FX_NAME.
+   ===================================================================== */
+
+const K='mos.birdfeeder.v1';
+const $=id=>document.getElementById(id);
+const cv=$('scene'), ctx=cv.getContext('2d');
+const app=$('app');
+let W=0,H=0;
+
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+/* ---------- Species ------------------------------------------------- */
+// t: time phases 0 dawn 1 morning 2 midday 3 afternoon 4 dusk 5 night
+// s: seasons 0 spring 1 summer 2 autumn 3 winter
+// f: stations — seed, nyjer, suet, fruit, nectar, mealworm, ground, bath
+// r: rarity 1 common … 6 mythic
+const PHASES=['Dawn','Morning','Midday','Afternoon','Dusk','Night'];
+const SEASONS=['Spring','Summer','Autumn','Winter'];
+const STATIONS=['seed','nyjer','suet','fruit','nectar','mealworm','ground','bath'];
+const STATION_NAME={seed:'Seed tube',nyjer:'Nyjer sock',suet:'Suet cage',fruit:'Fruit spike',
+  nectar:'Nectar feeder',mealworm:'Mealworm dish',ground:'Ground table',bath:'Water fountain'};
+const RARITY=['','Common','Uncommon','Scarce','Rare','Vagrant','Mythic'];
+// Spawn weight per tier. A common is a hundred and sixty times likelier than a
+// vagrant, which is the point of a vagrant — but the pool is filtered by hour
+// and season before any of this applies, so on the right winter dawn the odds
+// on a given rarity are far better than these numbers look.
+const RWEIGHT=[0,10,4.6,2.0,0.9,0.3,0.06];
+
+const SP=[];
+/* Two hundred species is too many to keep as one flat literal, so the list is
+   declared family by family. `group` stamps the family name on every entry and
+   fills in the defaults, which means an entry only has to say what makes it
+   different: most birds are ~30 units tall, cone-billed, about all day, all
+   year, and the ones that are not say so.
+   c: [back, wing, head, belly, beak, legs]
+   fx: the one thing this species does to the garden — see FX_NAME
+   flags: flock n · shy 1 (bolts when petted) · bold 1 (adores it) · hunter 1 */
+const ALLDAY=[0,1,2,3,4], ALLYEAR=[0,1,2,3];
+const GROUPS=[];
+function group(gname,arr){
+  GROUPS.push(gname);
+  for(const o of arr){
+    o.g=gname;
+    o.sz=o.sz||1; o.tail=o.tail==null?7:o.tail; o.beak=o.beak||'cone';
+    o.t=o.t||ALLDAY; o.s=o.s||ALLYEAR; o.pat=o.pat||{};
+    const a=o.c; o.c={b:a[0],w:a[1],h:a[2],bl:a[3],k:a[4],lg:a[5]};
+    SP.push(o);
+  }
+}
+
+group('Garden regulars',[
+ {id:'sparrow',n:'House Sparrow',l:'Passer domesticus',r:1,flock:3,bold:1,
+  c:['#a5824f','#7d5c36','#8f6f45','#ddd0b8','#4a4038','#c39a6b'],
+  pat:{cap:'#6d5334',bib:'#463628'},f:['seed','ground'],
+  note:'Never alone. Where one lands, nine more are already arguing about it.'},
+ {id:'treesparrow',n:'Tree Sparrow',l:'Passer montanus',r:2,sz:.92,flock:3,
+  c:['#a8834c','#7f5d34','#9c6b3c','#e0d4bc','#3b352e','#c39a6b'],
+  pat:{cap:'#8a4f28',cheek:'#f2ece0',bib:'#3b322a'},f:['seed','ground'],
+  note:'The country cousin, with a chocolate cap and a smudge on each cheek.'},
+ {id:'bluetit',n:'Blue Tit',l:'Cyanistes caeruleus',r:1,sz:.82,tail:6,beak:'thin',bold:1,fx:'cache',
+  c:['#8fb04a','#3f6fc4','#f2f0e2','#f5e26b','#37312c','#7b8794'],
+  pat:{cap:'#2f5fb8',mask:'#2f5fb8'},f:['seed','suet','nyjer'],
+  note:'Acrobatic to the point of showing off. Hangs upside-down for the fun of it.'},
+ {id:'greattit',n:'Great Tit',l:'Parus major',r:1,sz:.95,fx:'song',
+  c:['#8aa64a','#5f79a8','#1e1e22','#f2e07a','#2b2723','#7b8794'],
+  pat:{cap:'#1e1e22',bib:'#1e1e22',cheek:'#f6f3e6'},f:['seed','suet','ground'],
+  note:'Rings out a two-note "tea-cher, tea-cher" and expects the feeder cleared for it.'},
+ {id:'coaltit',n:'Coal Tit',l:'Periparus ater',r:1,sz:.74,tail:5,beak:'thin',fx:'cache',
+  c:['#8e8471','#6f6656','#22201f','#ddd2bb','#2b2723','#7b8794'],
+  pat:{cap:'#22201f',bib:'#22201f',cheek:'#f0ece0'},f:['seed','suet'],
+  note:'Takes one seed and hides it. Takes another and hides that. Never eats at the table.'},
+ {id:'robin',n:'European Robin',l:'Erithacus rubecula',r:1,sz:.88,beak:'thin',bold:1,fx:'song',
+  c:['#8d7a58','#75634a','#8d7a58','#e2d9c4','#2f2a26','#9a8a72'],
+  pat:{bib:'#e0663a',face:'#e0663a'},t:[0,1,3,4],f:['ground','suet','mealworm'],
+  note:'Fiercely territorial and entirely unbothered by you. Will supervise your digging.'},
+ {id:'blackbird',n:'Blackbird',l:'Turdus merula',r:1,sz:1.28,tail:11,fx:'dig',
+  c:['#26242a','#1c1a1f','#26242a','#2e2c32','#f0b83c','#4a4038'],
+  pat:{eyering:'#f0b83c'},t:[0,3,4],f:['ground','fruit','mealworm'],
+  note:'Turns leaf litter over with a clatter you can hear from indoors.'},
+ {id:'dunnock',n:'Dunnock',l:'Prunella modularis',r:1,sz:.9,tail:8,beak:'thin',shy:1,fx:'dig',
+  c:['#8a7355','#6d5940','#6b7480','#7d848c','#3b352e','#c08a5c'],
+  pat:{streaks:'#4e402f'},t:[0,1,3,4],f:['ground','mealworm'],
+  note:'Shuffles beneath the feeder like it is not really here. A quiet, complicated life.'},
+ {id:'chaffinch',n:'Chaffinch',l:'Fringilla coelebs',r:1,sz:.95,tail:8,
+  c:['#a8683f','#3a3630','#6f7fa0','#e6c4a2','#6d7280','#a08464'],
+  pat:{wingbar:'#f0ece0',cap:'#66759a'},t:[0,1,2,3],f:['seed','ground'],
+  note:'Prefers the fallen seed under the feeder to the feeder itself.'},
+ {id:'greenfinch',n:'Greenfinch',l:'Chloris chloris',r:2,beak:'stout',
+  c:['#7d9640','#5f7530','#8aa347','#cbd47a','#e3d9c0','#c0a07a'],
+  pat:{wingbar:'#f2e05e'},t:[1,2,3],f:['seed','nyjer'],
+  note:'A wheezy drawl from the top of the hedge, then a bruiser at the feeder.'},
+ {id:'goldfinch',n:'Goldfinch',l:'Carduelis carduelis',r:1,sz:.88,beak:'thin',flock:4,
+  c:['#b79b6f','#26242a','#f2ece0','#efe6d4','#e8d8bc','#c2a179'],
+  pat:{face:'#d8402e',cap:'#26242a',wingbar:'#f2c92e'},t:[1,2,3],s:[0,1,2],f:['nyjer','seed'],
+  note:'Arrives as a tinkling charm of six. The gold wing-bar catches even in flat light.'},
+ {id:'starling',n:'Starling',l:'Sturnus vulgaris',r:1,sz:1.15,tail:6,beak:'thin',flock:4,fx:'murmur',
+  c:['#2b3340','#243040','#2f3a4a','#333c4a','#f0d048','#c98a4a'],
+  pat:{spots:'#d8d0b8',sheen:'#4a7f6a'},t:[1,2,3,4],f:['suet','ground','fruit','mealworm'],
+  note:'Iridescent up close, riotous always. Empties the suet in an afternoon.'},
+ {id:'woodpigeon',n:'Woodpigeon',l:'Columba palumbus',r:1,sz:1.5,tail:10,
+  c:['#8a8f9c','#767b88','#8f95a2','#c2b4ae','#d8a05c','#c9645a'],
+  pat:{collar:'#f2f0ea',belt:'#b09aa0'},f:['ground','seed'],
+  note:'Lands on the table like a dropped bag of shopping and eats until nothing is left.'},
+ {id:'collardove',n:'Collared Dove',l:'Streptopelia decaocto',r:1,sz:1.25,tail:11,
+  c:['#c2b09a','#ab9884','#cbbaa4','#e2d6c6','#3b352e','#c9645a'],
+  pat:{collar:'#3b352e'},f:['ground','seed'],
+  note:'Three notes, over and over, from the same gutter, for the whole of June.'},
+ {id:'magpie',n:'Magpie',l:'Pica pica',r:1,sz:1.4,tail:16,fx:'shine',
+  c:['#1b1a20','#151419','#1b1a20','#f2f0e8','#26242a','#2b2723'],
+  pat:{sheen:'#3f6f8a',rump:'#f2f0e8'},f:['ground','suet'],
+  note:'One for sorrow, and entirely unrepentant about it. Leaves stranger things than it takes.'},
+ {id:'jackdaw',n:'Jackdaw',l:'Corvus monedula',r:1,sz:1.35,tail:9,flock:3,fx:'shine',
+  c:['#2f3238','#26292e','#5f646c','#33363c','#22201f','#22201f'],
+  pat:{eye:'#d8d4c8',nape:'#7d838c'},f:['ground','suet'],
+  note:'Pale-eyed, sociable, and far too clever. Sizes up the suet cage, then the latch.'},
+ {id:'crow',n:'Carrion Crow',l:'Corvus corone',r:1,sz:1.55,tail:11,
+  c:['#1c1b20','#161519','#1c1b20','#201f24','#1c1b20','#1c1b20'],
+  pat:{sheen:'#4a4a6a'},f:['ground','suet'],
+  note:'Watches the garden from the roof for a full minute before it deigns to come down.'},
+ {id:'wren',n:'Wren',l:'Troglodytes troglodytes',r:1,sz:.62,tail:4,beak:'thin',shy:1,fx:'song',
+  c:['#9a6f42','#7b5530','#8f6a40','#cbb08a','#4a4038','#b08a5c'],
+  pat:{brow:'#e2d0b0',streaks:'#5f4429'},t:[0,1,3,4],f:['ground','suet','mealworm'],
+  note:'Tiny, tail cocked, and far louder than anything this size has any right to be.'},
+ {id:'longtail',n:'Long-tailed Tit',l:'Aegithalos caudatus',r:2,sz:.72,tail:15,beak:'thin',flock:5,
+  c:['#d8c8c4','#3a3238','#f2ece8','#ecdcd8','#22201f','#33302e'],
+  pat:{cap:'#3a3238',blush:'#c98a94'},t:[1,2,3],s:[2,3],f:['suet','seed'],
+  note:'A flying teaspoon. Arrives as a whole family at once and leaves just as suddenly.'},
+ {id:'songthrush',n:'Song Thrush',l:'Turdus philomelos',r:2,sz:1.2,tail:9,fx:'song',
+  c:['#9c7f56','#84673f','#9c7f56','#eee2c8','#5c4c38','#c9a778'],
+  pat:{spots:'#5a4630'},t:[0,1,3,4],f:['ground','fruit','mealworm'],
+  note:'Repeats every phrase three times, in case the first two were missed.'}
+]);
+
+group('Tits & allies',[
+ {id:'marshtit',n:'Marsh Tit',l:'Poecile palustris',r:2,sz:.8,tail:6,beak:'thin',fx:'cache',
+  c:['#9a8f7d','#7d7361','#22201f','#e2dac8','#26242a','#5f5a52'],
+  pat:{cap:'#22201f',bib:'#2b2723',cheek:'#f2ece0'},f:['seed','suet'],
+  note:'Identical to the Willow Tit apart from a sneeze of a call. Birders have come to blows.'},
+ {id:'willowtit',n:'Willow Tit',l:'Poecile montanus',r:3,sz:.8,tail:6,beak:'thin',shy:1,
+  c:['#a09582','#847a68','#2b2723','#e6dece','#26242a','#5f5a52'],
+  pat:{cap:'#2b2723',bib:'#33302c',cheek:'#f4efe4',wingbar:'#e0d8c4'},f:['seed','suet'],
+  note:'Digs its own hole in a rotten stump. Scarcer every year, and it knows it.'},
+ {id:'crestedtit',n:'Crested Tit',l:'Lophophanes cristatus',r:4,sz:.78,tail:6,beak:'thin',
+  c:['#9a8a70','#7d6f58','#e8e2d4','#e6dece','#2b2723','#6f6a60'],
+  pat:{crest:'#f2ece0',bib:'#2b2723',mask:'#2b2723'},s:[2,3],f:['seed','suet'],
+  note:'Scottish pinewoods only, and it will not be talked into coming any further south.'},
+ {id:'nuthatch',n:'Nuthatch',l:'Sitta europaea',r:2,sz:.95,tail:4,beak:'chisel',fx:'cache',
+  c:['#5f80a8','#4b6a90','#5f80a8','#d8a06e','#3b3a38','#b09060'],
+  pat:{mask:'#1e1c20'},t:[1,2,3],f:['suet','seed'],
+  note:'The only bird here that walks down a trunk head-first, and knows it.'},
+ {id:'treecreeper',n:'Treecreeper',l:'Certhia familiaris',r:3,sz:.7,tail:8,beak:'curve',shy:1,
+  c:['#9a8360','#7d6a4a','#8f7a58','#f4f0e6','#8a7a62','#c0a078'],
+  pat:{streaks:'#5f4e34',brow:'#e8e0cc'},t:[1,2,3],f:['suet'],
+  note:'Spirals up a trunk like a mouse, drops to the base of the next one, starts again.'},
+ {id:'goldcrest',n:'Goldcrest',l:'Regulus regulus',r:2,sz:.55,tail:4,beak:'needle',shy:1,
+  c:['#8aa060','#6f8448','#93a86a','#dcd9b8','#2f2a26','#8f7a58'],
+  pat:{crest:'#f2c92e'},t:[1,2,3],s:[2,3],f:['suet'],
+  note:'Britain’s smallest bird, weighing about the same as a five-pence piece.'},
+ {id:'firecrest',n:'Firecrest',l:'Regulus ignicapilla',r:4,sz:.56,tail:4,beak:'needle',shy:1,fx:'halo',
+  c:['#7fa055','#658a42','#8aa860','#e2e0c4','#2f2a26','#8f7a58'],
+  pat:{crest:'#f26a2e',brow:'#f4f0e0',mask:'#2b2723',shoulder:'#c8a850'},t:[1,2,3],s:[2,3],f:['suet'],
+  note:'The Goldcrest with the racing stripe. A gold-and-bronze thing the size of a walnut.'},
+ {id:'bearded',n:'Bearded Reedling',l:'Panurus biarmicus',r:4,sz:.85,tail:14,beak:'thin',flock:3,
+  c:['#c89a58','#a87c40','#8f97a8','#e6d8b8','#f2c92e','#26242a'],
+  pat:{moustache:'#1e1c20',rump:'#d8b878'},t:[1,2,3],f:['ground','seed'],
+  note:'Pings like a tiny bell across the reeds. Only leaves them when the frost pushes it out.'},
+ {id:'penduline',n:'Penduline Tit',l:'Remiz pendulinus',r:5,sz:.72,tail:6,beak:'needle',
+  c:['#b08a58','#8a6a40','#c2b8a8','#e8e0d0','#3b352e','#5f5a52'],
+  pat:{mask:'#26242a',shoulder:'#a8603a'},t:[1,2,3],s:[0,2],f:['seed','nyjer'],
+  note:'Weaves a hanging purse of a nest so fine that people used to keep them as slippers.'},
+ {id:'azuretit',n:'Azure Tit',l:'Cyanistes cyanus',r:5,sz:.84,tail:8,beak:'thin',
+  c:['#8fa8d8','#5f80c8','#f4f6fa','#f8f8f2','#2b2723','#6f7a88'],
+  pat:{mask:'#5f80c8',wingbar:'#ffffff'},s:[3],f:['seed','suet'],
+  note:'A Blue Tit dipped in frost and sunlight. Siberian, and only ever here by accident.'},
+ {id:'sombretit',n:'Sombre Tit',l:'Poecile lugubris',r:4,sz:.9,tail:7,beak:'thin',
+  c:['#9a9080','#7f7666','#3b352e','#e0d8c8','#2b2723','#6f6a60'],
+  pat:{cap:'#3b352e',bib:'#4a4038',cheek:'#f0ece0'},s:[0,1,2],f:['seed','suet'],
+  note:'Bigger, grumpier and greyer than any tit has cause to be.'},
+ {id:'wallcreeper',n:'Wallcreeper',l:'Tichodroma muraria',r:5,sz:.9,tail:6,beak:'curve',shy:1,fx:'halo',
+  c:['#8f949c','#c8324a','#9aa0a8','#a8aeb6','#26242a','#26242a'],
+  pat:{wingflash:'#d8405a',bib:'#2b2723'},t:[1,2,3],s:[3],f:['suet'],
+  note:'A butterfly pretending to be a bird. Comes down off the cliffs once in a lifetime.'}
+]);
+
+group('Finches',[
+ {id:'bullfinch',n:'Bullfinch',l:'Pyrrhula pyrrhula',r:2,sz:1.05,tail:8,beak:'stout',shy:1,fx:'petal',
+  c:['#8e8b8a','#232228','#232228','#d4664f','#2b2723','#6a5c4c'],
+  pat:{cap:'#141317',rump:'#f0ece0'},t:[0,1,3],s:[0,2,3],f:['fruit','seed'],
+  note:'Shy, almost silent, and impossibly pink. Vanishes if you move too fast.'},
+ {id:'siskin',n:'Siskin',l:'Spinus spinus',r:2,sz:.78,tail:6,beak:'needle',flock:4,
+  c:['#93a943','#5f7030','#a3b84c','#e2e2b0','#c9bfa4','#9a8a72'],
+  pat:{cap:'#2a2a20',streaks:'#5f6a30'},t:[1,2,3],s:[2,3],f:['nyjer','seed'],
+  note:'Comes down from the conifers when winter bites. Bickers over nyjer with goldfinches.'},
+ {id:'redpoll',n:'Lesser Redpoll',l:'Acanthis cabaret',r:3,sz:.76,tail:7,beak:'needle',flock:3,
+  c:['#a89070','#8a7050','#b09878','#efe8d8','#e8d8b0','#4a4038'],
+  pat:{cap:'#d8402e',bib:'#2b2723',streaks:'#6f5a3c'},s:[2,3],f:['nyjer','seed'],
+  note:'A scribble of streaks with a raspberry cap. Hangs off the nyjer sock at any angle.'},
+ {id:'mealyredpoll',n:'Common Redpoll',l:'Acanthis flammea',r:4,sz:.82,tail:7,beak:'needle',
+  c:['#c2b49c','#9a8a70','#cbc0aa','#f6f2e8','#e8d8b0','#4a4038'],
+  pat:{cap:'#e0503a',bib:'#2b2723',streaks:'#8a7a60',rump:'#f6f2e8'},s:[3],f:['nyjer'],
+  note:'The frosty northern one. Turns up in a redpoll flock and starts an argument.'},
+ {id:'twite',n:'Twite',l:'Linaria flavirostris',r:4,sz:.8,tail:8,beak:'cone',flock:3,
+  c:['#a8895e','#8a6c44','#b09070','#e8dcc0','#e8d060','#3b352e'],
+  pat:{streaks:'#5f4a30',rump:'#d8846a'},s:[2,3],f:['nyjer','ground'],
+  note:'The twite is a linnet that moved to the moors and stopped explaining itself.'},
+ {id:'linnet',n:'Linnet',l:'Linaria cannabina',r:2,sz:.85,tail:8,flock:3,fx:'bloom',
+  c:['#a07a4e','#856038','#8f8a80','#e6d8c0','#8a8f92','#4a4038'],
+  pat:{cap:'#d0503a',bib:'#c85a44',wingbar:'#f0ece0'},t:[1,2,3],s:[0,1,2],f:['seed','ground'],
+  note:'Sang so well in cages that the Victorians nearly wiped it out. Sings better out here.'},
+ {id:'brambling',n:'Brambling',l:'Fringilla montifringilla',r:3,sz:.95,tail:8,flock:3,
+  c:['#c07840','#2b2723','#3b352e','#f0e4cc','#e8d060','#a08464'],
+  pat:{shoulder:'#e08a3c',wingbar:'#f2ece0',rump:'#f4f0e6'},s:[2,3],f:['ground','seed'],
+  note:'A chaffinch that spent the summer in Lapland and came back wearing orange.'},
+ {id:'hawfinch',n:'Hawfinch',l:'Coccothraustes coccothraustes',r:4,sz:1.15,tail:5,beak:'stout',shy:1,
+  c:['#b0703c','#2b3040','#c8874a','#e0c0a0','#8fa0b0','#c09868'],
+  pat:{mask:'#3b2b20',bib:'#2b2723',wingbar:'#f2f0e8',collar:'#a8a49c'},t:[1,2],f:['seed','ground'],
+  note:'Cracks a cherry stone with a bite that would take your finger off. Terrified of you regardless.'},
+ {id:'crossbill',n:'Common Crossbill',l:'Loxia curvirostra',r:3,sz:1.05,tail:7,beak:'cross',flock:3,
+  c:['#c04a30','#8a3a26','#cc5236','#a8452c','#5f5a52','#4a4038'],
+  pat:{},t:[1,2,3],f:['seed','bath'],
+  note:'Bill crossed at the tip for prising open cones. Breeds in January because the cones say so.'},
+ {id:'parrotcrossbill',n:'Parrot Crossbill',l:'Loxia pytyopsittacus',r:5,sz:1.15,tail:7,beak:'cross',
+  c:['#b8482e','#7f3522','#c04a30','#9a4028','#6f6a60','#4a4038'],
+  pat:{},t:[1,2,3],s:[2,3],f:['seed','bath'],
+  note:'The crossbill with the jaw of a nutcracker. Takes pine cones the others cannot.'},
+ {id:'serin',n:'European Serin',l:'Serinus serinus',r:4,sz:.7,tail:6,beak:'stout',
+  c:['#a8a04c','#7f7a34','#d8c83c','#e8e2a8','#a8a090','#8a8272'],
+  pat:{streaks:'#6f6a34',rump:'#e8d84c'},t:[1,2,3],s:[0,1],f:['nyjer','seed'],
+  note:'A jangle of broken glass from the top of a cypress. Creeping north a hedge at a time.'},
+ {id:'citril',n:'Citril Finch',l:'Carduelis citrinella',r:5,sz:.8,tail:7,
+  c:['#8a9a48','#6f7f38','#b0c04c','#c8d060','#8a8272','#6f6a60'],
+  pat:{collar:'#9aa8a0',wingbar:'#c8d060'},t:[1,2],s:[1,2],f:['nyjer','seed'],
+  note:'An alpine finch the colour of lichen and lemon. Rarely drops below the treeline.'},
+ {id:'rosefinch',n:'Common Rosefinch',l:'Carpodacus erythrinus',r:5,sz:.95,tail:8,beak:'stout',
+  c:['#c04a5e','#9a3a4a','#d0526a','#e8a8b0','#8a8272','#6f6a60'],
+  pat:{rump:'#e0607a'},t:[1,2,3],s:[0,1],f:['seed','fruit'],
+  note:'Asks "pleased to meet you?" in a rising whistle, then never answers itself.'},
+ {id:'pinegrosbeak',n:'Pine Grosbeak',l:'Pinicola enucleator',r:5,sz:1.3,tail:10,beak:'stout',fx:'berry',
+  c:['#c05a4a','#5f5a58','#d0644a','#a8a0a0','#3b352e','#3b352e'],
+  pat:{wingbar:'#f0ece0'},s:[3],f:['fruit','seed'],
+  note:'Tame to the point of absurdity — a taiga bird that has never learned what people are.'},
+ {id:'trumpeter',n:'Trumpeter Finch',l:'Bucanetes githagineus',r:5,sz:.85,tail:7,beak:'stout',
+  c:['#c2ac94','#a89078','#c8b8a4','#e0cfba','#e0603a','#c09868'],
+  pat:{blush:'#d08a7a'},t:[1,2,3],s:[1],f:['seed','ground'],
+  note:'A desert finch with a swollen red bill and a call like a toy trumpet being sat on.'},
+ {id:'twobarred',n:'Two-barred Crossbill',l:'Loxia leucoptera',r:4,sz:.95,tail:7,beak:'cross',
+  c:['#c85a52','#8a3a34','#d0645a','#a8483e','#5f5a52','#4a4038'],
+  pat:{wingbar:'#f4f2ea',shoulder:'#f4f2ea'},t:[1,2,3],s:[2,3],f:['seed','bath'],
+  note:'The crossbill with two white sashes. Arrives in the same larch every eight years or so.'}
+]);
+
+group('Thrushes & chats',[
+ {id:'redwing',n:'Redwing',l:'Turdus iliacus',r:2,sz:1.15,tail:8,beak:'thin',flock:3,fx:'berry',
+  c:['#7f6a4c','#68563c','#7f6a4c','#ece0c8','#4a4038','#a88c64'],
+  pat:{brow:'#f2ece0',flank:'#c25a3a',streaks:'#5a4630'},t:[0,1,3,4],s:[3],f:['fruit','ground'],
+  note:'A winter migrant. Thin "tseep" calls overhead on frosty nights mean they have come.'},
+ {id:'fieldfare',n:'Fieldfare',l:'Turdus pilaris',r:2,sz:1.3,tail:9,fx:'berry',
+  c:['#8a6a45','#6f5738','#6d7484','#e8d8b0','#f0b83c','#4a4038'],
+  pat:{spots:'#5a4630',rump:'#8d97a8'},t:[1,2,3],s:[3],f:['fruit','ground'],
+  note:'Chuckles as it flies. Guards a single apple against all comers for a whole week.'},
+ {id:'mistlethrush',n:'Mistle Thrush',l:'Turdus viscivorus',r:2,sz:1.35,tail:10,fx:'song',
+  c:['#a89880','#8a7a62','#a89880','#f4efe2','#6f6a60','#c9a778'],
+  pat:{spots:'#4a4038'},t:[0,1,3],f:['ground','fruit'],
+  note:'Sings into the teeth of a gale from the highest branch. Old name: the stormcock.'},
+ {id:'ringouzel',n:'Ring Ouzel',l:'Turdus torquatus',r:4,sz:1.28,tail:10,shy:1,
+  c:['#33302c','#26242a','#33302c','#3b3834','#e8c84c','#4a4038'],
+  pat:{collar:'#f2f0e8',scales:'#5f5a52'},t:[0,1,3,4],s:[0,2],f:['ground','fruit'],
+  note:'The mountain blackbird, wearing a white gorget. Passing through, and in a hurry.'},
+ {id:'blackcapthrush',n:'Black-throated Thrush',l:'Turdus atrogularis',r:5,sz:1.25,tail:10,
+  c:['#8f949c','#767c84','#8f949c','#f0ece0','#e8c84c','#a08464'],
+  pat:{bib:'#26242a'},s:[3],f:['fruit','ground'],
+  note:'Siberian, and one of the great winter finds. Sits in an apple tree like it belongs there.'},
+ {id:'americanrobin',n:'American Robin',l:'Turdus migratorius',r:3,sz:1.25,tail:10,fx:'dig',
+  c:['#4a4a50','#3b3b40','#26242a','#c25a3a','#e8c84c','#7f6a52'],
+  pat:{eyering:'#f0ece0',throat:'#f2f0e8'},f:['ground','fruit','mealworm'],
+  note:'Not a robin at all — a thrush the size of a blackbird, hauling worms out of the lawn.'},
+ {id:'redstart',n:'Common Redstart',l:'Phoenicurus phoenicurus',r:3,sz:.85,tail:8,beak:'thin',shy:1,
+  c:['#6f7f9c','#5a6a84','#5f6f8c','#d8703c','#2b2723','#3b352e'],
+  pat:{bib:'#26242a',brow:'#f2f0e8',rump:'#d8703c'},t:[0,1,3],s:[0,1],f:['mealworm','ground'],
+  note:'Never stops shivering that rust-red tail. Half of every glimpse is the tail alone.'},
+ {id:'blackredstart',n:'Black Redstart',l:'Phoenicurus ochruros',r:3,sz:.85,tail:8,beak:'thin',
+  c:['#4a4a50','#3b3b40','#3b3b40','#5a5a60','#2b2723','#3b352e'],
+  pat:{rump:'#d8703c',wingflash:'#c8c4bc'},t:[0,1,3,4],s:[2,3],f:['ground','mealworm'],
+  note:'Nests on power stations and bomb sites. Sings a song with gravel in it.'},
+ {id:'stonechat',n:'Stonechat',l:'Saxicola rubicola',r:3,sz:.8,tail:6,beak:'thin',
+  c:['#6f5a44','#4a4038','#26242a','#d8804a','#2b2723','#2b2723'],
+  pat:{collar:'#f2f0e8',cap:'#26242a'},t:[1,2,3],f:['ground','mealworm'],
+  note:'Two pebbles knocked together, over and over, from the top of the same gorse bush.'},
+ {id:'whinchat',n:'Whinchat',l:'Saxicola rubetra',r:4,sz:.78,tail:6,beak:'thin',shy:1,
+  c:['#9a8058','#7d6444','#8a7050','#e0b088','#2b2723','#3b352e'],
+  pat:{brow:'#f4f0e0',streaks:'#5f4a30'},t:[1,2,3],s:[0,1],f:['ground','mealworm'],
+  note:'A summer bird of rough grass, with a bold cream eyebrow and somewhere else to be.'},
+ {id:'wheatear',n:'Northern Wheatear',l:'Oenanthe oenanthe',r:3,sz:.95,tail:7,beak:'thin',
+  c:['#a8a49c','#8a8680','#9aa0a8','#e8d8b8','#2b2723','#2b2723'],
+  pat:{mask:'#2b2723',brow:'#f4f0e6',rump:'#f4f0e6'},t:[0,1,2,3],s:[0,1,2],f:['ground','mealworm'],
+  note:'Flashes a white rump and is forty feet further on. Winters in Africa, breeds in Greenland.'},
+ {id:'nightingale',n:'Nightingale',l:'Luscinia megarhynchos',r:4,sz:.95,tail:9,beak:'thin',shy:1,fx:'song',
+  c:['#9a7d58','#7f6444','#8f7450','#e0d4bc','#3b352e','#c09868'],
+  pat:{rump:'#b0703c'},t:[4,5],s:[0,1],f:['ground','mealworm'],
+  note:'Sings all night in May from inside a bramble, and refuses to be looked at while doing it.'},
+ {id:'bluethroat',n:'Bluethroat',l:'Luscinia svecica',r:5,sz:.85,tail:7,beak:'thin',shy:1,
+  c:['#8a7a5c','#6f6248','#7f7054','#e0d8c4','#2b2723','#4a4038'],
+  pat:{throat:'#3f7fc4',bib:'#c8402e',brow:'#f2ece0'},t:[0,1,3],s:[0,2],f:['ground','mealworm'],
+  note:'Wears a sapphire on its throat with a single red bead set into it. Skulks anyway.'},
+ {id:'varied',n:'Varied Thrush',l:'Ixoreus naevius',r:5,sz:1.25,tail:9,
+  c:['#4a5a68','#3b4a58','#3b4a58','#d8944a','#3b352e','#a08464'],
+  pat:{belt:'#26242a',brow:'#d8944a',wingbar:'#d8944a'},s:[3],f:['ground','fruit'],
+  note:'A single held note in a wet Pacific forest, like a tuning fork in the fog.'}
+]);
+
+group('Warblers & flycatchers',[
+ {id:'blackcap',n:'Blackcap',l:'Sylvia atricapilla',r:2,sz:.85,tail:8,beak:'thin',fx:'song',
+  c:['#8a8a80','#6f6f66','#8f8f84','#c8c8bc','#3b352e','#5f5a52'],
+  pat:{cap:'#26242a'},t:[0,1,2,3],f:['fruit','suet','mealworm'],
+  note:'Used to leave for Africa. Now it winters here on other people’s apples and suet.'},
+ {id:'chiffchaff',n:'Chiffchaff',l:'Phylloscopus collybita',r:2,sz:.68,tail:6,beak:'needle',fx:'song',
+  c:['#8a9060','#6f7548','#8f9566','#e0dcc4','#3b352e','#3b352e'],
+  pat:{brow:'#e8e4cc'},t:[0,1,2,3],s:[0,1,2],f:['mealworm','suet'],
+  note:'Says its own name for six weeks solid and then goes quiet for the rest of the year.'},
+ {id:'willowwarbler',n:'Willow Warbler',l:'Phylloscopus trochilus',r:2,sz:.68,tail:6,beak:'needle',fx:'song',
+  c:['#94a068','#78854c','#9aa670','#eae4c0','#c0a878','#c0a878'],
+  pat:{brow:'#f0ecd0'},t:[0,1,2,3],s:[0,1],f:['mealworm','suet'],
+  note:'A descending sigh of a song, over in three seconds. Twelve grams that flew here from Congo.'},
+ {id:'whitethroat',n:'Common Whitethroat',l:'Curruca communis',r:3,sz:.85,tail:9,beak:'thin',
+  c:['#9a7f58','#a8683c','#8f949c','#f2ece0','#4a4038','#c09868'],
+  pat:{throat:'#f8f6f0',eyering:'#e0d8c4'},t:[0,1,2,3],s:[0,1],f:['mealworm','fruit'],
+  note:'Launches itself out of a hedge, scratches out a song mid-air, and drops back in.'},
+ {id:'garden',n:'Garden Warbler',l:'Sylvia borin',r:3,sz:.85,tail:8,beak:'thin',shy:1,fx:'song',
+  c:['#96896c','#7c7056','#9a8d70','#ded6c0','#5f5a52','#7f7a70'],
+  pat:{},t:[0,1,2,3],s:[0,1],f:['fruit','mealworm'],
+  note:'The most featureless bird in Europe and one of the finest singers. Both facts are the point.'},
+ {id:'sedgewarbler',n:'Sedge Warbler',l:'Acrocephalus schoenobaenus',r:3,sz:.8,tail:8,beak:'needle',
+  c:['#a08a60','#846e46','#8f7a52','#e8dcc0','#4a4038','#b09068'],
+  pat:{brow:'#f4f0dc',streaks:'#5f4a2c'},t:[0,1,3,4],s:[0,1],f:['mealworm'],
+  note:'Improvises. Never sings the same phrase twice and never seems to run out of ideas.'},
+ {id:'reedwarbler',n:'Reed Warbler',l:'Acrocephalus scirpaceus',r:3,sz:.8,tail:8,beak:'needle',shy:1,
+  c:['#9a8464','#7f6a4c','#8a7458','#e2d8c0','#4a4038','#a89068'],
+  pat:{},t:[0,1,3],s:[0,1],f:['mealworm'],
+  note:'Chugs away in the reeds like a small engine. Raises cuckoos by mistake, generation after generation.'},
+ {id:'wood',n:'Wood Warbler',l:'Phylloscopus sibilatrix',r:4,sz:.72,tail:6,beak:'needle',shy:1,fx:'song',
+  c:['#9aac52','#7c8e3c','#a0b258','#f6f4e2','#c0a878','#c0a878'],
+  pat:{brow:'#f2f0d8',throat:'#e8e04c'},t:[1,2,3],s:[0,1],f:['mealworm'],
+  note:'Spins a song like a coin dropped on a marble floor. Beech woods only.'},
+ {id:'pied',n:'Pied Flycatcher',l:'Ficedula hypoleuca',r:4,sz:.8,tail:7,beak:'thin',
+  c:['#33302c','#26242a','#33302c','#f4f2ea','#2b2723','#2b2723'],
+  pat:{wingbar:'#f4f2ea',brow:'#f4f2ea'},t:[1,2,3],s:[0,1],f:['mealworm'],
+  note:'Sallies out, snaps something invisible from the air, and returns to the same twig.'},
+ {id:'spotted',n:'Spotted Flycatcher',l:'Muscicapa striata',r:3,sz:.85,tail:8,beak:'thin',
+  c:['#9a9084','#7f766a','#8a8074','#e8e2d6','#3b352e','#3b352e'],
+  pat:{streaks:'#6f6558'},t:[1,2,3],s:[1],f:['mealworm'],
+  note:'The last summer migrant to arrive and the least showy. Sits bolt upright, waiting.'},
+ {id:'redbreasted',n:'Red-breasted Flycatcher',l:'Ficedula parva',r:5,sz:.72,tail:7,beak:'thin',shy:1,
+  c:['#9a8f80','#7f7568','#8a8074','#efe8dc','#2b2723','#2b2723'],
+  pat:{throat:'#d8704a',eyering:'#f0ece0',tailtip:'#f4f2ea'},t:[1,2,3],s:[2],f:['mealworm'],
+  note:'Flicks its tail up to flash two white panels. An autumn coast bird, blown in off the sea.'},
+ {id:'yellowbrowed',n:'Yellow-browed Warbler',l:'Phylloscopus inornatus',r:5,sz:.6,tail:5,beak:'needle',
+  c:['#8a9c60','#6f8048','#90a266','#e8e8cc','#c0a878','#c0a878'],
+  pat:{brow:'#f4f0b0',wingbar:'#f2eec8'},t:[1,2,3],s:[2],f:['mealworm','suet'],
+  note:'Six grams, Siberian, and calling from a sycamore in October like a tiny alarm.'}
+]);
+
+group('Buntings, larks & pipits',[
+ {id:'yellowhammer',n:'Yellowhammer',l:'Emberiza citrinella',r:2,sz:1,tail:9,flock:3,
+  c:['#a88a50','#8a6c3c','#e8d040','#f0e08c','#8a8272','#a08464'],
+  pat:{streaks:'#7f5f30',rump:'#a86840',cap:'#e8d040'},t:[1,2,3],f:['ground','seed'],
+  note:'A lemon head in a bare hedge in February is the best thing that happens all week.'},
+ {id:'reedbunting',n:'Reed Bunting',l:'Emberiza schoeniclus',r:3,sz:.95,tail:9,
+  c:['#9a7f58','#7d6444','#26242a','#e6dcc8','#3b352e','#5f5a52'],
+  pat:{cap:'#26242a',bib:'#26242a',collar:'#f2f0e8',moustache:'#f2f0e8'},t:[1,2,3],f:['ground','seed'],
+  note:'Comes off the marsh to the seed table in hard weather and pretends it always did.'},
+ {id:'cirl',n:'Cirl Bunting',l:'Emberiza cirlus',r:4,sz:.95,tail:9,
+  c:['#9a7a4c','#7f6238','#c8c040','#d8c860','#8a8272','#a08464'],
+  pat:{bib:'#33302c',mask:'#33302c',collar:'#c8c040'},t:[1,2,3],s:[0,1,2],f:['ground','seed'],
+  note:'Clung on in a handful of Devon valleys and nowhere else. Every one of them is counted.'},
+ {id:'snowbunting',n:'Snow Bunting',l:'Plectrophenax nivalis',r:4,sz:.95,tail:8,flock:3,fx:'frost',
+  c:['#c8b898','#f4f2ea','#e8e4d8','#f8f6f0','#e8c84c','#2b2723'],
+  pat:{streaks:'#a89878',wingbar:'#ffffff'},s:[3],f:['ground','seed'],
+  note:'A blizzard of them along a winter shingle beach, and then nothing at all.'},
+ {id:'lapland',n:'Lapland Longspur',l:'Calcarius lapponicus',r:5,sz:.95,tail:8,
+  c:['#9a7a50','#7f6238','#33302c','#e8dcc4','#e8c84c','#3b352e'],
+  pat:{nape:'#b0603c',bib:'#33302c',brow:'#f2ece0'},s:[2,3],f:['ground','seed'],
+  note:'Runs rather than hops, keeping low on a stubble field, hoping you have not noticed.'},
+ {id:'ortolan',n:'Ortolan Bunting',l:'Emberiza hortulana',r:5,sz:.92,tail:8,
+  c:['#9a8a68','#7f7050','#8fa060','#c8a878','#e0a860','#c09868'],
+  pat:{throat:'#e8e0a0',eyering:'#f0e8c0',moustache:'#c8c880'},t:[1,2,3],s:[0,2],f:['ground','seed'],
+  note:'France ate them under napkins for centuries. This one would rather have the seed table.'},
+ {id:'corn',n:'Corn Bunting',l:'Emberiza calandra',r:4,sz:1.15,tail:8,
+  c:['#a89478','#8a7660','#a08c70','#eae0cc','#c0a878','#c0a878'],
+  pat:{streaks:'#6f5c44'},t:[1,2,3],f:['ground','seed'],
+  note:'A fat brown bird singing a jangle of keys from a wire, with its legs dangling.'},
+ {id:'skylark',n:'Skylark',l:'Alauda arvensis',r:2,sz:1.05,tail:8,fx:'song',
+  c:['#a08c66','#84704c','#9a8660','#e8dcc2','#a89878','#d8b878'],
+  pat:{crest:'#9a8660',streaks:'#6f5a3c'},t:[0,1,2,3],f:['ground','seed'],
+  note:'Goes up singing and comes down silent. Five unbroken minutes of it, out of a bare field.'},
+ {id:'woodlark',n:'Woodlark',l:'Lullula arborea',r:4,sz:.95,tail:5,fx:'song',
+  c:['#9a8460','#7f6a46','#8f7a58','#e8dcc4','#a89878','#d8b878'],
+  pat:{brow:'#f4f0dc',streaks:'#6f5a3c',crest:'#8f7a58'},t:[0,1,4],s:[0,1,2],f:['ground'],
+  note:'Sings in falling phrases at dusk, which is the loveliest sound in this list.'},
+ {id:'meadowpipit',n:'Meadow Pipit',l:'Anthus pratensis',r:2,sz:.85,tail:8,beak:'needle',shy:1,
+  c:['#93815e','#786644','#8a7a58','#e4dcc4','#3b352e','#d8b060'],
+  pat:{streaks:'#5f4c30'},t:[0,1,2,3],f:['ground','mealworm'],
+  note:'Small, brown, streaky, and the reason half of birdwatching is arguing about pipits.'},
+ {id:'treepipit',n:'Tree Pipit',l:'Anthus trivialis',r:3,sz:.88,tail:8,beak:'needle',
+  c:['#9a8760','#7f6c48','#8f7c5a','#e8e0c8','#3b352e','#e0b868'],
+  pat:{streaks:'#5f4c30',brow:'#f0ead4'},t:[1,2,3],s:[0,1],f:['ground','mealworm'],
+  note:'Parachutes down from a treetop with its wings held out, still singing.'},
+ {id:'waterpipit',n:'Water Pipit',l:'Anthus spinoletta',r:5,sz:.9,tail:8,beak:'needle',
+  c:['#8a8478','#706a60','#8f949c','#f0e8dc','#3b352e','#3b352e'],
+  pat:{brow:'#f4f0e6',blush:'#d8a898'},t:[1,2,3],s:[3],f:['ground','bath'],
+  note:'Comes down off the mountains to spend winter beside a cress bed, looking faintly pink.'}
+]);
+
+group('Doves & gamebirds',[
+ {id:'stockdove',n:'Stock Dove',l:'Columba oenas',r:3,sz:1.35,tail:9,
+  c:['#7f848f','#6a6f7a','#848994','#9aa0a8','#d8a05c','#c9645a'],
+  pat:{sheen:'#4f8f7a',wingbar:'#3b3f46'},f:['ground','seed'],
+  note:'The quiet one in the pigeon flock, with a bottle-green neck and no white anywhere.'},
+ {id:'turtledove',n:'Turtle Dove',l:'Streptopelia turtur',r:5,sz:1.15,tail:10,fx:'song',
+  c:['#b0764c','#9a6038','#8f8a90','#e8dcd0','#3b352e','#c9645a'],
+  pat:{collar:'#2b2723',scales:'#7f4a2c',belt:'#d8a8a0'},t:[1,2,3],s:[0,1],f:['ground','seed'],
+  note:'That purring song used to be the sound of an English summer. It is nearly gone.'},
+ {id:'feralpigeon',n:'Feral Pigeon',l:'Columba livia',r:1,sz:1.4,tail:9,flock:3,
+  c:['#5f6670','#4a505a','#4f5560','#7f858f','#33302c','#c9645a'],
+  pat:{sheen:'#6f4f8a',wingbar:'#2b2723'},f:['ground','seed'],
+  note:'A rock dove that decided buildings were cliffs. Has been right about it for two thousand years.'},
+ {id:'pheasant',n:'Pheasant',l:'Phasianus colchicus',r:2,sz:1.7,tail:20,
+  c:['#a8562c','#8a4020','#2f6f5a','#8a4a28','#c8b070','#a8905c'],
+  pat:{face:'#c8302a',collar:'#f2f0e8',spots:'#33302c'},t:[0,1,3,4],f:['ground'],
+  note:'Explodes out of the border with a noise like a bicycle falling downstairs.'},
+ {id:'redlegged',n:'Red-legged Partridge',l:'Alectoris rufa',r:3,sz:1.35,tail:6,
+  c:['#a8886a','#8a6c50','#9a8068','#d8c0a0','#c8402e','#c8402e'],
+  pat:{bib:'#f2f0e8',mask:'#2b2723',bars:'#8a4a3c'},t:[0,1,3,4],f:['ground','seed'],
+  note:'Prefers running to flying and would rather do neither. Comes to spilt seed at dawn.'},
+ {id:'greypartridge',n:'Grey Partridge',l:'Perdix perdix',r:4,sz:1.3,tail:6,flock:3,
+  c:['#9a8f7a','#7f7562','#b0764c','#c8bca8','#a89878','#a89878'],
+  pat:{belt:'#8a5a3c',streaks:'#7f6a50'},t:[0,1,3,4],f:['ground','seed'],
+  note:'A covey of them freezing in a stubble field. The whole covey moves as one bird or not at all.'},
+ {id:'quail',n:'Common Quail',l:'Coturnix coturnix',r:5,sz:.95,tail:4,shy:1,
+  c:['#9a8460','#7f6a48','#8f7a58','#e0d4b8','#a89878','#c0a878'],
+  pat:{streaks:'#5f4c30',brow:'#f0ead4',bib:'#7f4a2c'},t:[0,4,5],s:[0,1],f:['ground','seed'],
+  note:'Heard far more than seen — three wet whistles from the middle of a barley field.'},
+ {id:'mourningdove',n:'Mourning Dove',l:'Zenaida macroura',r:2,sz:1.2,tail:14,
+  c:['#a89880','#8f8068','#b09880','#d8c8b0','#3b352e','#c9645a'],
+  pat:{spots:'#4a4038',blush:'#d8a898'},f:['ground','seed'],
+  note:'Whistles with its wings when it takes off. Sounds like it is in mourning; it is not.'},
+ {id:'inca',n:'Inca Dove',l:'Columbina inca',r:5,sz:.95,tail:12,
+  c:['#b8a894','#9a8a78','#c0b0a0','#d8ccc0','#3b352e','#c9645a'],
+  pat:{scales:'#8a7a68',wingflash:'#a8503c'},s:[0,1,2],f:['ground','seed'],
+  note:'Every feather outlined in dark, so the whole bird looks knitted.'},
+ {id:'goldenpheasant',n:'Golden Pheasant',l:'Chrysolophus pictus',r:5,sz:1.65,tail:22,fx:'halo',
+  c:['#c8402e','#a8302a','#e8c020','#c8402e','#c8b070','#c8b070'],
+  pat:{crest:'#f2d020',collar:'#e08a2c',rump:'#e8c020',wingflash:'#2f5fb8'},t:[0,1,3,4],f:['ground','seed'],
+  note:'Escaped from an estate a century ago and never went home. Absurd, and it knows it.'}
+]);
+
+group('Woodpeckers',[
+ {id:'greatspot',n:'Great Spotted Woodpecker',l:'Dendrocopos major',r:2,sz:1.18,tail:8,beak:'chisel',fx:'drum',
+  c:['#1c1a1f','#141317','#1c1a1f','#f0ece0','#3b3a38','#5a5248'],
+  pat:{nape:'#c8302a',vent:'#c8302a',shoulder:'#f0ece0'},t:[1,2,3],f:['suet'],
+  note:'Lands with a thump, silences the whole garden, and eats in peace.'},
+ {id:'lesserspot',n:'Lesser Spotted Woodpecker',l:'Dryobates minor',r:5,sz:.75,tail:5,beak:'chisel',shy:1,fx:'drum',
+  c:['#26242a','#1c1a1f','#26242a','#e8e4d8','#3b3a38','#5a5248'],
+  pat:{cap:'#c8302a',bars:'#f0ece0'},t:[1,2,3],f:['suet'],
+  note:'Sparrow-sized and near-impossible. A rattle high in a dead branch is usually all you get.'},
+ {id:'greenwood',n:'Green Woodpecker',l:'Picus viridis',r:3,sz:1.4,tail:9,beak:'chisel',fx:'dig',
+  c:['#6f9040','#5a7830','#8aa848','#c8cc98','#3b3a38','#7f8a5c'],
+  pat:{cap:'#c8302a',mask:'#26242a',rump:'#c8d84c'},t:[1,2,3],f:['ground','suet'],
+  note:'Laughs at you from the middle of the lawn, where it is eating ants, not your suet.'},
+ {id:'wryneck',n:'Wryneck',l:'Jynx torquilla',r:5,sz:.95,tail:8,beak:'thin',shy:1,
+  c:['#9a8a70','#7f7058','#8f8068','#e0d8c4','#8a8272','#a89878'],
+  pat:{streaks:'#5f5240',bars:'#6f6252',crownstripe:'#4a4038'},t:[1,2,3],s:[0,2],f:['ground','mealworm'],
+  note:'Twists its neck like a snake when cornered. Looks like a piece of bark that has had enough.'},
+ {id:'downy',n:'Downy Woodpecker',l:'Dryobates pubescens',r:2,sz:.8,tail:5,beak:'chisel',fx:'drum',
+  c:['#26242a','#1c1a1f','#26242a','#f2f0e8','#3b3a38','#5a5248'],
+  pat:{nape:'#c8302a',bars:'#f0ece0',brow:'#f2f0e8'},f:['suet','seed'],
+  note:'The little one that will share a suet cage with chickadees and not make a fuss.'},
+ {id:'hairy',n:'Hairy Woodpecker',l:'Leuconotopicus villosus',r:3,sz:1.1,tail:7,beak:'chisel',fx:'drum',
+  c:['#26242a','#1c1a1f','#26242a','#f2f0e8','#4a4038','#5a5248'],
+  pat:{nape:'#c8302a',bars:'#f0ece0',brow:'#f2f0e8'},f:['suet','seed'],
+  note:'The Downy’s big brother, with a bill you would not want to be a tree about.'},
+ {id:'redbellied',n:'Red-bellied Woodpecker',l:'Melanerpes carolinus',r:3,sz:1.15,tail:7,beak:'chisel',fx:'cache',
+  c:['#a8a49c','#8f8b84','#c8302e','#d8d0c0','#3b3a38','#5a5248'],
+  pat:{cap:'#c8302e',bars:'#f0ece0',blush:'#c88a6a'},f:['suet','seed','fruit'],
+  note:'Named for a blush on the belly nobody has ever seen. The head is the actual event.'},
+ {id:'redheaded',n:'Red-headed Woodpecker',l:'Melanerpes erythrocephalus',r:4,sz:1.15,tail:7,beak:'chisel',fx:'cache',
+  c:['#1c1a1f','#141317','#c8302e','#f4f2ea','#4a4038','#5a5248'],
+  pat:{shoulder:'#f4f2ea'},f:['suet','fruit','seed'],
+  note:'Three blocks of colour and nothing else: red, white, black. Stores acorns in fence posts.'},
+ {id:'pileated',n:'Pileated Woodpecker',l:'Dryocopus pileatus',r:5,sz:1.7,tail:11,beak:'chisel',fx:'drum',
+  c:['#26242a','#1c1a1f','#26242a','#2b2723','#4a4038','#5a5248'],
+  pat:{crest:'#c8302a',moustache:'#c8302a',brow:'#f2f0e8'},t:[1,2,3],f:['suet'],
+  note:'Crow-sized, crimson-crested, and it leaves rectangular holes the size of a letterbox.'},
+ {id:'blackwood',n:'Black Woodpecker',l:'Dryocopus martius',r:5,sz:1.7,tail:11,beak:'chisel',fx:'drum',
+  c:['#1c1b20','#141317','#1c1b20','#201f24','#d8cc98','#5a5248'],
+  pat:{cap:'#c8302a',eye:'#e8e4d8'},t:[1,2,3],f:['suet'],
+  note:'A drumroll you can hear a mile off. The biggest woodpecker in Europe, and the loudest.'}
+]);
+
+group('Corvids',[
+ {id:'jay',n:'Jay',l:'Garrulus glandarius',r:2,sz:1.42,tail:12,fx:'cache',
+  c:['#c99c78','#3a4a80','#d8b294','#e6cdb4','#2b2723','#9a8060'],
+  pat:{crest:'#e0c0a4',mask:'#2b2723',wingflash:'#5f8fd8',rump:'#f4f0e6'},t:[1,2,3],s:[2,3],f:['ground','seed'],
+  note:'A crow that dressed for a wedding. Takes acorns and forgets where it buried them.'},
+ {id:'rook',n:'Rook',l:'Corvus frugilegus',r:2,sz:1.55,tail:11,flock:3,
+  c:['#22212a','#1a1922','#22212a','#26252e','#c8bca8','#26242a'],
+  pat:{sheen:'#5f4f8a',face:'#c8bca8'},f:['ground'],
+  note:'Bare grey face, baggy trousers, and a rookery that starts arguing at first light.'},
+ {id:'hoodedcrow',n:'Hooded Crow',l:'Corvus cornix',r:3,sz:1.55,tail:11,
+  c:['#8f949c','#26242a','#26242a','#9aa0a8','#26242a','#26242a'],
+  pat:{},f:['ground','suet'],
+  note:'A carrion crow in a grey waistcoat. Ireland, Scotland, and the whole of eastern Europe.'},
+ {id:'raven',n:'Raven',l:'Corvus corax',r:4,sz:1.85,tail:14,beak:'hook',
+  c:['#1a1920','#131218','#1a1920','#1e1d24','#1a1920','#1a1920'],
+  pat:{sheen:'#3f4f7a',throat:'#26242a'},t:[0,1,2,3],f:['ground'],
+  note:'Rolls onto its back mid-flight for no reason anyone can prove. A cronk from a long way up.'},
+ {id:'chough',n:'Red-billed Chough',l:'Pyrrhocorax pyrrhocorax',r:5,sz:1.4,tail:10,beak:'curve',
+  c:['#1c1b22','#151420','#1c1b22','#201f26','#d8402e','#d8402e'],
+  pat:{sheen:'#3f5f8a'},t:[1,2,3],f:['ground'],
+  note:'Sea cliffs and coral-red legs. Cornwall put it on the coat of arms and then lost it for thirty years.'},
+ {id:'nutcracker',n:'Spotted Nutcracker',l:'Nucifraga caryocatactes',r:5,sz:1.4,tail:9,beak:'chisel',fx:'cache',
+  c:['#5f4a3c','#4a3a2e','#3b2f26','#6a5548','#26242a','#26242a'],
+  pat:{spots:'#f2f0e8',vent:'#f4f2ea'},t:[1,2,3],s:[2,3],f:['seed','ground'],
+  note:'Buries thirty thousand hazelnuts a year and remembers where nearly all of them are.'},
+ {id:'bluejay',n:'Blue Jay',l:'Cyanocitta cristata',r:2,sz:1.3,tail:12,fx:'call',
+  c:['#4a7fc8','#3f6fb8','#5f8fd8','#e8ecf0','#26242a','#3b352e'],
+  pat:{crest:'#5f8fd8',collar:'#26242a',bars:'#1c1a1f',wingbar:'#f2f0e8'},f:['seed','ground','suet'],
+  note:'Screams like a hawk to clear the feeder, then eats alone. Everyone falls for it every time.'},
+ {id:'stellers',n:'Steller’s Jay',l:'Cyanocitta stelleri',r:4,sz:1.32,tail:12,fx:'call',
+  c:['#2f5fb8','#26509a','#26242a','#3f6fc4','#26242a','#26242a'],
+  pat:{crest:'#26242a',brow:'#4a7fd8',bars:'#1c3a80'},f:['seed','ground','suet'],
+  note:'A jay in a black hood, from the dark conifers. Will take the whole peanut and dare you.'},
+ {id:'clarks',n:'Clark’s Nutcracker',l:'Nucifraga columbiana',r:5,sz:1.4,tail:9,beak:'chisel',fx:'cache',
+  c:['#9aa0a8','#26242a','#a8aeb6','#b0b6be','#26242a','#26242a'],
+  pat:{wingflash:'#f2f0e8',tailtip:'#f2f0e8'},t:[1,2,3],s:[2,3],f:['seed','ground'],
+  note:'A high-mountain bird with a map of a whole hillside of buried pine seeds in its head.'},
+ {id:'magpiejay',n:'Azure-winged Magpie',l:'Cyanopica cooki',r:5,sz:1.2,tail:15,flock:4,
+  c:['#c2bcae','#7f9fd8','#26242a','#e0dcd0','#26242a','#3b352e'],
+  pat:{tailtip:'#a8c0e8'},t:[1,2,3],f:['ground','fruit','suet'],
+  note:'Iberian oak woods, in gangs, all talking at once. The blue is the colour of a swimming pool.'}
+]);
+
+group('Owls & raptors',[
+ {id:'tawny',n:'Tawny Owl',l:'Strix aluco',r:3,sz:1.6,beak:'hook',fx:'mist',
+  c:['#8a7050','#6f5738','#9c8060','#d8c8a8','#c9bfa4','#b09a78'],
+  pat:{owl:1,streaks:'#5a4630'},t:[5],f:['ground','bath'],
+  note:'The hoot and the answering "kewick" are two different birds talking across the dark.'},
+ {id:'barnowl',n:'Barn Owl',l:'Tyto alba',r:4,sz:1.65,beak:'hook',fx:'mist',
+  c:['#e8dcc4','#d8c49c','#f4efe2','#faf6ec','#d8ceb8','#e0d4bc'],
+  pat:{owl:2,spots:'#c9b48c'},t:[5],f:['ground'],
+  note:'Hunts on silence itself. If you see one, you will not have heard it coming.'},
+ {id:'littleowl',n:'Little Owl',l:'Athene noctua',r:3,sz:.95,tail:5,beak:'hook',
+  c:['#8a7458','#6f5c44','#9a8464','#e0d4bc','#c9bfa4','#c8b898'],
+  pat:{owl:1,spots:'#f2ece0',brow:'#f4f0e0'},t:[0,4,5],f:['ground','mealworm'],
+  note:'Sits on a fence post in daylight looking permanently offended. Victorian import, thoroughly settled.'},
+ {id:'longeared',n:'Long-eared Owl',l:'Asio otus',r:5,sz:1.5,beak:'hook',
+  c:['#9a7e5c','#7f6448','#a08868','#d8c8a8','#c9bfa4','#c8b090'],
+  pat:{owl:1,tuft:'#7f6448',streaks:'#5a4630',eye:'#e88a2c'},t:[5],f:['ground'],
+  note:'Two feather horns that are not ears at all, and eyes like two orange lamps.'},
+ {id:'shorteared',n:'Short-eared Owl',l:'Asio flammeus',r:5,sz:1.55,beak:'hook',
+  c:['#b09068','#8f7450','#c0a078','#e8dcc0','#c9bfa4','#c8b090'],
+  pat:{owl:1,streaks:'#6f5638',mask:'#33302c',eye:'#f2c92e'},t:[4,5],s:[2,3],f:['ground'],
+  note:'Hunts in daylight over rough ground with a slow, moth-like flap. Yellow eyes, black liner.'},
+ {id:'scops',n:'Eurasian Scops Owl',l:'Otus scops',r:5,sz:.85,tail:5,beak:'hook',shy:1,
+  c:['#8a8074','#6f665c','#948a7c','#c8bfae','#a89878','#b0a088'],
+  pat:{owl:1,tuft:'#6f665c',streaks:'#5f564c'},t:[5],s:[0,1],f:['mealworm','ground'],
+  note:'One flat electronic note every three seconds all night. Sounds far more like a machine than a bird.'},
+ {id:'screechowl',n:'Eastern Screech Owl',l:'Megascops asio',r:4,sz:.95,tail:5,beak:'hook',
+  c:['#9a7a58','#7f6244','#a08868','#dcd0b8','#c8c0a8','#c8b090'],
+  pat:{owl:1,tuft:'#7f6244',streaks:'#5f4a34',eye:'#e8d048'},t:[5],f:['mealworm','ground'],
+  note:'A descending whinny out of a hole in a maple. Grey or rust, and both are the same bird.'},
+ {id:'sparrowhawk',n:'Sparrowhawk',l:'Accipiter nisus',r:3,sz:1.45,tail:13,beak:'hook',hunter:1,fx:'scatter',
+  c:['#5a5f6a','#464b56','#5a5f6a','#e8dcc8','#3b3a38','#f0c83c'],
+  pat:{bars:'#a8624a',eye:'#f2c92e'},t:[1,2,3],f:['seed','ground','suet','fruit','nyjer','mealworm'],
+  note:'Not here for the seed. The garden empties a half-second before you notice why.'},
+ {id:'kestrel',n:'Common Kestrel',l:'Falco tinnunculus',r:3,sz:1.35,tail:12,beak:'hook',hunter:1,fx:'hover',
+  c:['#b0764c','#8f5c38','#8f949c','#e0c8a8','#3b3a38','#e8c84c'],
+  pat:{spots:'#4a3828',moustache:'#3b352e',eye:'#2b2723'},t:[1,2,3],f:['ground'],
+  note:'Hangs in one place in the air as if it has been pinned there, and the head never moves.'},
+ {id:'merlin',n:'Merlin',l:'Falco columbarius',r:5,sz:1.15,tail:10,beak:'hook',hunter:1,fx:'scatter',
+  c:['#5a6a8a','#485674','#5a6a8a','#e0cbb0','#3b3a38','#e8c84c'],
+  pat:{streaks:'#8a5a3c',moustache:'#4a4a58'},t:[1,2,3],s:[2,3],f:['ground'],
+  note:'The smallest falcon here, and it hunts by simply out-flying whatever it has chosen.'},
+ {id:'hobby',n:'Eurasian Hobby',l:'Falco subbuteo',r:5,sz:1.3,tail:11,beak:'hook',hunter:1,fx:'scatter',
+  c:['#4a505c','#3b414c','#4a505c','#e2d4bc','#3b3a38','#e8c84c'],
+  pat:{streaks:'#4a4038',moustache:'#33302c',vent:'#b0542c'},t:[1,2,3],s:[1],f:['ground'],
+  note:'Catches dragonflies in its feet and eats them without landing. Rust-red trousers.'},
+ {id:'goshawk',n:'Northern Goshawk',l:'Accipiter gentilis',r:5,sz:1.75,tail:14,beak:'hook',hunter:1,fx:'scatter',
+  c:['#5a5a62','#484851','#4a4a52','#eae2d4','#3b3a38','#f0c83c'],
+  pat:{bars:'#6f6a62',brow:'#f2f0e8',eye:'#e8802c'},t:[1,2,3],f:['ground'],
+  note:'The garden does not merely empty. It stays empty for a quarter of an hour afterwards.'}
+]);
+
+group('Waterside visitors',[
+ {id:'wagtail',n:'Pied Wagtail',l:'Motacilla alba',r:2,sz:.95,tail:14,beak:'thin',fx:'splash',
+  c:['#5c5a60','#3a383e','#1e1c20','#f2f0e8','#2b2723','#26242a'],
+  pat:{cap:'#1e1c20',bib:'#1e1c20',cheek:'#f2f0e8'},f:['bath','ground','mealworm'],
+  note:'Runs rather than hops, tail pumping the whole time, as if late for something.'},
+ {id:'greywagtail',n:'Grey Wagtail',l:'Motacilla cinerea',r:3,sz:.92,tail:16,beak:'thin',fx:'splash',
+  c:['#7f8894','#6a7280','#8a929e','#e8d84c','#2b2723','#c0a878'],
+  pat:{bib:'#26242a',brow:'#f2f0e8',rump:'#c8d060'},f:['bath','ground'],
+  note:'Named for the least interesting part of it. The underside is pure lemon.'},
+ {id:'yellowwagtail',n:'Yellow Wagtail',l:'Motacilla flava',r:4,sz:.9,tail:13,beak:'thin',fx:'splash',
+  c:['#8a9a48','#6f7f38','#8fa050','#e8d84c','#2b2723','#3b352e'],
+  pat:{brow:'#f0e8a0'},t:[0,1,2,3],s:[0,1],f:['bath','ground','mealworm'],
+  note:'Follows cattle around a wet meadow, catching whatever their hooves put up.'},
+ {id:'kingfisher',n:'Kingfisher',l:'Alcedo atthis',r:5,sz:.95,tail:4,beak:'needle',shy:1,fx:'splash',
+  c:['#2f8fc4','#1f6f9a','#2f8fc4','#c86a3c','#26242a','#d8402e'],
+  pat:{cheek:'#e8a860',throat:'#f2f0e8',rump:'#3fc0e0'},t:[1,2,3],f:['bath'],
+  note:'A blue line drawn across the water and gone. You always see it after it has passed.'},
+ {id:'dipper',n:'White-throated Dipper',l:'Cinclus cinclus',r:5,sz:1.05,tail:5,fx:'splash',
+  c:['#4a3f38','#3b332c','#6f5a48','#f4f2ea','#2b2723','#8a8272'],
+  pat:{bib:'#f4f2ea',flank:'#8a5a3c'},t:[0,1,2,3],f:['bath'],
+  note:'Walks into a river and keeps walking, along the bottom, against the current.'},
+ {id:'moorhen',n:'Moorhen',l:'Gallinula chloropus',r:4,sz:1.4,tail:6,stilt:1,
+  c:['#3b4448','#2f3a3c','#3b4448','#4a5458','#d8402e','#8aa848'],
+  pat:{flank:'#f2f0e8',stilt:'#8aa848'},f:['ground','bath'],
+  note:'Picks its way across the lawn on enormous green feet, flicking a white tail.'},
+ {id:'snipe',n:'Common Snipe',l:'Gallinago gallinago',r:5,sz:1.15,tail:5,beak:'curve',shy:1,
+  c:['#8a7050','#6f5738','#8a7050','#e8dcc4','#7f6a52','#8a9a70'],
+  pat:{streaks:'#4a3c28',crownstripe:'#f0e8d0',brow:'#f0e8d0'},t:[0,4,5],s:[2,3],f:['ground'],
+  note:'A bill longer than its head, and it will stand in one puddle for an hour using it.'},
+ {id:'greyheron',n:'Grey Heron',l:'Ardea cinerea',r:4,sz:2.1,tail:6,beak:'needle',stilt:1,fx:'mist',
+  c:['#8f97a2','#5f6670','#e8ecf0','#e0e4ea','#e8c84c','#c8b878'],
+  pat:{neck:1,plume:'#26242a',stilt:'#c8b878',crest:'#26242a'},t:[0,1,4],f:['bath'],
+  note:'Stands over the fountain like an accusation, waits twenty minutes, and leaves with nothing.'},
+ {id:'littleegret',n:'Little Egret',l:'Egretta garzetta',r:5,sz:1.9,tail:6,beak:'needle',stilt:1,fx:'mist',
+  c:['#f6f6f2','#eae8e2','#fafaf6','#ffffff','#26242a','#e8c84c'],
+  pat:{neck:1,plume:'#ffffff',stilt:'#26242a'},t:[0,1,2,3],f:['bath'],
+  note:'Twenty years ago this was a national rarity. Now it stands in the pond like it pays rent.'},
+ {id:'commonsandpiper',n:'Common Sandpiper',l:'Actitis hypoleucos',r:5,sz:.95,tail:7,beak:'needle',shy:1,
+  c:['#8a7f6a','#6f6554','#8a7f6a','#f4f2ea','#5f5a52','#c8b878'],
+  pat:{streaks:'#5f5444',brow:'#f0ece0'},t:[0,1,2,3],s:[0,1,2],f:['bath','ground'],
+  note:'Bobs its back end continuously, as though the ground were not quite steady.'}
+]);
+
+group('Winter irruptions',[
+ {id:'waxwing',n:'Bohemian Waxwing',l:'Bombycilla garrulus',r:4,sz:1.12,tail:6,beak:'thin',flock:3,fx:'berry',
+  c:['#b09080','#4a4450','#c2a08c','#c8ae98','#2b2723','#3b3630'],
+  pat:{crest:'#c2a08c',mask:'#1e1c20',wingflash:'#d8402e',tailtip:'#f2c92e'},t:[1,2,3],s:[3],f:['fruit'],
+  note:'An irruption bird. Some winters none at all, then one grey morning, forty.'},
+ {id:'cedarwaxwing',n:'Cedar Waxwing',l:'Bombycilla cedrorum',r:4,sz:1,tail:6,beak:'thin',flock:3,fx:'berry',
+  c:['#b8977c','#8a8078','#c8a888','#e8dc9c','#2b2723','#3b3630'],
+  pat:{crest:'#c8a888',mask:'#1e1c20',tailtip:'#e8d048'},t:[1,2,3],s:[2,3],f:['fruit'],
+  note:'Passes berries down the branch from bird to bird until someone finally eats one.'},
+ {id:'greatgrey',n:'Great Grey Shrike',l:'Lanius excubitor',r:5,sz:1.25,tail:11,beak:'hook',hunter:1,
+  c:['#9aa0a8','#33302c','#a8aeb6','#f2f0e8','#2b2723','#2b2723'],
+  pat:{mask:'#1c1a1f',wingbar:'#f2f0e8'},t:[1,2,3],s:[2,3],f:['ground','mealworm'],
+  note:'A songbird with the habits of a hawk. Keeps a larder of prey skewered on thorns.'},
+ {id:'redbackedshrike',n:'Red-backed Shrike',l:'Lanius collurio',r:5,sz:1,tail:9,beak:'hook',hunter:1,
+  c:['#b0704c','#8f5838','#8f949c','#e8d8c8','#2b2723','#2b2723'],
+  pat:{mask:'#1c1a1f',rump:'#9aa0a8'},t:[1,2,3],s:[0,1],f:['ground','mealworm'],
+  note:'The butcher bird. Charming to look at, and the hedge behind it tells another story.'},
+ {id:'hawkowl',n:'Northern Hawk-Owl',l:'Surnia ulula',r:5,sz:1.45,tail:12,beak:'hook',hunter:1,fx:'frost',
+  c:['#8f949c','#767c84','#a8aeb6','#e8e4d8','#c8c0a8','#c8b090'],
+  pat:{owl:1,bars:'#6f6a62',eye:'#f2c92e',mask:'#33302c'},t:[1,2,3],s:[3],f:['ground'],
+  note:'An owl that hunts by day from the very top of a spruce, tail cocked like a falcon.'},
+ {id:'snowyowl',n:'Snowy Owl',l:'Bubo scandiacus',r:5,sz:2,beak:'hook',hunter:1,fx:'snowfall',
+  c:['#f4f4f0','#e4e4de','#fafaf6','#ffffff','#33302c','#e8e4d8'],
+  pat:{owl:2,bars:'#c8ccd4',eye:'#f2c92e'},t:[0,1,4,5],s:[3],f:['ground'],
+  note:'Comes south only when the lemmings fail. Sits on a fence post like a fallen moon.'},
+ {id:'roughlegged',n:'Rough-legged Buzzard',l:'Buteo lagopus',r:5,sz:1.85,tail:12,beak:'hook',hunter:1,fx:'hover',
+  c:['#9a8a74','#7f7060','#c8bca8','#f0ece0','#3b3a38','#e8e4d8'],
+  pat:{belt:'#3b352e',bars:'#8a7a64',tailtip:'#33302c'},t:[1,2,3],s:[3],f:['ground'],
+  note:'Hovers heavily over a winter marsh on feathered legs, watching for something small.'},
+ {id:'arcticredpoll',n:'Arctic Redpoll',l:'Acanthis hornemanni',r:5,sz:.8,tail:7,beak:'needle',fx:'frost',
+  c:['#e8e4d8','#c8c0ae','#f0ece0','#fbf9f4','#e8d8b0','#4a4038'],
+  pat:{cap:'#e0503a',bib:'#3b352e',rump:'#ffffff'},s:[3],f:['nyjer'],
+  note:'A snowball with a red cap. Picking one out of a redpoll flock will take you all afternoon.'},
+ {id:'wintersiskin',n:'Pine Siskin',l:'Spinus pinus',r:3,sz:.76,tail:6,beak:'needle',flock:5,
+  c:['#9a8a68','#7f7050','#8f8060','#e8e0c8','#c9bfa4','#8a8272'],
+  pat:{streaks:'#5f5238',wingbar:'#d8d040'},s:[2,3],f:['nyjer','seed'],
+  note:'Arrives in a mob, empties the nyjer, and is gone by the weekend.'},
+ {id:'evening',n:'Evening Grosbeak',l:'Coccothraustes vespertinus',r:4,sz:1.25,tail:6,beak:'stout',flock:3,fx:'steal',
+  c:['#c8a83c','#26242a','#7f5a2c','#e8c84c','#c8d060','#c0a878'],
+  pat:{brow:'#e8d040',shoulder:'#f4f2ea'},s:[2,3],f:['seed','ground'],
+  note:'A bird the colour of a hazard sign, with a bill that goes through sunflower shells like paper.'}
+]);
+
+group('Aerial feeders',[
+ {id:'swallow',n:'Barn Swallow',l:'Hirundo rustica',r:2,sz:.95,tail:16,beak:'thin',fx:'splash',
+  c:['#2f4a80','#26406f','#2f4a80','#f0e4d0','#26242a','#26242a'],
+  pat:{face:'#c8402e',throat:'#c8402e',plume:'#2f4a80',sheen:'#4a6fb0'},t:[0,1,2,3,4],s:[0,1],f:['bath'],
+  note:'Twelve thousand miles from South Africa to nest in the same shed as last year.'},
+ {id:'housemartin',n:'House Martin',l:'Delichon urbicum',r:2,sz:.8,tail:8,beak:'thin',flock:3,fx:'splash',
+  c:['#2b3a6a','#243058','#2b3a6a','#f6f6f0','#26242a','#f0ece0'],
+  pat:{rump:'#f6f6f0',sheen:'#4a6fb0'},t:[0,1,2,3,4],s:[0,1],f:['bath','ground'],
+  note:'Builds a mud cup under the eaves from a thousand separate beakfuls of puddle.'},
+ {id:'sandmartin',n:'Sand Martin',l:'Riparia riparia',r:3,sz:.75,tail:8,beak:'thin',flock:3,
+  c:['#8a7f70','#6f665a','#8a7f70','#f2f0e8','#26242a','#3b352e'],
+  pat:{belt:'#8a7f70'},t:[0,1,2,3],s:[0,1],f:['bath'],
+  note:'The first migrant back every spring, skimming a gravel pit in early March.'},
+ {id:'swift',n:'Common Swift',l:'Apus apus',r:2,sz:1.15,tail:9,beak:'thin',flock:4,
+  c:['#3b352e','#33302c','#3b352e','#4a4038','#26242a','#26242a'],
+  pat:{throat:'#c8bfae'},t:[1,2,3,4],s:[1],f:['bath'],
+  note:'Lands only to nest. Sleeps, eats, drinks and mates in the air for ten months of the year.'},
+ {id:'alpineswift',n:'Alpine Swift',l:'Tachymarptis melba',r:5,sz:1.45,tail:10,beak:'thin',
+  c:['#8a7f6a','#6f6554','#8a7f6a','#f4f2ea','#26242a','#26242a'],
+  pat:{belt:'#7f7462',throat:'#f4f2ea'},t:[1,2,3],s:[1],f:['bath'],
+  note:'Big enough to be mistaken for a small falcon. Screams past at sixty miles an hour.'},
+ {id:'nightjar',n:'European Nightjar',l:'Caprimulgus europaeus',r:5,sz:1.3,tail:11,beak:'thin',shy:1,fx:'mist',
+  c:['#8a7f6a','#6f6554','#7f7462','#9a8f7c','#33302c','#5f5a52'],
+  pat:{streaks:'#5f5444',speck:'#4a4038',wingflash:'#f2f0e8'},t:[4,5],s:[1],f:['ground'],
+  note:'Churrs for twenty unbroken minutes at dusk, a sound like a distant motorbike in a wood.'},
+ {id:'nighthawk',n:'Common Nighthawk',l:'Chordeiles minor',r:5,sz:1.25,tail:11,beak:'thin',
+  c:['#7f7566','#665e52','#7f7566','#8f8578','#33302c','#5f5a52'],
+  pat:{speck:'#4a4038',wingflash:'#f2f0e8',throat:'#f2f0e8'},t:[4,5],s:[1,2],f:['ground'],
+  note:'Booms as it pulls out of a dive — the sound is the air through its wingtips, not its voice.'},
+ {id:'hoopoe',n:'Eurasian Hoopoe',l:'Upupa epops',r:5,sz:1.35,tail:9,beak:'curve',fx:'dig',
+  c:['#d8a45c','#26242a','#dcaa64','#e8c48c','#3b352e','#5f5a52'],
+  pat:{crest:'#d8a45c',bars:'#f4f2ea',tailtip:'#f4f2ea'},t:[1,2,3],s:[0,1],f:['ground','mealworm'],
+  note:'Opens that crest like a hand of cards when it lands, then puts it away and probes the lawn.'},
+ {id:'beeeater',n:'European Bee-eater',l:'Merops apiaster',r:5,sz:1.15,tail:12,beak:'curve',flock:3,fx:'rainbow',
+  c:['#c8a03c','#a8622c','#8a5a2c','#4fc0d8','#26242a','#3b352e'],
+  pat:{throat:'#e8d048',mask:'#26242a',brow:'#4fc0d8',plume:'#3f9fb8'},t:[1,2,3],s:[1],f:['bath'],
+  note:'Every colour at once, and a call like a wet finger on glass. Should not be here at all.'},
+ {id:'roller',n:'European Roller',l:'Coracias garrulus',r:5,sz:1.4,tail:9,beak:'hook',fx:'rainbow',
+  c:['#3fa8d8','#2f6fb8','#4fb8e0','#5fc8e8','#33302c','#8a8272'],
+  pat:{shoulder:'#a8603c',wingflash:'#26409a'},t:[1,2,3],s:[1],f:['ground','mealworm'],
+  note:'Tumbles out of the sky in a display that gave it its name. Turquoise, on an English fence post.'}
+]);
+
+group('Nectar feeders',[
+ {id:'rubythroat',n:'Ruby-throated Hummingbird',l:'Archilochus colubris',r:2,sz:.5,tail:4,beak:'needle',fx:'hover',
+  c:['#3f9a5c','#2f7a48','#48a866','#f2f0e8','#26242a','#26242a'],
+  pat:{throat:'#c8202e',glow:'#4fd08a'},t:[0,1,2,3,4],s:[0,1,2],f:['nectar'],
+  note:'Weighs less than a penny and crosses the Gulf of Mexico in a single night.'},
+ {id:'annas',n:'Anna’s Hummingbird',l:'Calypte anna',r:2,sz:.52,tail:4,beak:'needle',fx:'hover',
+  c:['#4f9a6c','#3f7a54','#c8206a','#dcdcd0','#26242a','#26242a'],
+  pat:{throat:'#d82070',cap:'#c8206a',glow:'#e84f9a'},f:['nectar'],
+  note:'Dives eighty feet and pulls up with a squeak made by its tail feathers, not its throat.'},
+ {id:'rufoushum',n:'Rufous Hummingbird',l:'Selasphorus rufus',r:3,sz:.48,tail:4,beak:'needle',fx:'hover',
+  c:['#c8763c','#a85c28','#cc7f44','#e8dcc8','#26242a','#26242a'],
+  pat:{throat:'#e8402e',glow:'#f2884c'},s:[0,1,2],f:['nectar'],
+  note:'The most belligerent bird in this guide by a distance, and it weighs three grams.'},
+ {id:'violetear',n:'Mexican Violetear',l:'Colibri thalassinus',r:5,sz:.6,tail:5,beak:'needle',fx:'hover',
+  c:['#2f8a6c','#237055','#2f8a6c','#3f9a7c','#26242a','#26242a'],
+  pat:{cheek:'#6f4fc8',throat:'#3fc0a8',glow:'#4fd0b0'},s:[1],f:['nectar'],
+  note:'A green bird with a violet ear-patch, a thousand miles north of anywhere it should be.'},
+ {id:'sunbird',n:'Palestine Sunbird',l:'Cinnyris osea',r:5,sz:.62,tail:6,beak:'curve',
+  c:['#2f5f8a','#26507a','#2f6f9a','#3f7fa8','#26242a','#26242a'],
+  pat:{sheen:'#4fa8c8',glow:'#4f9ad0'},s:[0,1],f:['nectar','fruit'],
+  note:'An old-world hummingbird that never learned to hover, so it perches and drinks like a sensible bird.'},
+ {id:'baltimore',n:'Baltimore Oriole',l:'Icterus galbula',r:3,sz:1.05,tail:8,beak:'needle',
+  c:['#e08020','#26242a','#26242a','#e88a28','#8a929e','#5f5a52'],
+  pat:{wingbar:'#f2f0e8'},s:[0,1],f:['nectar','fruit'],
+  note:'Comes to half an orange nailed to a post and stays as long as the orange does.'},
+ {id:'orchardoriole',n:'Orchard Oriole',l:'Icterus spurius',r:4,sz:.95,tail:8,beak:'needle',
+  c:['#a8502c','#26242a','#26242a','#b0582c','#8a929e','#5f5a52'],
+  pat:{wingbar:'#e8e4d8'},s:[0,1],f:['nectar','fruit'],
+  note:'A chestnut oriole that arrives late, nests fast, and starts south again in July.'},
+ {id:'bananaquit',n:'Bananaquit',l:'Coereba flaveola',r:5,sz:.6,tail:5,beak:'curve',
+  c:['#5f6a70','#4a545a','#33302c','#e8d048','#26242a','#5f5a52'],
+  pat:{brow:'#f4f2ea',throat:'#c8ccd4'},s:[1],f:['nectar','fruit'],
+  note:'Punctures the base of a flower to steal the nectar without doing any pollinating. No shame.'},
+ {id:'capesugarbird',n:'Cape Sugarbird',l:'Promerops cafer',r:5,sz:1.1,tail:26,beak:'curve',
+  c:['#8a6a48','#6f5438','#9a7850','#d8c8a8','#26242a','#3b352e'],
+  pat:{plume:'#8a6a48',throat:'#c8a05c',vent:'#e8d048'},s:[1],f:['nectar'],
+  note:'A tail four times the length of the bird, dragged through a protea bush all morning.'},
+ {id:'lorikeet',n:'Rainbow Lorikeet',l:'Trichoglossus moluccanus',r:5,sz:1.2,tail:12,beak:'hook',fx:'rainbow',
+  c:['#3f9a3c','#2f7a2c','#2f5fb8','#e8602c','#e8802c','#8a8272'],
+  pat:{collar:'#8fc84c',bib:'#2f5fb8',glow:'#f2884c'},f:['nectar','fruit'],
+  note:'A parrot that drinks with a brush on the end of its tongue and screams the entire time.'},
+ {id:'parakeet',n:'Ring-necked Parakeet',l:'Psittacula krameri',r:3,sz:1.35,tail:22,beak:'hook',flock:3,fx:'steal',
+  c:['#5faa3c','#4a8a2c','#6fba48','#8fc860','#d8402e','#a89878'],
+  pat:{collar:'#c8506a',throat:'#26242a'},f:['fruit','seed','nectar'],
+  note:'Escaped from somewhere in the seventies and now roosts in London by the thousand.'},
+ {id:'zosterops',n:'Japanese White-eye',l:'Zosterops japonicus',r:5,sz:.6,tail:5,beak:'needle',flock:3,
+  c:['#8aa84c','#6f8a38','#93b054','#e8e4c8','#3b352e','#5f5a52'],
+  pat:{eyering:'#f8f8f4',throat:'#d8d860'},f:['nectar','fruit'],
+  note:'A ring of white feathers round each eye, so it always looks mildly astonished.'}
+]);
+
+group('American feeder birds',[
+ {id:'cardinal',n:'Northern Cardinal',l:'Cardinalis cardinalis',r:1,sz:1.15,tail:11,beak:'stout',fx:'song',
+  c:['#c8302e','#a82824','#d8382e','#c0342c','#e8803c','#8a5a4c'],
+  pat:{crest:'#d8382e',mask:'#26242a'},f:['seed','ground'],
+  note:'A red bird in a snowy garden is the whole reason people put feeders up over there.'},
+ {id:'chickadee',n:'Black-capped Chickadee',l:'Poecile atricapillus',r:1,sz:.78,tail:7,beak:'thin',bold:1,fx:'cache',
+  c:['#9a9484','#7f7a6c','#26242a','#f2f0e8','#26242a','#4a4038'],
+  pat:{cap:'#26242a',bib:'#26242a',cheek:'#f8f8f4'},f:['seed','suet'],
+  note:'Will land on your hand if you stand still long enough. Almost everybody’s first tame bird.'},
+ {id:'tuftedtitmouse',n:'Tufted Titmouse',l:'Baeolophus bicolor',r:2,sz:.9,tail:8,beak:'thin',fx:'cache',
+  c:['#9aa0a8','#828892','#a8aeb6','#f0ece0','#26242a','#3b352e'],
+  pat:{crest:'#a8aeb6',blush:'#c8a088',brow:'#33302c'},f:['seed','suet'],
+  note:'Takes one sunflower seed at a time, flies off, hammers it open, and comes straight back.'},
+ {id:'whitebreasted',n:'White-breasted Nuthatch',l:'Sitta carolinensis',r:2,sz:.95,tail:4,beak:'chisel',fx:'cache',
+  c:['#8f99a8','#7a8492','#26242a','#f4f2ea','#3b3a38','#a89878'],
+  pat:{cap:'#26242a',vent:'#a8603c'},f:['suet','seed'],
+  note:'Yank-yank-yank, upside down, all the way down the trunk, all winter.'},
+ {id:'carolinawren',n:'Carolina Wren',l:'Thryothorus ludovicianus',r:3,sz:.78,tail:6,beak:'curve',fx:'song',
+  c:['#a8703c','#8a5828','#b0763f','#e8c8a0','#5f5a52','#c0a878'],
+  pat:{brow:'#f4f0e0',bars:'#7f5228'},f:['suet','mealworm','ground'],
+  note:'"Teakettle, teakettle, teakettle" at a volume that makes people check their windows.'},
+ {id:'goldfinchus',n:'American Goldfinch',l:'Spinus tristis',r:1,sz:.8,tail:6,beak:'cone',flock:3,
+  c:['#e8d040','#26242a','#e8d840','#f0e468','#e8a83c','#c0a878'],
+  pat:{cap:'#26242a',wingbar:'#f2f0e8'},f:['nyjer','seed'],
+  note:'Bright yellow in July, drab olive in January, and people write in every autumn to report it missing.'},
+ {id:'housefinch',n:'House Finch',l:'Haemorhous mexicanus',r:1,sz:.88,tail:8,beak:'stout',flock:3,
+  c:['#9a8068','#7f6850','#c8503c','#e0d4c0','#a89878','#8a8272'],
+  pat:{streaks:'#7f6a54',brow:'#c8503c'},f:['seed','nyjer'],
+  note:'A western bird released in New York in 1940. There are now a hundred million of them.'},
+ {id:'purplefinch',n:'Purple Finch',l:'Haemorhous purpureus',r:3,sz:.92,tail:8,beak:'stout',
+  c:['#a8506a','#8a4054','#b8586f','#e8d8dc','#c0a878','#8a8272'],
+  pat:{streaks:'#8a5a68',brow:'#c8687c'},s:[2,3],f:['seed','nyjer'],
+  note:'Described once as a sparrow dipped in raspberry juice, and never better described since.'},
+ {id:'juncous',n:'Dark-eyed Junco',l:'Junco hyemalis',r:1,sz:.85,tail:8,flock:4,
+  c:['#5a5f68','#484d56','#4f545c','#f4f2ea','#e8d8b8','#c8b090'],
+  pat:{tailtip:'#f4f2ea'},s:[2,3],f:['ground','seed'],
+  note:'The snowbird. Turns up under the feeder the same week as the first frost, every year.'},
+ {id:'whitethroatedsp',n:'White-throated Sparrow',l:'Zonotrichia albicollis',r:3,sz:.95,tail:8,fx:'song',
+  c:['#9a8460','#7f6a48','#4a4a52','#c8c4bc','#8a8272','#c0a878'],
+  pat:{crownstripe:'#f2f0e8',throat:'#f8f8f4',brow:'#e8d048',streaks:'#6f5a3c'},s:[2,3],f:['ground','seed'],
+  note:'Whistles a thin, sad "oh sweet Canada" from the bottom of a hedge in the half-dark.'},
+ {id:'towhee',n:'Eastern Towhee',l:'Pipilo erythrophthalmus',r:3,sz:1.15,tail:12,fx:'dig',
+  c:['#26242a','#1c1a1f','#26242a','#f2f0e8','#3b352e','#c0a878'],
+  pat:{flank:'#b0603c',eye:'#c8302e',tailtip:'#f2f0e8'},f:['ground','seed'],
+  note:'Kicks backwards with both feet at once, and the leaf litter goes everywhere.'},
+ {id:'catbird',n:'Grey Catbird',l:'Dumetella carolinensis',r:3,sz:1.1,tail:11,beak:'thin',fx:'song',
+  c:['#5f646c','#4f545c','#26242a','#6a6f78','#26242a','#3b352e'],
+  pat:{cap:'#26242a',vent:'#8a4a3c'},s:[0,1,2],f:['fruit','mealworm'],
+  note:'Mews like a cat from inside a bush, then does forty other birds badly on purpose.'},
+ {id:'mockingbird',n:'Northern Mockingbird',l:'Mimus polyglottos',r:3,sz:1.25,tail:14,beak:'thin',fx:'song',
+  c:['#8f949c','#767c84','#9aa0a8','#e8e4dc','#26242a','#5f5a52'],
+  pat:{wingflash:'#f4f2ea',eye:'#e8d048'},f:['fruit','ground','mealworm'],
+  note:'Sings all night under a streetlight, running through every other bird in the county twice.'},
+ {id:'indigo',n:'Indigo Bunting',l:'Passerina cyanea',r:4,sz:.85,tail:7,beak:'cone',fx:'halo',
+  c:['#2f4fc8','#2640a8','#3f5fd8','#3a52c0','#8a929e','#5f5a52'],
+  pat:{glow:'#5f7fe8'},s:[0,1],f:['seed','nyjer','ground'],
+  note:'Not actually blue. There is no blue pigment in it at all — it is the feather structure doing that.'}
+]);
+
+group('Vagrants & escapes',[
+ {id:'painted',n:'Painted Bunting',l:'Passerina ciris',r:5,sz:.85,tail:7,fx:'rainbow',
+  c:['#4f9a3c','#3f7f2c','#2f4fc8','#c8302e','#8a929e','#5f5a52'],
+  pat:{eyering:'#c8302e',rump:'#c8302e',glow:'#8fd85c'},s:[0,1],f:['seed','ground','nyjer'],
+  note:'Looks like a child was given the good felt-tips and told not to hold back.'},
+ {id:'redwingedblackbird',n:'Red-winged Blackbird',l:'Agelaius phoeniceus',r:3,sz:1.2,tail:9,flock:3,fx:'call',
+  c:['#1c1a1f','#141317','#1c1a1f','#201f24','#3b352e','#3b352e'],
+  pat:{shoulder:'#c8302e',wingbar:'#e8c84c'},f:['ground','seed'],
+  note:'Shows the red epaulettes only when it means it. The rest of the time it keeps them covered.'},
+ {id:'bobolink',n:'Bobolink',l:'Dolichonyx oryzivorus',r:5,sz:1,tail:8,fx:'song',
+  c:['#26242a','#1c1a1f','#26242a','#2b2723','#3b352e','#5f5a52'],
+  pat:{nape:'#e8d8a0',shoulder:'#f2f0e8',rump:'#f2f0e8'},s:[0,1],f:['ground','seed'],
+  note:'Sings something like a wind-up toy falling downstairs. Wears its plumage upside-down.'},
+ {id:'hoopoelark',n:'Greater Hoopoe-Lark',l:'Alaemon alaudipes',r:5,sz:1.25,tail:10,beak:'curve',
+  c:['#c8b494','#a89878','#c8b494','#f0e8dc','#8a8272','#c8b878'],
+  pat:{streaks:'#8a7a60',wingflash:'#26242a',brow:'#f4f0e6'},s:[1],f:['ground','mealworm'],
+  note:'A desert bird that sings while turning a somersault in mid-air. Nobody knows why.'},
+ {id:'rosestarling',n:'Rosy Starling',l:'Pastor roseus',r:5,sz:1.15,tail:6,beak:'thin',fx:'murmur',
+  c:['#e8a0a8','#26242a','#26242a','#f0b0b4','#e8a83c','#c98a4a'],
+  pat:{crest:'#26242a',sheen:'#6f4f8a'},s:[1,2],f:['fruit','ground','suet'],
+  note:'A starling in pink and black, following the locust swarms west until it overshoots.'},
+ {id:'oriolegold',n:'Golden Oriole',l:'Oriolus oriolus',r:5,sz:1.3,tail:9,beak:'hook',shy:1,fx:'song',
+  c:['#e8c820','#26242a','#f0d028','#e8cc30','#c85a3c','#5f5a52'],
+  pat:{mask:'#26242a',wingflash:'#26242a'},t:[1,2,3],s:[1],f:['fruit'],
+  note:'Fluted, liquid, and utterly invisible. Bright yellow, and it will still not let you see it.'},
+ {id:'greenjay',n:'Green Jay',l:'Cyanocorax yncas',r:5,sz:1.25,tail:12,fx:'call',
+  c:['#5faa5c','#4a8a48','#2f8fd8','#c8d060','#26242a','#3b352e'],
+  pat:{bib:'#26242a',crest:'#4fa8e8',brow:'#7fd0f0'},s:[0,1,2],f:['fruit','seed','suet'],
+  note:'Green, blue and yellow all at once, and it sounds like a rusty gate being worked hard.'},
+ {id:'hoodedmerganser',n:'Hooded Merganser',l:'Lophodytes cucullatus',r:5,sz:1.6,tail:8,beak:'duck',
+  c:['#26242a','#1c1a1f','#26242a','#f0ece0','#26242a','#c8b878'],
+  pat:{crest:'#f4f2ea',flank:'#a8603c',eye:'#e8d048'},f:['bath'],
+  note:'Raises a white fan on its head and lowers it again. On a fountain, this is frankly ridiculous.'},
+ {id:'quetzalish',n:'Elegant Trogon',l:'Trogon elegans',r:5,sz:1.35,tail:16,beak:'stout',fx:'halo',
+  c:['#2f8a5c','#26704a','#2f8a5c','#c8302e','#e8c84c','#5f5a52'],
+  pat:{collar:'#f2f0e8',tailtip:'#f2f0e8',glow:'#4fc890'},s:[1],f:['fruit'],
+  note:'Sits dead still in the shade of a sycamore canyon, being the most beautiful thing for a hundred miles.'},
+ {id:'cockatiel',n:'Escaped Cockatiel',l:'Nymphicus hollandicus',r:4,sz:1.15,tail:16,beak:'hook',bold:1,
+  c:['#c8c4bc','#a8a49c','#e8d048','#d8d4cc','#8a8272','#5f5a52'],
+  pat:{crest:'#e8d048',cheek:'#e8803c'},f:['seed','fruit','ground'],
+  note:'Somebody’s window was open. Whistles the first four notes of a tune nobody can place.'}
+]);
+
+group('Impossible birds',[
+ {id:'firebird',n:'Ember Finch',l:'Fringilla ignis',r:6,sz:1.05,tail:12,beak:'stout',fx:'ember',
+  c:['#e8602c','#c8402a','#f2884c','#f2c060','#5f2a20','#8a3a28'],
+  pat:{crest:'#f2c060',glow:'#f2884c',plume:'#e8602c',tailtip:'#f8e090'},t:[4,5],f:['suet','seed'],
+  note:'Warms the air a foot around itself. The suet is soft for an hour after it leaves.'},
+ {id:'moonheron',n:'Moon Heron',l:'Ardea lunaris',r:6,sz:2,tail:6,beak:'needle',stilt:1,fx:'mist',
+  c:['#c8ccdc','#a8aec4','#e8ecf6','#f2f4fa','#c8ccd4','#a8aec4'],
+  pat:{neck:1,plume:'#f2f4fa',stilt:'#a8aec4',glow:'#c8d8f8'},t:[5],f:['bath'],
+  note:'Only ever seen at the fountain, at night, and only by people who were not looking for it.'},
+ {id:'aurorawren',n:'Aurora Wren',l:'Troglodytes borealis',r:6,sz:.66,tail:4,beak:'thin',fx:'aurora',
+  c:['#3f8a9a','#2f6f80','#4f9aa8','#8fd0c8','#26242a','#5f8a80'],
+  pat:{brow:'#a8f0e0',glow:'#5fe0c8',streaks:'#2f6f80'},t:[5],s:[3],f:['suet','ground'],
+  note:'Small enough to sit in an eggcup, and the whole northern sky goes with it wherever it lands.'},
+ {id:'dawnlark',n:'Dawn Lark',l:'Alauda aurorae',r:6,sz:1.05,tail:8,fx:'dawnlight',
+  c:['#e8c88a','#c9a05e','#f2d8a0','#f8ecc8','#c8a878','#d8b878'],
+  pat:{crest:'#f2d8a0',glow:'#ffe8a8',streaks:'#c9a05e'},t:[0],f:['ground','seed'],
+  note:'Arrives a few minutes before the sun does, and the light seems to come up around it.'},
+ {id:'harvestjay',n:'Harvest Jay',l:'Garrulus copia',r:6,sz:1.4,tail:12,fx:'feast',
+  c:['#c8a03c','#8a6a28','#d8b048','#e8d8a0','#3b352e','#8a7a50'],
+  pat:{crest:'#e8c860',wingflash:'#f2e0a0',glow:'#f2d878',rump:'#f4f0e6'},t:[1,2,3],s:[2],f:['ground','seed','fruit'],
+  note:'Turns up when something is nearly empty and leaves it full. Never seen twice in one week.'},
+ {id:'frostmartin',n:'Frost Martin',l:'Delichon glacies',r:6,sz:.8,tail:9,beak:'thin',flock:3,fx:'frost',
+  c:['#b8d0e0','#98b4c8','#d8e8f2','#f4fafe','#5f7a88','#8fa8b8'],
+  pat:{rump:'#ffffff',glow:'#d8f0ff',sheen:'#a8d8f0'},s:[3],f:['bath','ground'],
+  note:'Every surface it touches grows a flower of ice, and none of them last past the next hour.'}
+]);
+
+const TOTAL=SP.length;
+const byId={}; SP.forEach(s=>byId[s.id]=s);
+
+/* ---------- Save ----------------------------------------------------- */
+const FEED0={seed:70,nyjer:70,suet:70,fruit:40,nectar:0,mealworm:0};
+const DEF={guide:{},visits:0,taps:0,started:0,feed:Object.assign({},FEED0),
+  realClock:true,weather:true,fastStart:0,seen:{},
+  // Petting. `pets` is the running total across every species; the per-species
+  // count lives on the guide entry, because trust is something you build with a
+  // kind of bird rather than with one individual that will be gone in a minute.
+  pets:0,
+  // Things birds have left on the lawn — sprouted caches, flowers, trinkets.
+  // Positions are stored as fractions of the window so they survive a resize.
+  garden:[],
+  // The tree keeps a slow score of its own: 0 is the sapling that was here on
+  // day one, 1 is full canopy. It only ever moves while birds are actually
+  // using the garden, so it reads as a record of the place being looked after
+  // rather than of time passing. `mess` is how many droppings were on the
+  // ground when you closed the tab — the positions are not worth storing, so
+  // they get re-scattered on load.
+  tree:0,cleaned:0,mess:0};
+let S=Object.assign({},DEF);
+
+function load(){
+  try{
+    const raw=localStorage.getItem(K);
+    if(raw){const o=JSON.parse(raw); if(o&&typeof o==='object') S=Object.assign({},DEF,o,{feed:Object.assign({},DEF.feed,o.feed||{}),guide:o.guide||{}});}
+  }catch(e){}
+  if(!Array.isArray(S.garden)) S.garden=[];
+  if(!S.started) S.started=Date.now();
+  if(!S.fastStart) S.fastStart=Date.now();
+}
+let saveTimer=0;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{try{localStorage.setItem(K,JSON.stringify(S));}catch(e){}},250);
+}
+
+/* ---------- Clock & season ------------------------------------------ */
+// Real mode reads the system clock. Accelerated mode runs a six-minute day
+// and steps the season on every fourth day, so a whole year is reachable
+// in one sitting — otherwise a winter-only bird is a three-month wait.
+const FAST_DAY=6*60*1000;
+function clock(){
+  if(S.realClock){
+    const d=new Date();
+    const m=d.getMonth();
+    // Meteorological seasons: Mar–May spring, Jun–Aug summer, Sep–Nov autumn, Dec–Feb winter.
+    return {hour:d.getHours()+d.getMinutes()/60, season:Math.floor(((m+10)%12)/3), day:Math.floor(d.getTime()/864e5)};
+  }
+  const el=Math.max(0,Date.now()-S.fastStart);
+  const day=Math.floor(el/FAST_DAY);
+  return {hour:(el%FAST_DAY)/FAST_DAY*24, season:Math.floor(day/4)%4, day};
+}
+function phaseOf(h){
+  if(h<5||h>=20) return 5;
+  if(h<7.5) return 0;
+  if(h<11) return 1;
+  if(h<15) return 2;
+  if(h<18) return 3;
+  return 4;
+}
+// Weather is a pure function of the in-game day and half-hour block, so it
+// stays put across reloads instead of re-rolling on every boot.
+function hash(n){n=(n^61)^(n>>>16);n=n+(n<<3)|0;n=n^(n>>>4);n=Math.imul(n,0x27d4eb2d);n=n^(n>>>15);return (n>>>0)/4294967296;}
+function weatherOf(t){
+  const blk=t.day*48+Math.floor(t.hour*2);
+  const v=hash(blk*2654435761%2147483647);
+  const s=t.season;
+  if(s===3) return v<.30?'snow':v<.46?'cloud':v<.56?'rain':'clear';
+  if(s===2) return v<.30?'rain':v<.55?'cloud':'clear';
+  if(s===0) return v<.24?'rain':v<.48?'cloud':'clear';
+  return v<.12?'rain':v<.34?'cloud':'clear';
+}
+
+/* ---------- Scene layout --------------------------------------------- */
+let L={};
+function layout(){
+  const horizon=H*0.60;
+  L={horizon,
+    branchY:H*0.185,
+    trunkX:W*0.90,
+    branchX:W*0.14,
+    ground:H*0.74,
+    // Five hangers on one bough, staggered in height. Level pegging looked
+    // tidier and read worse: birds at neighbouring feeders overlapped, and
+    // the eye had nothing to travel along.
+    stations:{
+      seed  :{x:W*0.20,y:H*0.345,w:26,h:64},
+      nyjer :{x:W*0.355,y:H*0.315,w:20,h:58},
+      suet  :{x:W*0.505,y:H*0.335,w:24,h:44},
+      fruit :{x:W*0.645,y:H*0.295,w:18,h:26},
+      nectar:{x:W*0.785,y:H*0.325,w:20,h:34}
+    },
+    table:{x:W*0.34,y:H*0.755,w:W*0.30,h:8},
+    worm :{x:W*0.115,y:H*0.845,r:W*0.058},
+    bath :{x:W*0.74,y:H*0.775,r:W*0.085}
+  };
+  // Perches: where a bird can actually stand while it uses a station.
+  L.perch=[];
+  const st=L.stations;
+  for(const k of ['seed','nyjer','suet','fruit','nectar']){
+    const s=st[k];
+    L.perch.push({st:k,x:s.x-s.w/2-7,y:s.y+s.h*0.35,dir:1});
+    L.perch.push({st:k,x:s.x+s.w/2+7,y:s.y+s.h*0.35,dir:-1});
+  }
+  for(let i=0;i<4;i++) L.perch.push({st:'branch',x:L.branchX+ (W*0.72)*(i/3.4)+10,y:L.branchY-2,dir:i%2?1:-1});
+  L.perch.push({st:'ground',x:L.table.x-L.table.w*0.28,y:L.table.y,dir:1});
+  L.perch.push({st:'ground',x:L.table.x+L.table.w*0.28,y:L.table.y,dir:-1});
+  L.perch.push({st:'ground',x:W*0.30,y:H*0.90,dir:1});
+  L.perch.push({st:'ground',x:W*0.53,y:H*0.875,dir:-1});
+  L.perch.push({st:'mealworm',x:L.worm.x-L.worm.r*0.66,y:L.worm.y-2,dir:1});
+  L.perch.push({st:'mealworm',x:L.worm.x+L.worm.r*0.66,y:L.worm.y-2,dir:-1});
+  // Four places on the fountain rim rather than two: it is the one station
+  // every species will use, so it is where a crowd gathers.
+  L.perch.push({st:'bath',x:L.bath.x-L.bath.r*0.62,y:L.bath.y-3,dir:1});
+  L.perch.push({st:'bath',x:L.bath.x-L.bath.r*0.22,y:L.bath.y+1,dir:1});
+  L.perch.push({st:'bath',x:L.bath.x+L.bath.r*0.24,y:L.bath.y+1,dir:-1});
+  L.perch.push({st:'bath',x:L.bath.x+L.bath.r*0.62,y:L.bath.y-3,dir:-1});
+}
+function fit(){
+  const r=app.getBoundingClientRect();
+  W=r.width;H=r.height;
+  const d=Math.min(window.devicePixelRatio||1,2.5);
+  cv.width=Math.round(W*d);cv.height=Math.round(H*d);
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(d,0,0,d,0,0);
+  layout();
+}
+
+/* ---------- Bird drawing --------------------------------------------- */
+/* Everything is drawn in a ~30-unit-tall space with the feet at the origin,
+   then scaled. Species differ by colour, size, tail, beak and pattern
+   flags — enough signal to tell them apart at a glance. */
+function drawBird(g,sp,x,y,scale,dir,po){
+  po=po||{};
+  const c=sp.c,p=sp.pat||{};
+  const flap=po.flap||0, fly=po.fly||0, hop=po.hop||0, lean=po.lean||0;
+  // A petted bird fluffs up. It is a small thing — a fourteen per cent puff and
+  // a lift — but it is the whole visible reward for petting, so it is worth
+  // being a body-wide scale rather than a separate flourish drawn on top.
+  const fluff=po.fluff||0, puff=1+fluff*0.14;
+  // Long-legged birds stand off the ground; long-necked ones carry the head
+  // higher and get a neck drawn in. Both are pure geometry, so the rest of the
+  // pattern code below never has to know a heron from a wren.
+  const stilt=p.stilt?9.5:0, neck=p.neck?9:0;
+  g.save();
+  g.translate(x,y-hop);
+  g.scale(dir*scale,scale);
+  g.rotate(lean*dir);
+
+  const bodyY=-11-stilt, headX=6.2, headY=-19.2-stilt-neck, hr=5.0;
+
+  // A halo, for the handful of species that carry their own light.
+  if(p.glow){
+    const gr=g.createRadialGradient(2,bodyY-4,1,2,bodyY-4,26);
+    gr.addColorStop(0,p.glow);gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.save();g.globalAlpha=0.32+0.1*Math.sin((po.t||0)*3);g.fillStyle=gr;
+    ellipse(g,2,bodyY-4,26,24);g.fill();g.restore();
+  }
+
+  // far wing (behind the body) while flying
+  if(fly>0.02){
+    g.save();g.translate(-1,bodyY-1);g.rotate(-flap*0.9-0.25);
+    g.fillStyle=shade(c.w,-0.22);wingPath(g,fly);g.fill();g.restore();
+  }
+  // Tail. Tapered rather than square: at six units it made no difference, but
+  // the list now runs to a sugarbird with a tail four times its own length,
+  // and a plain rectangle that long reads as a plank nailed to a bird.
+  const tl=sp.tail, tw=tl>12?0.62:1;
+  g.fillStyle=c.w;
+  g.beginPath();
+  g.moveTo(-5,bodyY-2.8);
+  g.lineTo(-6-tl,bodyY-1.5*tw+fly*3);
+  g.lineTo(-6-tl,bodyY+(1.5+2*tw)+fly*3);
+  g.lineTo(-4.6,bodyY+3.2);
+  g.closePath();g.fill();
+  if(p.plume){
+    // Streamers: two thin quills trailing past the tail proper.
+    g.strokeStyle=p.plume;g.lineWidth=1.2;g.lineCap='round';
+    g.beginPath();g.moveTo(-6,bodyY);g.quadraticCurveTo(-8-tl,bodyY-1,-9-tl*1.5,bodyY-4+fly*4);
+    g.moveTo(-6,bodyY+1.5);g.quadraticCurveTo(-8-tl,bodyY+2,-8-tl*1.4,bodyY+5+fly*4);g.stroke();
+  }
+  if(p.tailtip){g.fillStyle=p.tailtip;g.beginPath();g.moveTo(-4-tl,bodyY-1.5+fly*3);g.lineTo(-6-tl,bodyY-1.5+fly*3);g.lineTo(-6-tl,bodyY+3.5+fly*3);g.lineTo(-4-tl,bodyY+3.2+fly*3);g.closePath();g.fill();}
+
+  // legs
+  if(fly<0.35){
+    g.strokeStyle=p.stilt||c.lg;g.lineWidth=stilt?1.5:1.3;g.lineCap='round';
+    g.beginPath();g.moveTo(1.6,bodyY+6);g.lineTo(2.4,-0.3);g.moveTo(-1.4,bodyY+6);g.lineTo(-1.9,-0.3);g.stroke();
+  }
+
+  // body
+  g.fillStyle=c.b;
+  ellipse(g,0,bodyY,8.6*puff,7.4*puff);g.fill();
+  // neck, for the herons — drawn after the body so it sits over the shoulder
+  if(neck){
+    g.strokeStyle=c.h;g.lineWidth=3.4;g.lineCap='round';
+    g.beginPath();g.moveTo(2.5,bodyY-4);g.quadraticCurveTo(6.5,headY+7,headX-1,headY+3);g.stroke();
+  }
+  // belly
+  g.fillStyle=c.bl;
+  ellipse(g,1.4,bodyY+2.2,6.6*puff,5.0*puff);g.fill();
+  if(p.flank){g.fillStyle=p.flank;ellipse(g,0.5,bodyY+2.6,5.2,3.4);g.fill();}
+  if(p.rump){g.fillStyle=p.rump;ellipse(g,-6.2,bodyY-0.4,2.6,2.6);g.fill();}
+  // markings on the breast
+  if(p.spots){g.fillStyle=p.spots;for(let i=0;i<7;i++){const a=i*1.7;ellipse(g,1+Math.cos(a)*3.6,bodyY+2+Math.sin(a)*3.2,0.85,0.85);g.fill();}}
+  if(p.streaks){g.strokeStyle=p.streaks;g.lineWidth=0.8;for(let i=-2;i<=2;i++){g.beginPath();g.moveTo(-1+i*1.5,bodyY-1);g.lineTo(-0.6+i*1.5,bodyY+4);g.stroke();}}
+  if(p.bars){g.strokeStyle=p.bars;g.lineWidth=1;for(let i=0;i<4;i++){g.beginPath();g.moveTo(-3.5,bodyY-2+i*2.2);g.lineTo(5.5,bodyY-2.4+i*2.2);g.stroke();}}
+  // Fine peppering, for the nightjars and anything else pretending to be bark.
+  if(p.speck){g.fillStyle=p.speck;for(let i=0;i<16;i++){const a=i*2.39,rr=Math.sqrt((i+1)/17);
+    ellipse(g,Math.cos(a)*7.4*rr,bodyY+Math.sin(a)*6.2*rr,0.5,0.5);g.fill();}}
+  // Scalloping: every feather edged dark, the way a turtle dove or an Inca dove reads.
+  if(p.scales){g.strokeStyle=p.scales;g.lineWidth=0.6;
+    for(let i=0;i<4;i++){g.beginPath();g.arc(-2+i*2.6,bodyY-1,3.2,0.5,2.4);g.stroke();}}
+  // A single band across the chest — sand martins, ringed plovers, buzzards.
+  if(p.belt){g.fillStyle=p.belt;ellipse(g,2.2,bodyY+0.8,5.6,1.7);g.fill();}
+
+  // near wing
+  g.save();
+  if(fly>0.02){g.translate(-0.5,bodyY-1.5);g.rotate(flap*0.95+0.1);g.fillStyle=c.w;wingPath(g,fly);g.fill();
+    if(p.wingflash){g.fillStyle=p.wingflash;g.beginPath();g.moveTo(-2,1.5);g.lineTo(-13,3.5);g.lineTo(-12,5.5);g.lineTo(-2,4);g.closePath();g.fill();}
+  }else{
+    g.fillStyle=c.w;ellipse(g,-1.2,bodyY+0.6,6.4,4.4,-0.16);g.fill();
+    if(p.wingbar){g.fillStyle=p.wingbar;g.save();g.translate(-1.2,bodyY+0.6);g.rotate(-0.16);
+      g.fillRect(-4.6,-0.6,7.6,1.3);g.restore();}
+    if(p.wingflash){g.fillStyle=p.wingflash;ellipse(g,-4.6,bodyY+1.6,1.8,1.5);g.fill();}
+    if(p.shoulder){g.fillStyle=p.shoulder;ellipse(g,-3.2,bodyY-1.4,2.6,2.0,-0.2);g.fill();}
+    if(p.sheen){g.fillStyle=p.sheen;g.globalAlpha=.35;ellipse(g,-2.4,bodyY-0.6,3.6,2.4,-0.2);g.fill();g.globalAlpha=1;}
+  }
+  g.restore();
+
+  // head
+  const owl=p.owl;
+  g.fillStyle=c.h;
+  if(owl) ellipse(g,headX-0.6,headY+0.4,hr*1.32*puff,hr*1.24*puff);
+  else ellipse(g,headX,headY,hr*puff,hr*0.98*puff);
+  g.fill();
+
+  // Ear tufts go on before the face so the head reads as one shape.
+  if(p.tuft){g.fillStyle=p.tuft;
+    g.beginPath();g.moveTo(headX-3.6,headY-3.2);g.lineTo(headX-4.2,headY-7.6);g.lineTo(headX-1.4,headY-4.2);g.closePath();g.fill();
+    g.beginPath();g.moveTo(headX+1.6,headY-4.2);g.lineTo(headX+3.4,headY-7.8);g.lineTo(headX+3.6,headY-3.4);g.closePath();g.fill();}
+  if(p.cap){g.fillStyle=p.cap;g.beginPath();g.arc(headX,headY,hr*puff+0.15,Math.PI*1.02,Math.PI*2.16);g.closePath();g.fill();}
+  if(p.crownstripe){g.fillStyle=p.crownstripe;ellipse(g,headX-0.2,headY-3.9,2.6,1.1,-0.1);g.fill();}
+  if(p.cheek){g.fillStyle=p.cheek;ellipse(g,headX+1.6,headY+1.4,3.0,2.4);g.fill();}
+  if(p.face){g.fillStyle=p.face;ellipse(g,headX+1.2,headY+1.2,3.6,3.2);g.fill();}
+  if(p.blush){g.fillStyle=p.blush;g.globalAlpha=.55;ellipse(g,headX-2.2,headY+1.6,2.6,2.0);g.fill();g.globalAlpha=1;}
+  if(p.mask){g.fillStyle=p.mask;g.save();g.beginPath();g.rect(headX-4.4,headY-1.4,9,2.9);g.clip();
+    ellipse(g,headX,headY,hr+0.2,hr);g.fill();g.restore();}
+  if(p.brow){g.fillStyle=p.brow;g.save();g.rotate(-0.1);g.fillRect(headX-3.4,headY-2.4,6.4,1.2);g.restore();}
+  if(p.nape){g.fillStyle=p.nape;ellipse(g,headX-3.8,headY-1.2,1.8,1.6);g.fill();}
+  if(p.crest){g.fillStyle=p.crest;g.beginPath();g.moveTo(headX-2.6,headY-4.2);g.lineTo(headX-0.4,headY-8.4);
+    g.lineTo(headX+1.8,headY-4.0);g.closePath();g.fill();}
+  if(p.bib){g.fillStyle=p.bib;g.beginPath();g.moveTo(headX-1.4,headY+3.4);g.lineTo(headX+3.2,headY+3.0);
+    g.lineTo(headX+1.4,bodyY+4.6);g.lineTo(headX-3.2,bodyY+3.6);g.closePath();g.fill();}
+  // A throat patch stops at the chin; a bib runs down onto the chest.
+  if(p.throat){g.fillStyle=p.throat;ellipse(g,headX+2.4,headY+3.0,2.8,2.0,-0.25);g.fill();}
+  // The malar stripe — the falcon's tear, the reed bunting's white flash.
+  if(p.moustache){g.fillStyle=p.moustache;ellipse(g,headX+2.6,headY+2.2,1.0,2.2,-0.3);g.fill();}
+  // A collar wraps the nape, so it is drawn behind the head's leading edge.
+  if(p.collar){g.fillStyle=p.collar;ellipse(g,headX-2.4,headY+2.8,3.2,1.5,0.35);g.fill();}
+  if(p.vent){g.fillStyle=p.vent;ellipse(g,-4.4,bodyY+4.4,2.4,1.8);g.fill();}
+
+  // owl facial disc
+  if(owl){
+    g.fillStyle=owl===2?'#fff9ec':shade(c.h,0.18);
+    ellipse(g,headX+0.6,headY+0.6,hr*0.95,hr*1.05);g.fill();
+    g.fillStyle='#2b2320';
+    ellipse(g,headX+2.2,headY,1.5,1.7);g.fill();ellipse(g,headX-1.4,headY,1.5,1.7);g.fill();
+    g.fillStyle='#fff';ellipse(g,headX+2.6,headY-0.5,0.5,0.55);g.fill();ellipse(g,headX-1.0,headY-0.5,0.5,0.55);g.fill();
+  }else{
+    // eye
+    g.fillStyle=p.eye||'#17151a';
+    ellipse(g,headX+1.9,headY-0.8,1.32,1.32);g.fill();
+    if(p.eyering){g.strokeStyle=p.eyering;g.lineWidth=0.7;g.beginPath();g.arc(headX+1.9,headY-0.8,2.0,0,7);g.stroke();}
+    if(!p.sil){g.fillStyle='rgba(255,255,255,.85)';ellipse(g,headX+2.35,headY-1.3,0.46,0.46);g.fill();}
+  }
+
+  // beak — the single strongest identification cue on a bird this small, so it
+  // gets nine shapes rather than four
+  g.fillStyle=c.k;
+  const bx=headX+hr*(owl?1.05:0.92), by=headY+(owl?1.2:0.5);
+  g.beginPath();
+  switch(sp.beak){
+    case 'thin':   g.moveTo(bx,by-1.1);g.lineTo(bx+4.6,by+0.2);g.lineTo(bx,by+1.3);break;
+    case 'needle': g.moveTo(bx,by-0.8);g.lineTo(bx+7.4,by+0.3);g.lineTo(bx,by+0.9);break;
+    case 'chisel': g.moveTo(bx,by-1.5);g.lineTo(bx+5.6,by-0.1);g.lineTo(bx,by+1.5);break;
+    case 'stout':  g.moveTo(bx-0.8,by-2.6);g.lineTo(bx+4.0,by+0.1);g.lineTo(bx-0.8,by+2.6);break;
+    case 'hook':   g.moveTo(bx-0.5,by-1.6);g.lineTo(bx+2.6,by-0.6);g.quadraticCurveTo(bx+3.2,by+1.8,bx+1.2,by+2.0);g.lineTo(bx-0.5,by+1.2);break;
+    case 'curve':  g.moveTo(bx,by-1.0);g.quadraticCurveTo(bx+4.4,by-0.4,bx+6.8,by+2.4);
+                   g.quadraticCurveTo(bx+4.0,by+0.9,bx,by+1.1);break;
+    // The crossbill: two mandibles that miss each other at the tip.
+    case 'cross':  g.moveTo(bx-0.4,by-1.9);g.lineTo(bx+4.2,by+0.9);g.lineTo(bx+1.4,by+0.5);g.closePath();g.fill();
+                   g.beginPath();g.moveTo(bx-0.4,by+1.9);g.lineTo(bx+4.0,by-1.1);g.lineTo(bx+1.4,by-0.4);break;
+    case 'duck':   g.moveTo(bx-0.6,by-1.7);g.lineTo(bx+5.2,by-1.0);
+                   g.quadraticCurveTo(bx+6.4,by+0.4,bx+5.0,by+1.6);g.lineTo(bx-0.6,by+1.9);break;
+    default:       g.moveTo(bx-0.4,by-1.8);g.lineTo(bx+3.6,by+0.1);g.lineTo(bx-0.4,by+1.9);
+  }
+  g.closePath();g.fill();
+
+  g.restore();
+}
+function wingPath(g,fly){
+  g.beginPath();g.moveTo(2,-1);
+  g.quadraticCurveTo(-6,-3-fly*2,-14,2.5);
+  g.quadraticCurveTo(-7,5.5,2,3);
+  g.closePath();
+}
+function ellipse(g,x,y,rx,ry,rot){g.beginPath();g.ellipse(x,y,rx,ry,rot||0,0,Math.PI*2);}
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,gg=(n>>8)&255,b=n&255;
+  const f=v=>clamp(Math.round(amt>0?v+(255-v)*amt:v*(1+amt)),0,255);
+  return '#'+((1<<24)+(f(r)<<16)+(f(gg)<<8)+f(b)).toString(16).slice(1);
+}
+
+/* ---------- Bonds ------------------------------------------------------ */
+/* Petting is the one thing you do *to* a bird rather than to the garden, and
+   what it buys is the bird coming back. Trust is held per species, not per
+   individual — the sparrow on the table now will be gone in twenty seconds,
+   but sparrows as a kind will remember. Six levels, each one worth about half
+   again on the odds of that species turning up, so a devoted regular is three
+   and a half times likelier than a stranger of the same rarity. */
+const BONDS=['Stranger','Curious','Familiar','Friendly','Trusting','Devoted'];
+const BOND_AT=[0,3,9,20,40,70];
+function bondOf(pets){
+  let n=0;for(let i=0;i<BOND_AT.length;i++) if((pets||0)>=BOND_AT[i]) n=i;
+  return n;
+}
+function bondOfSp(sp){const gd=S.guide[sp.id];return gd?bondOf(gd.pet):0;}
+// How far into the next level, for the pips and the progress line.
+function bondNext(pets){
+  const n=bondOf(pets);
+  return n>=5? null : {need:BOND_AT[n+1]-(pets||0), at:BOND_AT[n+1]};
+}
+// Shy species bolt if you reach for them too early; bold ones never do.
+function flushChance(sp,bond){
+  if(sp.bold) return 0;
+  if(!sp.shy) return 0;
+  return Math.max(0.05,0.5-bond*0.1);
+}
+// How many pets a single visiting bird will accept before it has had enough.
+function petsAllowed(sp){return sp.bold?5:sp.shy?2:3;}
+
+/* ---------- Birds ----------------------------------------------------- */
+const birds=[];
+const puffs=[];   // feather bursts when a bird is spooked
+const sparks=[];  // identification sparkle
+const hearts=[];  // petting
+
+function Bird(sp,perch){
+  const fromLeft=Math.random()<0.5;
+  const bond=bondOfSp(sp);
+  return {
+    sp, perch,
+    x: fromLeft? -40 : W+40,
+    y: rnd(H*0.10,H*0.34),
+    tx:perch.x, ty:perch.y,
+    dir: fromLeft?1:-1,
+    scale:(Math.min(W,H)/560)*1.55*sp.sz,
+    state:'in', t:0,
+    // A bird that trusts you stays longer, which matters as much as it
+    // arriving more often: the reward for petting is more bird, either way.
+    life:rnd(9,22)/(sp.r>3?1.7:1)*(1+bond*0.18),
+    flap:0, fly:1, hop:0, lean:0, peck:0, hopT:rnd(.4,1.6),
+    pets:0, petCool:0, fluff:0, logged:0, age:0,
+    fxT:rnd(1.5,4), fxDone:0,
+    p0:null,p1:null,pd:rnd(1.5,2.6), id:Math.random()
+  };
+}
+function startFlight(b,tx,ty){
+  b.p0={x:b.x,y:b.y};
+  b.p1={x:(b.x+tx)/2 + rnd(-W*0.15,W*0.15), y:Math.min(b.y,ty)-rnd(30,90)};
+  b.tx=tx;b.ty=ty;b.t=0;
+}
+function bez(p0,p1,p2,t){
+  const u=1-t;
+  return {x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x, y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y};
+}
+
+let spawnTimer=2;
+function candidateSpecies(t,ph,wx){
+  const out=[];
+  for(const sp of SP){
+    if(sp.t.indexOf(ph)<0) continue;
+    const gd=S.guide[sp.id], bond=gd?bondOf(gd.pet):0;
+    const inSeason=sp.s.indexOf(t.season)>=0;
+    // Out of season, a bird is simply not here — unless it trusts you enough
+    // to have stopped migrating on schedule. That is the headline reward for
+    // a deep bond, and the reason a Trusting waxwing can turn up in June.
+    if(!inSeason && bond<4) continue;
+    let w=RWEIGHT[sp.r];
+    if(!inSeason) w*=0.3;
+    // An empty feeder no longer empties the garden. The fountain is reason
+    // enough for a bird to drop in, at a fraction of the pull food has — so
+    // letting everything run dry thins the traffic right out without ever
+    // leaving the window blank.
+    if(!sp.f.some(f=>stationOpen(f))) w*=0.26;
+    if(wx==='rain') w*= sp.r>3?0.5:0.55;
+    if(wx==='snow') w*= (sp.s.indexOf(3)>=0? 1.35:0.7);
+    if(wx==='clear') w*=1.12;
+    // A species you have never logged gets a gentle nudge, so the guide
+    // keeps filling instead of stalling on the same five regulars.
+    if(!gd) w*=1.5;
+    // …and one you have made friends with gets a much bigger one.
+    if(bond) w*=1+bond*0.5;
+    if(sp.hunter) w*= birds.length>=3?1.6:0.25;
+    out.push({sp,w});
+  }
+  return out;
+}
+function stationOpen(f){
+  if(f==='bath') return true;
+  if(f==='ground') return S.feed.seed>1 || S.feed.fruit>1 || S.feed.mealworm>1;
+  return S.feed[f]>1;
+}
+function weightedPick(list){
+  let tot=0;for(const c of list) tot+=c.w;
+  let r=Math.random()*tot;
+  for(const c of list){r-=c.w;if(r<=0) return c.sp;}
+  return list.length?list[list.length-1].sp:null;
+}
+function perchFor(sp){
+  const ok=L.perch.filter(p=>{
+    if(birds.some(b=>b.perch===p)) return false;
+    // The branch and the fountain are open to everyone. Water is not a diet,
+    // so gating the fountain on sp.f — which lists what a bird *eats* — left
+    // those perches unreachable for every species in the guide, and the
+    // fountain stood there being scenery.
+    if(p.st==='branch'||p.st==='bath') return true;
+    return sp.f.indexOf(p.st)>=0 && stationOpen(p.st);
+  });
+  return ok.length?pick(ok):null;
+}
+function trySpawn(t,ph,wx){
+  if(birds.length>=7) return;
+  const cands=candidateSpecies(t,ph,wx);
+  if(!cands.length) return;
+  const sp=weightedPick(cands);
+  if(!sp) return;
+  const n=sp.flock? (Math.random()<0.55? sp.flock : 1) : 1;
+  for(let i=0;i<n;i++){
+    const p=perchFor(sp); if(!p) break;
+    const b=Bird(sp,p);
+    b.t=-i*0.35;                     // flock members trail in
+    startFlight(b,p.x,p.y);
+    birds.push(b);
+  }
+  S.visits+=n;save();
+  if(sp.hunter) setTimeout(()=>scatter(sp),900);
+}
+function scatter(except){
+  for(const b of birds){
+    if(b.sp===except||b.state==='out') continue;
+    // A bird that trusts you does not panic quite as readily as the rest.
+    if(bondOfSp(b.sp)>=5&&Math.random()<0.5) continue;
+    b.state='out'; b.perch=null;
+    startFlight(b, b.x<W/2? -60 : W+60, rnd(-20,H*0.2));
+    b.pd=rnd(0.6,1.0);
+    for(let i=0;i<5;i++) puffs.push({x:b.x,y:b.y,vx:rnd(-40,40),vy:rnd(-50,10),t:0,c:b.sp.c.bl});
+  }
+}
+// A single bird leaving in a hurry, without taking the garden with it.
+function flush(b){
+  if(b.state==='out') return;
+  b.state='out';b.perch=null;b.t=0;b.pd=rnd(0.7,1.1);
+  startFlight(b, b.x<W/2? -60 : W+60, rnd(-20,H*0.22));
+  for(let i=0;i<5;i++) puffs.push({x:b.x,y:b.y-8,vx:rnd(-40,40),vy:rnd(-50,10),t:0,c:b.sp.c.bl});
+}
+
+/* ---------- Special effects ------------------------------------------- */
+/* Half the species in the guide do something to the garden beyond standing in
+   it. Effects come in three shapes, and which shape a thing is decides where
+   its code lives:
+     · one-shot, on arrival      — fxArrive: the murmuration, the feast, the snow
+     · repeating, while perched  — fxTick:   song, drumming, digging, berries
+     · ambient, while present    — ambient:  aurora, rainbow, mist, a warm glow
+   The first two push into `fxbits` (short-lived) or `garden` (things that stay
+   on the lawn). The third is recomputed every frame from whoever is here, and
+   eased in and out, so a bird leaving fades its weather with it. */
+const FX_NAME={
+  song:'Sings — notes drift up from the perch',
+  drum:'Drums on the trunk until the tree shakes',
+  splash:'Bathes hard enough to soak the lawn',
+  murmur:'Pulls a murmuration across the sky',
+  cache:'Buries a seed. Some of them come up',
+  berry:'Drops berries — the fruit spike fills',
+  hover:'Hovers instead of perching',
+  dig:'Turns the leaf litter over',
+  shine:'Leaves something shiny behind',
+  frost:'Frost flowers open where it lands',
+  bloom:'Flowers come up on the lawn',
+  aurora:'Northern lights, while it stays',
+  ember:'Trails embers and warm light',
+  rainbow:'Stands a rainbow over the hills',
+  dawnlight:'The light lifts while it is here',
+  call:'Its call brings another bird in',
+  snowfall:'Brings the snow down with it',
+  feast:'Tops up whatever is running low',
+  steal:'Empties a feeder and goes',
+  scatter:'Clears the garden in half a second',
+  mist:'Draws a low mist up off the grass',
+  petal:'Shakes blossom out of the tree',
+  halo:'Carries its own light'
+};
+const fxbits=[];              // notes, ripples, embers, petals, frost, falling berries
+const MAX_GARDEN=24;
+let murmurT=0;                // seconds of murmuration left
+const amb={aurora:0,rainbow:0,mist:0,dawn:0,ember:0,snow:0};
+
+// Anything left lying on the lawn. Stored normalised so a resize or a
+// different phone does not scatter last week's flowers into the sky.
+function gardenAdd(k,x,y,col){
+  if(S.garden.length>=MAX_GARDEN) S.garden.shift();
+  S.garden.push({k,x:clamp(x/W,0.03,0.97),y:clamp(y/H,0.7,0.98),c:col||'',t:0});
+  save();
+}
+function lawnY(x){return L.ground-30+Math.sin(x/W*5.4)*6+2;}
+
+function fxArrive(b){
+  const f=b.sp.fx;
+  if(!f) return;
+  switch(f){
+    case 'murmur': murmurT=Math.max(murmurT,9); break;
+    case 'snowfall': amb.snowTarget=1; break;
+    case 'call':
+      // Brings one more bird in, a beat later, from whatever is around.
+      setTimeout(()=>{const t=clock();trySpawn(t,phaseOf(t.hour),weatherOf(t));},1400);
+      break;
+    case 'feast':{
+      // Finds the emptiest station and fills it. The one unambiguously
+      // generous thing in the game.
+      let lo=null;
+      for(const k in S.feed) if(!lo||S.feed[k]<S.feed[lo]) lo=k;
+      if(lo){S.feed[lo]=Math.min(100,S.feed[lo]+45);save();dockDirty=true;
+        toast(b.sp.n+' left the '+STATION_NAME[lo].toLowerCase()+' full');}
+      break;}
+    case 'steal': b.steal=1; b.life=Math.min(b.life,7); break;
+    case 'frost':
+      for(let i=0;i<14;i++) fxbits.push({k:'frost',x:b.x+rnd(-26,26),y:b.y+rnd(-18,10),
+        t:0,life:rnd(2.2,4),s:rnd(2,5),a:Math.random()*6.283});
+      break;
+    case 'petal':
+      for(let i=0;i<18;i++) fxbits.push({k:'petal',x:rnd(L.branchX,L.trunkX),y:L.branchY+rnd(-40,40),
+        t:0,life:rnd(3,5.5),vx:rnd(-14,14),vy:rnd(18,42),a:Math.random()*6.283,
+        c:pick(['#f6dce6','#f2c8d8','#fbeef2'])});
+      break;
+    case 'drum': fxDrum(b); break;
+  }
+}
+function fxDrum(b){
+  for(let i=0;i<3;i++) fxbits.push({k:'drum',x:L.trunkX-4,y:L.branchY+40+i*40,t:-i*0.14,life:1.1});
+  for(let i=0;i<5;i++) fxbits.push({k:'petal',x:L.trunkX-rnd(0,W*0.2),y:L.branchY+rnd(-30,30),
+    t:0,life:rnd(2.5,4),vx:rnd(-18,4),vy:rnd(22,46),a:Math.random()*6.283,c:'#8a9a4c'});
+}
+
+function fxTick(b,dt){
+  const f=b.sp.fx;
+  if(!f) return;
+  b.fxT-=dt;
+  if(b.fxT>0) return;
+  switch(f){
+    case 'song':
+      b.fxT=rnd(2.2,5);
+      for(let i=0;i<3;i++) fxbits.push({k:'note',x:b.x+rnd(-4,8),y:b.y-16*b.scale,
+        t:-i*0.22,life:1.9,vx:rnd(6,20)*b.dir,vy:rnd(-34,-20),
+        ch:pick(['♪','♫','♬'])});
+      break;
+    case 'drum': b.fxT=rnd(4,8); fxDrum(b); break;
+    case 'dig':
+      b.fxT=rnd(2,4.5);
+      if(b.perch&&(b.perch.st==='ground'||b.perch.st==='mealworm'))
+        for(let i=0;i<7;i++) fxbits.push({k:'leaf',x:b.x,y:b.y-3,t:0,life:rnd(.8,1.4),
+          vx:rnd(-90,-20)*b.dir,vy:rnd(-70,-20),a:Math.random()*6.283,
+          c:pick(['#8a7a4c','#a8904c','#6f6a3c'])});
+      break;
+    case 'berry':
+      b.fxT=rnd(5,9);
+      for(let i=0;i<3;i++) fxbits.push({k:'berry',x:b.x+rnd(-6,6),y:b.y-10,t:0,life:9,
+        vy:20,landed:0,c:pick(['#c8302e','#d8503c','#a82838'])});
+      break;
+    case 'cache':
+      b.fxT=rnd(6,11);
+      if(S.garden.length<MAX_GARDEN){
+        const gx=rnd(W*0.1,W*0.9);
+        gardenAdd('sprout',gx,lawnY(gx));
+      }
+      break;
+    case 'bloom':{
+      b.fxT=rnd(6,10);
+      const gx=b.x+rnd(-40,40);
+      gardenAdd('flower',clamp(gx,W*0.06,W*0.94),lawnY(gx),pick(['#f2d84c','#f28cb0','#c8a0f0','#f6f2e8']));
+      break;}
+    case 'shine':{
+      b.fxT=rnd(7,13);
+      const gx=b.x+rnd(-30,30);
+      gardenAdd('trinket',clamp(gx,W*0.06,W*0.94),lawnY(gx));
+      break;}
+    case 'splash':
+      b.fxT=rnd(2.5,5);
+      if(b.perch&&b.perch.st==='bath'){
+        fxbits.push({k:'ring',x:L.bath.x,y:L.bath.y-1,t:0,life:1.3});
+        for(let i=0;i<10;i++) splash.push({x:b.x+rnd(-6,6),y:b.y-3,
+          vx:rnd(-95,95),vy:rnd(-150,-50),t:0});
+      }
+      break;
+    case 'ember':
+      b.fxT=rnd(.25,.6);
+      fxbits.push({k:'ember',x:b.x+rnd(-7,7),y:b.y-12*b.scale,t:0,life:rnd(1.4,2.6),
+        vx:rnd(-10,10),vy:rnd(-30,-12),s:rnd(1,2.2)});
+      break;
+    default: b.fxT=6;
+  }
+}
+
+// Everything that is simply true while a bird with that effect is standing
+// there. Targets are 0 or 1; the value chases them so nothing snaps on.
+function ambientFx(dt){
+  const want={aurora:0,rainbow:0,mist:0,dawn:0,ember:0,snow:0};
+  for(const b of birds){
+    if(b.state==='out') continue;
+    switch(b.sp.fx){
+      case 'aurora': want.aurora=1;break;
+      case 'rainbow': want.rainbow=1;break;
+      case 'mist': want.mist=1;break;
+      case 'dawnlight': want.dawn=1;break;
+      case 'ember': want.ember=1;break;
+      case 'snowfall': want.snow=1;break;
+    }
+  }
+  for(const k in want) amb[k]=lerp(amb[k],want[k],clamp(dt*0.9,0,1));
+}
+
+function updateFx(dt){
+  if(murmurT>0) murmurT-=dt;
+  for(let i=fxbits.length-1;i>=0;i--){
+    const p=fxbits[i];
+    p.t+=dt;
+    if(p.t<0) continue;
+    if(p.k==='note'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy*=0.985;}
+    else if(p.k==='leaf'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=190*dt;p.vx*=0.96;p.a+=dt*6;}
+    else if(p.k==='petal'){p.x+=(p.vx+Math.sin(p.t*2+p.a)*16)*dt;p.y+=p.vy*dt;p.a+=dt*2.4;}
+    else if(p.k==='ember'){p.x+=(p.vx+Math.sin(p.t*3+p.y)*7)*dt;p.y+=p.vy*dt;p.vy*=0.99;}
+    else if(p.k==='berry'&&!p.landed){
+      p.vy+=520*dt;p.y+=p.vy*dt;
+      if(p.y>=lawnY(p.x)){
+        p.y=lawnY(p.x);p.landed=1;
+        // A dropped berry is worth something: the fruit spike fills a little.
+        S.feed.fruit=Math.min(100,S.feed.fruit+6);save();dockDirty=true;
+      }
+    }
+    if(p.t>p.life) fxbits.splice(i,1);
+  }
+  for(let i=hearts.length-1;i>=0;i--){
+    const h=hearts[i];h.t+=dt;h.x+=h.vx*dt;h.y+=h.vy*dt;h.vy+=22*dt;h.vx*=0.97;
+    if(h.t>h.life) hearts.splice(i,1);
+  }
+}
+
+/* Drawn in two passes. `drawFxBack` goes on before the birds — sky-scale
+   things and anything lying on the lawn. `drawFxFront` goes on after. */
+function drawFxBack(ph){
+  // Aurora: three ribbons of light hung over the hills.
+  if(amb.aurora>0.01){
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    for(let r=0;r<3;r++){
+      const gr=ctx.createLinearGradient(0,H*0.02,0,L.horizon*0.9);
+      gr.addColorStop(0,'rgba(90,240,190,0)');
+      gr.addColorStop(0.45,r%2?'rgba(120,255,200,0.22)':'rgba(150,140,255,0.18)');
+      gr.addColorStop(1,'rgba(60,120,200,0)');
+      ctx.fillStyle=gr;ctx.globalAlpha=amb.aurora;
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=12) ctx.lineTo(x,H*0.05+Math.sin(x/W*4+time*0.5+r*1.7)*22+r*18);
+      for(let x=W;x>=0;x-=12) ctx.lineTo(x,L.horizon*0.85+Math.sin(x/W*3+time*0.4+r)*26+r*10);
+      ctx.closePath();ctx.fill();
+    }
+    ctx.restore();
+  }
+  // Rainbow: a band standing on the hills behind everything else.
+  if(amb.rainbow>0.01){
+    ctx.save();ctx.globalAlpha=amb.rainbow*0.5;ctx.lineWidth=6;
+    const cols=['#e0604a','#e8a04a','#e8d84c','#6fc060','#4f9ad8','#8a6fd0'];
+    for(let i=0;i<cols.length;i++){
+      ctx.strokeStyle=cols[i];
+      ctx.beginPath();ctx.arc(W*0.5,L.horizon+H*0.10,W*0.44-i*6,Math.PI,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // The dawn bird lifts the whole picture by a stop.
+  if(amb.dawn>0.01){
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    ctx.fillStyle='rgba(255,226,160,'+(amb.dawn*0.16).toFixed(3)+')';
+    ctx.fillRect(0,0,W,H);ctx.restore();
+  }
+  // A murmuration, far off over the hills. Every bird shares one drifting
+  // centre and one slow twist, and sits at its own fixed offset inside the
+  // cloud — which is what makes a starling flock read as a single body being
+  // stretched rather than as a queue of dots on a sine wave.
+  if(murmurT>0){
+    const a=clamp(murmurT/9,0,1)*clamp(9-murmurT,0,1);
+    ctx.save();ctx.globalAlpha=a*0.8;ctx.fillStyle=ph===5?'#0d1420':'#33404c';
+    const cx=lerp(-W*0.2,W*1.2,clamp((9-murmurT)/9,0,1));
+    const cy=L.horizon*0.44+Math.sin(time*0.5)*20;
+    const twist=Math.sin(time*0.45), squash=0.55+0.35*Math.sin(time*0.7);
+    for(let i=0;i<130;i++){
+      // A stable pseudo-random spot in the cloud, per bird.
+      const u=hash(i*7919)*2-1, v=hash(i*104729+13)*2-1;
+      const r=Math.sqrt(u*u+v*v);
+      if(r>1) continue;
+      const sx=u*W*0.30, sy=v*H*0.075*squash;
+      const x=cx+sx+Math.sin(time*1.6+i)*3;
+      const y=cy+sy+sx*0.12*twist+Math.cos(time*1.9+i*0.7)*2.5;
+      const s=1.7+r*0.7;
+      ctx.fillRect(x,y,s,s*0.72);
+    }
+    ctx.restore();
+  }
+}
+// Things lying on the lawn. Drawn with the scenery so birds stand in front.
+function drawGarden(ph){
+  const dark=ph===5?-0.5:0;
+  for(const it of S.garden){
+    const x=it.x*W, y=it.y*H;
+    if(it.k==='sprout'){
+      ctx.strokeStyle=shade('#5f8f3c',dark);ctx.lineWidth=1.4;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-7);ctx.stroke();
+      ctx.fillStyle=shade('#6fa848',dark);
+      ellipse(ctx,x-2.4,y-6,2.6,1.5,-0.5);ctx.fill();
+      ellipse(ctx,x+2.4,y-7.5,2.6,1.5,0.5);ctx.fill();
+    }else if(it.k==='flower'){
+      ctx.strokeStyle=shade('#5f8f3c',dark);ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-8);ctx.stroke();
+      ctx.fillStyle=shade(it.c||'#f2d84c',dark);
+      for(let i=0;i<5;i++){const a=i/5*6.283;ellipse(ctx,x+Math.cos(a)*2.4,y-8+Math.sin(a)*2.4,1.9,1.9);ctx.fill();}
+      ctx.fillStyle=shade('#f6f0d0',dark);ellipse(ctx,x,y-8,1.3,1.3);ctx.fill();
+    }else if(it.k==='trinket'){
+      const tw=0.5+0.5*Math.sin(time*3+it.x*30);
+      ctx.save();ctx.globalAlpha=0.55+tw*0.45;
+      ctx.fillStyle=shade('#e8d878',dark);
+      ellipse(ctx,x,y-1.5,2.6,1.9);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,'+(0.4+tw*0.5).toFixed(2)+')';
+      ellipse(ctx,x-0.7,y-2.2,1,0.7);ctx.fill();
+      ctx.restore();
+    }
+  }
+  // Berries that have come to rest sit with the garden, not the particles.
+  for(const p of fxbits){
+    if(p.k!=='berry'||!p.landed) continue;
+    ctx.fillStyle=shade(p.c,dark);
+    ellipse(ctx,p.x,p.y,2.6,2.4);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.3)';ellipse(ctx,p.x-0.8,p.y-0.9,0.9,0.7);ctx.fill();
+  }
+}
+function drawFxFront(){
+  for(const p of fxbits){
+    if(p.t<0) continue;
+    const k=clamp(1-p.t/p.life,0,1);
+    if(p.k==='note'){
+      ctx.save();ctx.globalAlpha=k*0.9;ctx.fillStyle='#f6f0dc';
+      ctx.font='600 13px '+"'Nunito',sans-serif";ctx.textAlign='center';
+      ctx.fillText(p.ch,p.x,p.y);ctx.restore();
+    }else if(p.k==='leaf'){
+      ctx.save();ctx.globalAlpha=k;ctx.fillStyle=p.c;
+      ellipse(ctx,p.x,p.y,2.6,1.3,p.a);ctx.fill();ctx.restore();
+    }else if(p.k==='petal'){
+      ctx.save();ctx.globalAlpha=k;ctx.fillStyle=p.c;
+      ellipse(ctx,p.x,p.y,2.8,1.6,p.a);ctx.fill();ctx.restore();
+    }else if(p.k==='ember'){
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=k*0.9;
+      ctx.fillStyle='#f2a04c';ctx.beginPath();ctx.arc(p.x,p.y,p.s,0,7);ctx.fill();ctx.restore();
+    }else if(p.k==='berry'&&!p.landed){
+      ctx.fillStyle=p.c;ellipse(ctx,p.x,p.y,2.6,2.4);ctx.fill();
+    }else if(p.k==='ring'){
+      ctx.save();ctx.globalAlpha=k*0.7;ctx.strokeStyle='#dff2fb';ctx.lineWidth=1.4;
+      const rr=L.bath.r*(0.2+(1-k)*0.9);
+      ellipse(ctx,p.x,p.y,rr,rr*0.3);ctx.stroke();ctx.restore();
+    }else if(p.k==='drum'){
+      // Sound, drawn: arcs travelling out from the trunk.
+      ctx.save();ctx.globalAlpha=k*0.5;ctx.strokeStyle='#f0e8d0';ctx.lineWidth=1.6;
+      const rr=8+(1-k)*46;
+      ctx.beginPath();ctx.arc(p.x,p.y,rr,Math.PI*0.62,Math.PI*1.38);ctx.stroke();ctx.restore();
+    }else if(p.k==='frost'){
+      ctx.save();ctx.globalAlpha=k*0.85;ctx.strokeStyle='#dff0ff';ctx.lineWidth=1;
+      ctx.translate(p.x,p.y);ctx.rotate(p.a);
+      const s=p.s*(1.4-k*0.4);
+      for(let i=0;i<3;i++){ctx.rotate(1.047);ctx.beginPath();ctx.moveTo(-s,0);ctx.lineTo(s,0);ctx.stroke();}
+      ctx.restore();
+    }
+  }
+  // Hearts, from petting.
+  for(const h of hearts){
+    const k=clamp(1-h.t/h.life,0,1);
+    ctx.save();ctx.globalAlpha=k;ctx.translate(h.x,h.y);ctx.scale(h.s,h.s);
+    ctx.fillStyle='#f08fa8';
+    ctx.beginPath();
+    ctx.moveTo(0,2.6);
+    ctx.bezierCurveTo(-3.4,0.2,-2.4,-2.8,0,-1.3);
+    ctx.bezierCurveTo(2.4,-2.8,3.4,0.2,0,2.6);
+    ctx.fill();ctx.restore();
+  }
+  // Mist, low over the grass — in front of the lawn, behind nothing much.
+  if(amb.mist>0.01){
+    ctx.save();ctx.globalAlpha=amb.mist*0.5;
+    const gr=ctx.createLinearGradient(0,L.ground-52,0,H);
+    gr.addColorStop(0,'rgba(214,232,238,0)');
+    gr.addColorStop(0.5,'rgba(214,232,238,0.5)');
+    gr.addColorStop(1,'rgba(200,220,230,0.15)');
+    ctx.fillStyle=gr;
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=14) ctx.lineTo(x,L.ground-44+Math.sin(x/W*5+time*0.5)*7);
+    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  // The firebird's warmth, over the top of everything it is near.
+  if(amb.ember>0.01){
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    ctx.fillStyle='rgba(255,150,70,'+(amb.ember*0.07).toFixed(3)+')';
+    ctx.fillRect(0,0,W,H);ctx.restore();
+  }
+}
+
+/* ---------- Droppings, cleaning, and the tree ------------------------- */
+/* A bird that stays a while leaves something behind, and what it leaves sits
+   on the ground until somebody wipes it up. That is the only chore in the
+   garden and it is the one thing the tree cares about: growth is fed by birds
+   using the place and held back by the mess they make of it, so the loop is
+   fill the feeders, watch, tidy up, and watch the canopy come in. */
+const poops=[];      // both mid-air and landed; `landed` says which
+const splash=[];     // droplets thrown off the fountain
+const MAX_POOP=12;
+let sweep=null;      // the cloth crossing the screen during a full clean
+
+// Where a dropping comes to rest at this x — the table top and the fountain
+// rim catch it, otherwise it reaches the lawn. The lawn line is the same
+// curve drawScene draws, so splats sit on the grass rather than above it.
+function surfaceAt(x){
+  const tb=L.table, ba=L.bath;
+  if(Math.abs(x-tb.x)<tb.w/2) return {y:tb.y-tb.h-1,on:'table'};
+  if(Math.abs(x-ba.x)<ba.r*0.92) return {y:ba.y-3,on:'bath'};
+  return {y:L.ground-30+Math.sin(x/W*5.4)*6+3,on:'lawn'};
+}
+function dropPoop(x,y){
+  if(poops.length>=MAX_POOP) return;
+  poops.push({x:x+rnd(-3,3),y:y-2,vy:20,landed:false,
+    rot:Math.random()*6.283,s:rnd(0.85,1.3),pop:0});
+}
+// Scattered on load, so the mess you left is the mess you come back to.
+function seedMess(n){
+  for(let i=0;i<n&&poops.length<MAX_POOP;i++){
+    const x=rnd(W*0.08,W*0.92), s=surfaceAt(x);
+    poops.push({x,y:s.y,landed:true,on:s.on,rot:Math.random()*6.283,s:rnd(0.85,1.3),pop:0});
+  }
+}
+function messCount(){let n=0;for(const q of poops) if(q.landed) n++;return n;}
+
+function updateMess(dt){
+  for(const q of poops){
+    if(q.landed){ if(q.pop>0) q.pop=Math.max(0,q.pop-dt*3.5); continue; }
+    q.vy+=520*dt; q.y+=q.vy*dt;
+    const s=surfaceAt(q.x);
+    if(q.y>=s.y){q.y=s.y;q.landed=true;q.on=s.on;q.pop=1;S.mess=messCount();save();dockDirty=true;}
+  }
+  for(let i=splash.length-1;i>=0;i--){
+    const d=splash[i];d.t+=dt;d.x+=d.vx*dt;d.y+=d.vy*dt;d.vy+=340*dt;
+    if(d.t>0.8) splash.splice(i,1);
+  }
+  if(sweep){
+    sweep.x+=W*1.5*dt;
+    for(let i=poops.length-1;i>=0;i--){
+      const q=poops[i];
+      if(q.landed&&q.x<sweep.x){wipe(q);poops.splice(i,1);}
+    }
+    if(sweep.x>W+60){
+      sweep=null;S.mess=messCount();save();dockDirty=true;
+      toast('All clean — the tree can breathe');
+    }
+  }
+}
+function wipe(q){
+  for(let i=0;i<7;i++) sparks.push({x:q.x+rnd(-7,7),y:q.y+rnd(-5,3),
+    vx:rnd(-40,40),vy:rnd(-60,-10),t:0});
+  S.cleaned++;
+}
+// A tap straight onto a splat cleans just that one.
+function cleanAt(px,py){
+  for(let i=poops.length-1;i>=0;i--){
+    const q=poops[i];
+    if(!q.landed) continue;
+    if(Math.hypot(px-q.x,py-q.y)<22){
+      wipe(q);poops.splice(i,1);
+      S.mess=messCount();save();dockDirty=true;
+      return true;
+    }
+  }
+  return false;
+}
+function cleanAll(){
+  if(!messCount()){toast('Nothing to clean');return;}
+  if(sweep) return;
+  sweep={x:-50};
+}
+
+/* The tree's clock. Every bird settled at a feeder is feeding; every bird on
+   the fountain is bathing, which is worth a little more because it is the
+   part you actually watch. Droppings do not subtract — they divide, so a
+   neglected garden slows to a crawl and a tidy one never stalls. */
+const TREE_STAGES=[[0,'Sapling'],[0.2,'Young'],[0.45,'Spreading'],[0.7,'Broad'],[0.92,'Ancient']];
+function treeStage(g){let n=TREE_STAGES[0][1];for(const s of TREE_STAGES) if(g>=s[0]) n=s[1];return n;}
+let treeSaveT=0, lastStage='';
+function growTree(dt){
+  let rate=0;
+  for(const b of birds){
+    if(b.state!=='perch'||!b.perch) continue;
+    const st=b.perch.st;
+    if(st==='bath') rate+=0.00046;
+    else if(st!=='branch') rate+=0.00030;
+    else rate+=0.00008;          // just sitting in the branches still counts a little
+  }
+  if(!rate) return;
+  const slow=1/(1+messCount()*0.45);
+  const before=S.tree;
+  S.tree=clamp(S.tree+rate*slow*dt,0,1);
+  if(S.tree!==before){
+    treeSaveT-=dt;
+    if(treeSaveT<=0){treeSaveT=5;save();hudDirty=true;}
+    const st=treeStage(S.tree);
+    if(lastStage&&st!==lastStage){toast('The tree is '+st.toLowerCase()+' now');hudDirty=true;}
+    lastStage=st;
+  }
+}
+
+function updateBirds(dt){
+  for(let i=birds.length-1;i>=0;i--){
+    const b=birds[i];
+    b.t+=dt;
+    if(b.t<0) continue;
+
+    if(b.state==='in'||b.state==='out'||b.state==='move'){
+      const k=clamp(b.t/b.pd,0,1);
+      const e=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      const pt=bez(b.p0,b.p1,{x:b.tx,y:b.ty},e);
+      b.dir = pt.x>b.x? 1 : pt.x<b.x? -1 : b.dir;
+      b.x=pt.x;b.y=pt.y;
+      b.fly=1; b.flap=Math.sin(b.t*(b.sp.sz>1.3?11:17))*0.9;
+      b.lean=-0.12;
+      if(k>=1){
+        if(b.state==='out'){birds.splice(i,1);continue;}
+        b.state='perch';b.t=0;b.fly=0;b.flap=0;b.lean=0;
+        if(b.perch) b.dir=b.perch.dir;
+        if(!b.fxDone){b.fxDone=1;fxArrive(b);}
+      }
+      continue;
+    }
+
+    // perched
+    b.age+=dt;
+    if(b.petCool>0) b.petCool-=dt;
+    b.fluff=Math.max(0,b.fluff-dt*1.1);
+    fxTick(b,dt);
+
+    // A hoverer never actually settles: it holds station at the feeder with
+    // its wings going, which is the whole point of watching one.
+    if(b.sp.fx==='hover'){
+      b.fly=0.55;
+      b.flap=Math.sin(time*34)*0.95;
+      b.hov=Math.sin(time*3.1+b.id*7)*2.2;
+      b.lean=-0.06;
+    }else b.hov=0;
+
+    b.fly=Math.max(0,b.fly-dt*4);
+    b.hopT-=dt;
+    if(b.hopT<=0){
+      b.hopT=rnd(0.6,2.2);
+      if(Math.random()<0.45) b.hop=6; else b.peck=0.42;
+      if(Math.random()<0.2) b.dir*=-1;
+    }
+    b.hop=Math.max(0,b.hop-dt*34);
+    if(b.peck>0){b.peck-=dt;b.lean=Math.sin((0.42-b.peck)/0.42*Math.PI)*0.42;}
+    else b.lean*=0.85;
+
+    // A bird on the fountain bathes: a shrug of the wings and water goes
+    // everywhere. This is the entertainment half of what makes the tree grow.
+    const pst=b.perch&&b.perch.st;
+    if(pst==='bath'){
+      b.batheT=(b.batheT||rnd(0.8,2.4))-dt;
+      if(b.batheT<=0){
+        b.batheT=rnd(1.6,3.6);
+        b.flap=1;b.hop=4;
+        for(let k=0;k<7;k++) splash.push({x:b.x+rnd(-6,6),y:b.y-3,
+          vx:rnd(-70,70),vy:rnd(-130,-40),t:0});
+      }
+      b.flap*=0.90;
+    }
+
+    // Droppings. The timer only runs while a bird is settled, so a garden
+    // nobody visits never gets dirty on its own.
+    b.poopT=(b.poopT===undefined?rnd(14,34):b.poopT)-dt;
+    if(b.poopT<=0){b.poopT=rnd(18,42);dropPoop(b.x,b.y);}
+
+    // eating depletes the station it is standing at
+    const st=b.perch&&b.perch.st;
+    if(st&&st!=='branch'&&st!=='bath'){
+      // The ground table serves whatever is in stock, in that order.
+      const key = st==='ground'
+        ? (S.feed.seed>1?'seed':S.feed.fruit>1?'fruit':'mealworm')
+        : st;
+      if(S.feed[key]!==undefined){
+        // A thief goes through a feeder six times as fast as anything else,
+        // which is the whole of its special effect and the reason it does not
+        // stay long: by the time it leaves, that station is a problem.
+        S.feed[key]=Math.max(0,S.feed[key]-dt*(b.sp.sz*0.9)*(b.steal?6:1));
+        if(Math.random()<dt*0.6) dockDirty=true;
+      }
+    }
+
+    if(b.t>b.life){
+      b.state='out';b.perch=null;b.t=0;b.pd=rnd(1.4,2.4);
+      startFlight(b, b.x<W/2? -60 : W+60, rnd(-30,H*0.25));
+    }
+  }
+  for(let i=puffs.length-1;i>=0;i--){
+    const p=puffs[i];p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=60*dt;p.vx*=0.98;
+    if(p.t>1.3) puffs.splice(i,1);
+  }
+  for(let i=sparks.length-1;i>=0;i--){
+    const s=sparks[i];s.t+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=40*dt;
+    if(s.t>0.9) sparks.splice(i,1);
+  }
+}
+
+/* ---------- Identification and petting -------------------------------- */
+/* The first touch on any bird logs the sighting. Every touch after that on the
+   same individual is a pet, which is why the two live behind one tap: you are
+   never choosing between them, you just keep your finger on the bird. */
+function tapAt(px,py){
+  let best=null,bd=1e9;
+  for(const b of birds){
+    if(b.state==='out'&&b.t>0.6) continue;
+    const r=26*b.scale;
+    const dx=px-b.x, dy=py-(b.y-14*b.scale);
+    const d=Math.hypot(dx,dy);
+    if(d<r*1.35&&d<bd){bd=d;best=b;}
+  }
+  if(!best) return false;
+  if(!best.logged){best.logged=1;identify(best);}
+  else petBird(best);
+  return true;
+}
+function heartBurst(b,n){
+  for(let i=0;i<n;i++) hearts.push({x:b.x+rnd(-7,7),y:b.y-17*b.scale+rnd(-4,4),
+    vx:rnd(-18,18),vy:rnd(-46,-24),t:0,life:rnd(1,1.6),s:rnd(1,1.7)});
+}
+function petBird(b){
+  const sp=b.sp, gd=S.guide[sp.id];
+  if(!gd) return;                                  // not logged yet — nothing to bond with
+  if(b.state!=='perch'){toast('Wait until it settles');return;}
+  if(sp.hunter){                                    // you do not pet a goshawk
+    toast(sp.n+' is not that kind of bird');flush(b);return;
+  }
+  if(b.petCool>0) return;
+  b.petCool=0.32;
+
+  const bond=bondOf(gd.pet);
+  // A shy species has to be won over. Every level of trust makes it less
+  // likely to bolt, and once it has let you touch it once in a visit it will
+  // not bolt again on that visit.
+  if(!b.pets&&Math.random()<flushChance(sp,bond)){
+    toast(sp.n+' startled');flush(b);return;
+  }
+  if(b.pets>=petsAllowed(sp)){
+    heartBurst(b,1);
+    toast(sp.n+' has had enough for now');
+    return;
+  }
+
+  b.pets++;
+  b.fluff=1;
+  b.hop=Math.max(b.hop,5);
+  b.life+=1.2;                       // enjoys itself, stays a moment longer
+  heartBurst(b,4);
+  gd.pet=(gd.pet||0)+1;
+  S.pets=(S.pets||0)+1;
+
+  // A happy bird sings about it.
+  if(Math.random()<0.5) fxbits.push({k:'note',x:b.x+rnd(-3,6),y:b.y-16*b.scale,
+    t:0,life:1.8,vx:rnd(6,18)*b.dir,vy:rnd(-32,-20),ch:pick(['♪','♫'])});
+
+  const nb=bondOf(gd.pet);
+  if(nb>bond){
+    toast(sp.n+' — '+BONDS[nb]);
+    heartBurst(b,7);
+  }
+  save();
+}
+function identify(b){
+  const sp=b.sp;
+  for(let i=0;i<12;i++) sparks.push({x:b.x+rnd(-10,10),y:b.y-14*b.scale+rnd(-10,10),
+    vx:rnd(-50,50),vy:rnd(-70,-10),t:0});
+  S.taps++;
+  const first=!S.guide[sp.id];
+  const g=S.guide[sp.id]||(S.guide[sp.id]={count:0,pet:0,first:Date.now(),phases:[],seasons:[]});
+  g.count++;
+  if(g.pet===undefined) g.pet=0;
+  const t=clock(), ph=phaseOf(t.hour);
+  if(g.phases.indexOf(ph)<0) g.phases.push(ph);
+  if(g.seasons.indexOf(t.season)<0) g.seasons.push(t.season);
+  if(b.perch&&b.perch.st&&b.perch.st!=='branch'){
+    g.at=g.at||[]; if(g.at.indexOf(b.perch.st)<0) g.at.push(b.perch.st);
+  }
+  save();refreshCounts();
+  if(first) showNew(sp); else toast(sp.n+' — seen '+g.count+'×');
+}
+
+/* ---------- Scene ----------------------------------------------------- */
+const SKY={
+  0:[['#2b3d5c','#7c6a86','#e0a07a'],['#f2c48a']],
+  1:[['#4f86c6','#8fc0e0','#cfe4ee'],['#fff6dc']],
+  2:[['#3f7ec4','#79b3dd','#c9e2ef'],['#fffbe8']],
+  3:[['#4b7fb8','#9fbcd4','#e6d2b8'],['#ffeec4']],
+  4:[['#2f3f66','#8a5a7a','#e28a5c'],['#ff9e5e']],
+  5:[['#0e1626','#1b2740','#2c3a52'],['#e8eeff']]
+};
+let clouds=[],stars=[],drops=[];
+function initAmbient(){
+  clouds=[];for(let i=0;i<6;i++) clouds.push({x:Math.random(),y:rnd(0.05,0.4),s:rnd(0.5,1.3),v:rnd(0.004,0.014)});
+  stars=[];for(let i=0;i<70;i++) stars.push({x:Math.random(),y:Math.random()*0.55,r:rnd(0.5,1.4),p:Math.random()*7});
+  drops=[];
+}
+/* The scene is drawn in two halves with the sky-scale effects sandwiched
+   between them, so an aurora hangs behind the hills rather than over them. */
+function drawSky(t,ph,wx,time){
+  const sky=SKY[ph];
+  const gr=ctx.createLinearGradient(0,0,0,L.horizon+40);
+  gr.addColorStop(0,sky[0][0]);gr.addColorStop(0.55,sky[0][1]);gr.addColorStop(1,sky[0][2]);
+  ctx.fillStyle=gr;ctx.fillRect(0,0,W,L.horizon+42);
+
+  // stars
+  if(ph===5){
+    for(const s of stars){
+      const a=0.35+0.45*Math.sin(time*1.3+s.p);
+      ctx.fillStyle='rgba(255,255,255,'+a.toFixed(3)+')';
+      ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,7);ctx.fill();
+    }
+  }
+  // sun / moon on a shallow arc across the day
+  const dayT=clamp((t.hour-5)/15,0,1);
+  const cx=lerp(W*0.05,W*0.95,ph===5?((t.hour+4)%24)/24:dayT);
+  const cy=L.horizon-Math.sin((ph===5?((t.hour+4)%24)/24:dayT)*Math.PI)*H*0.42-10;
+  ctx.save();
+  ctx.globalAlpha=wx==='clear'?1:0.55;
+  ctx.fillStyle=sky[1][0];
+  ctx.shadowColor=sky[1][0];ctx.shadowBlur=34;
+  ctx.beginPath();ctx.arc(cx,cy,ph===5?13:17,0,7);ctx.fill();
+  if(ph===5){ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(cx+6,cy-4,11,0,7);ctx.fill();}
+  ctx.restore();
+
+  // clouds
+  if(wx!=='clear'||ph===1||ph===2){
+    for(const c of clouds){
+      const x=(c.x*W+time*c.v*W*6)%(W+240)-120, y=c.y*H;
+      ctx.fillStyle=ph===5?'rgba(90,104,130,.42)':wx==='clear'?'rgba(255,255,255,.5)':'rgba(232,236,242,.68)';
+      cloud(x,y,46*c.s);
+    }
+  }
+}
+function drawLand(t,ph,wx,time){
+  // hills
+  const seasonHill=[['#5e8a52','#456b3e'],['#4f7f45','#3a6236'],['#8a7b46','#6a5f38'],['#9aa6b0','#7d8894']][t.season];
+  ctx.fillStyle=ph===5?shade(seasonHill[0],-0.6):seasonHill[0];
+  ctx.beginPath();ctx.moveTo(0,L.horizon+6);
+  for(let x=0;x<=W;x+=14) ctx.lineTo(x,L.horizon-14-Math.sin(x/W*3.1+0.6)*20-Math.sin(x/W*7.2)*8);
+  ctx.lineTo(W,L.horizon+60);ctx.lineTo(0,L.horizon+60);ctx.closePath();ctx.fill();
+  ctx.fillStyle=ph===5?shade(seasonHill[1],-0.62):seasonHill[1];
+  ctx.beginPath();ctx.moveTo(0,L.horizon+40);
+  for(let x=0;x<=W;x+=14) ctx.lineTo(x,L.horizon+4-Math.sin(x/W*4.6+2.1)*13);
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+
+  // lawn
+  const lawn=[['#6f9a52','#5d8544'],['#5f8f43','#4e7a38'],['#8a8340','#736c33'],['#e8eef2','#cfd9e0']][t.season];
+  ctx.fillStyle=ph===5?shade(lawn[0],-0.58):lawn[0];
+  ctx.beginPath();ctx.moveTo(0,L.ground-26);
+  for(let x=0;x<=W;x+=16) ctx.lineTo(x,L.ground-30+Math.sin(x/W*5.4)*6);
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+
+  drawTree(t,ph);
+  drawFurniture(t,ph);
+}
+function cloud(x,y,r){
+  ctx.beginPath();
+  ctx.arc(x,y,r*0.55,0,7);ctx.arc(x+r*0.5,y-r*0.2,r*0.42,0,7);
+  ctx.arc(x+r*0.95,y+r*0.05,r*0.5,0,7);ctx.arc(x+r*0.45,y+r*0.28,r*0.5,0,7);
+  ctx.fill();
+}
+function drawTree(t,ph){
+  const dark=ph===5?-0.55:ph===0||ph===4?-0.22:0;
+  const g=clamp(S.tree||0,0,1);
+  ctx.strokeStyle=shade('#5a4632',dark);
+  ctx.lineCap='round';
+  // The trunk thickens and the crown fills out, but the bough carrying the
+  // feeders never moves: the hangers and every perch on it are pinned to
+  // L.branchY, and a tree that grew out from under them would take the
+  // whole feeding station with it.
+  ctx.lineWidth=Math.max(16,W*0.055)*(0.70+g*0.55);
+  ctx.beginPath();ctx.moveTo(L.trunkX+22,H);ctx.quadraticCurveTo(L.trunkX+4,H*0.5,L.trunkX-4,H*0.05);ctx.stroke();
+  ctx.lineWidth=Math.max(7,W*0.022)*(0.82+g*0.4);
+  ctx.beginPath();ctx.moveTo(L.trunkX,L.branchY+34);
+  ctx.quadraticCurveTo(W*0.55,L.branchY-16,L.branchX-16,L.branchY+6);ctx.stroke();
+  // Extra boughs are the clearest read on progress — they arrive, rather
+  // than just getting slowly bigger.
+  ctx.lineWidth=Math.max(4,W*0.013)*(0.8+g*0.5);
+  if(g>0.28){
+    ctx.beginPath();ctx.moveTo(L.trunkX+2,L.branchY+96);
+    ctx.quadraticCurveTo(W*0.62,L.branchY+70,W*0.34,L.branchY+96);ctx.stroke();
+  }
+  if(g>0.62){
+    ctx.beginPath();ctx.moveTo(L.trunkX-2,L.branchY-46);
+    ctx.quadraticCurveTo(W*0.60,L.branchY-84,W*0.30,L.branchY-50);ctx.stroke();
+  }
+  // foliage
+  const leaf=[['#79a84f','#5f8c3c'],['#4f8f43','#3d7135'],['#c8863c','#a35f2c'],['#7d7264','#5f574c']][t.season];
+  const cnt=Math.round((t.season===3?10:34)*(0.45+g*1.05));
+  const spread=W*0.18*(0.68+g*0.62);
+  const drop=54*(0.7+g*0.75);
+  for(let i=0;i<cnt;i++){
+    const f=i/cnt;
+    const x=L.trunkX-8+Math.cos(i*2.9)*spread-f*W*0.10*(0.7+g*0.6);
+    const y=L.branchY-30+Math.sin(i*1.7)*drop+(g>0.28?Math.sin(i*0.9)*g*26:0);
+    ctx.fillStyle=shade(i%2?leaf[0]:leaf[1],dark);
+    ctx.globalAlpha=t.season===3?0.8:0.92;
+    ellipse(ctx,x,y,(14+Math.abs(Math.sin(i*3.7))*3)*(0.8+g*0.34),9*(0.8+g*0.34),i);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+// Splats, drawn onto whatever caught them. Landed ones go down with the
+// scenery so a bird can stand in front of its own mess.
+function drawMess(ph){
+  const dark=ph===5?-0.45:0;
+  for(const q of poops){
+    if(!q.landed) continue;
+    const sq=1+q.pop*0.5, sc=q.s*(1-q.pop*0.18);
+    ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.rot*0.2);
+    ctx.fillStyle='rgba(0,0,0,.16)';
+    ellipse(ctx,0,1.5,7*sc*sq,2.6*sc);ctx.fill();
+    ctx.fillStyle=shade('#f2f0e6',dark);
+    ellipse(ctx,0,0,6.2*sc*sq,3.4*sc);ctx.fill();
+    ellipse(ctx,4*sc,1.4*sc,2.4*sc,1.5*sc);ctx.fill();
+    ellipse(ctx,-4.4*sc,1.2*sc,1.8*sc,1.2*sc);ctx.fill();
+    ctx.fillStyle=shade('#cfd3bd',dark);
+    ellipse(ctx,-1.2*sc,0.6*sc,2.4*sc,1.3*sc);ctx.fill();
+    ctx.restore();
+  }
+}
+function drawFalling(){
+  ctx.fillStyle='#f2f0e6';
+  for(const q of poops){
+    if(q.landed) continue;
+    ellipse(ctx,q.x,q.y,3,4.2);ctx.fill();
+  }
+  for(const d of splash){
+    ctx.globalAlpha=clamp(1-d.t/0.8,0,1)*0.85;
+    ctx.fillStyle='#bfe2f2';
+    ctx.beginPath();ctx.arc(d.x,d.y,1.9,0,7);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  if(sweep){
+    const gx=ctx.createLinearGradient(sweep.x-60,0,sweep.x+16,0);
+    gx.addColorStop(0,'rgba(255,255,255,0)');
+    gx.addColorStop(0.7,'rgba(214,240,246,.30)');
+    gx.addColorStop(1,'rgba(255,255,255,.05)');
+    ctx.fillStyle=gx;
+    ctx.fillRect(sweep.x-60,L.horizon,76,H-L.horizon);
+  }
+}
+function drawFurniture(t,ph){
+  const dark=ph===5?-0.5:0;
+  const st=L.stations;
+  const hang=(x,topY,y)=>{ctx.strokeStyle=shade('#40413f',dark);ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.moveTo(x,topY);ctx.lineTo(x,y);ctx.stroke();};
+
+  // seed tube
+  let s=st.seed;
+  hang(s.x,L.branchY+4,s.y-s.h/2);
+  ctx.fillStyle=shade('#2f3a3e',dark);roundRect(s.x-s.w/2,s.y-s.h/2,s.w,s.h,5);ctx.fill();
+  ctx.fillStyle=shade('#c9a35e',dark);
+  const fh=(s.h-10)*S.feed.seed/100;
+  roundRect(s.x-s.w/2+3,s.y+s.h/2-5-fh,s.w-6,fh,3);ctx.fill();
+  ctx.fillStyle=shade('#8a8f92',dark);roundRect(s.x-s.w/2-2,s.y-s.h/2-4,s.w+4,6,3);ctx.fill();
+  roundRect(s.x-s.w/2-3,s.y+s.h/2-3,s.w+6,5,2);ctx.fill();
+
+  // nyjer sock
+  s=st.nyjer;
+  hang(s.x,L.branchY+2,s.y-s.h/2);
+  ctx.fillStyle=shade('#3a4a44',dark);
+  ctx.beginPath();ctx.moveTo(s.x-s.w/2,s.y-s.h/2);
+  ctx.quadraticCurveTo(s.x-s.w/2-3,s.y+s.h/2,s.x,s.y+s.h/2+3);
+  ctx.quadraticCurveTo(s.x+s.w/2+3,s.y+s.h/2,s.x+s.w/2,s.y-s.h/2);ctx.closePath();ctx.fill();
+  ctx.save();ctx.clip();
+  ctx.fillStyle=shade('#2a2620',dark);
+  const nh=s.h*S.feed.nyjer/100;
+  ctx.fillRect(s.x-s.w,s.y+s.h/2+3-nh,s.w*2,nh);ctx.restore();
+
+  // suet cage
+  s=st.suet;
+  hang(s.x,L.branchY+3,s.y-s.h/2);
+  ctx.fillStyle=shade('#d8c48a',dark);
+  const sh=(s.h-6)*S.feed.suet/100;
+  roundRect(s.x-s.w/2+2,s.y+s.h/2-3-sh,s.w-4,sh,3);ctx.fill();
+  ctx.strokeStyle=shade('#7f858a',dark);ctx.lineWidth=1.3;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(s.x-s.w/2+i*(s.w/4),s.y-s.h/2);ctx.lineTo(s.x-s.w/2+i*(s.w/4),s.y+s.h/2);ctx.stroke();}
+  for(let i=0;i<=3;i++){ctx.beginPath();ctx.moveTo(s.x-s.w/2,s.y-s.h/2+i*(s.h/3));ctx.lineTo(s.x+s.w/2,s.y-s.h/2+i*(s.h/3));ctx.stroke();}
+
+  // fruit spike
+  s=st.fruit;
+  hang(s.x,L.branchY+5,s.y-s.h/2-4);
+  ctx.strokeStyle=shade('#8a8f92',dark);ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(s.x,s.y-s.h/2-4);ctx.lineTo(s.x,s.y+s.h/2+4);ctx.stroke();
+  const fr=S.feed.fruit/100;
+  if(fr>0.02){
+    ctx.fillStyle=shade('#c0392b',dark);
+    ellipse(ctx,s.x,s.y,9*Math.max(0.35,fr),8.5*Math.max(0.35,fr));ctx.fill();
+    ctx.fillStyle=shade('#e9713f',dark);
+    ellipse(ctx,s.x-2.5,s.y-2.5,3*fr+1,2.6*fr+1);ctx.fill();
+  }
+
+  // nectar feeder — a bulb of syrup with three flower ports round the base
+  s=st.nectar;
+  hang(s.x,L.branchY+4,s.y-s.h/2-3);
+  ctx.fillStyle=shade('#c8302e',dark);
+  roundRect(s.x-s.w/2+2,s.y-s.h/2-3,s.w-4,5,2);ctx.fill();
+  const nc=S.feed.nectar/100;
+  ctx.fillStyle=shade('#3f4a4e',dark);
+  roundRect(s.x-s.w/2,s.y-s.h/2+2,s.w,s.h-4,s.w/2);ctx.fill();
+  if(nc>0.02){
+    ctx.save();roundRect(s.x-s.w/2,s.y-s.h/2+2,s.w,s.h-4,s.w/2);ctx.clip();
+    ctx.fillStyle=shade('#e86a8a',dark);
+    const nh=(s.h-4)*nc;
+    ctx.fillRect(s.x-s.w/2,s.y+s.h/2-2-nh,s.w,nh);
+    ctx.restore();
+  }
+  ctx.fillStyle=shade('#e8c84c',dark);
+  for(let i=-1;i<=1;i++){
+    const px=s.x+i*(s.w*0.42);
+    for(let j=0;j<4;j++){const a=j/4*6.283;ellipse(ctx,px+Math.cos(a)*1.8,s.y+s.h/2-1+Math.sin(a)*1.8,1.5,1.5);ctx.fill();}
+  }
+  ctx.fillStyle=shade('#c8302e',dark);
+  for(let i=-1;i<=1;i++){ellipse(ctx,s.x+i*(s.w*0.42),s.y+s.h/2-1,1.1,1.1);ctx.fill();}
+
+  // mealworm dish, on a cut stump at the left of the lawn
+  const wm=L.worm;
+  ctx.fillStyle=shade('#6f5236',dark);
+  ctx.fillRect(wm.x-wm.r*0.34,wm.y,wm.r*0.68,H*0.055);
+  ctx.fillStyle=shade('#8a6a44',dark);
+  ellipse(ctx,wm.x,wm.y,wm.r,wm.r*0.36);ctx.fill();
+  ctx.fillStyle=shade('#4f3d28',dark);
+  ellipse(ctx,wm.x,wm.y-0.5,wm.r*0.78,wm.r*0.26);ctx.fill();
+  if(S.feed.mealworm>1){
+    const mn=Math.round(clamp(S.feed.mealworm/100,0,1)*7);
+    ctx.strokeStyle=shade('#c8956a',dark);ctx.lineWidth=1.8;ctx.lineCap='round';
+    for(let i=0;i<mn;i++){
+      const wx=wm.x-wm.r*0.5+i*(wm.r/3.6), wy=wm.y-1+Math.sin(i*2.3)*1.6;
+      ctx.beginPath();ctx.moveTo(wx,wy);
+      ctx.quadraticCurveTo(wx+2.2,wy-1.6+Math.sin(time*2+i)*0.8,wx+4.4,wy);ctx.stroke();
+    }
+  }
+
+  // ground table
+  const tb=L.table;
+  ctx.fillStyle=shade('#7a5c3c',dark);
+  roundRect(tb.x-tb.w/2,tb.y-tb.h,tb.w,tb.h,3);ctx.fill();
+  ctx.fillStyle=shade('#5f472e',dark);
+  ctx.fillRect(tb.x-tb.w/2+8,tb.y,4,16);ctx.fillRect(tb.x+tb.w/2-12,tb.y,4,16);
+  if(S.feed.seed>1){
+    ctx.fillStyle=shade('#c9a35e',dark);
+    for(let i=0;i<10;i++) {ellipse(ctx,tb.x-tb.w/2+8+i*(tb.w-16)/9,tb.y-tb.h-1.5,2.2,1.5);ctx.fill();}
+  }
+
+  // water fountain
+  const ba=L.bath;
+  const dirty=poops.filter(q=>q.landed&&q.on==='bath').length;
+  ctx.fillStyle=shade('#9aa0a6',dark);
+  ctx.fillRect(ba.x-7,ba.y,14,H*0.10);
+  ellipse(ctx,ba.x,ba.y,ba.r,ba.r*0.34);ctx.fill();          // basin rim
+  ctx.fillStyle=shade(dirty?'#7c8a72':'#6f92a8',dark);
+  ellipse(ctx,ba.x,ba.y-1,ba.r*0.78,ba.r*0.24);ctx.fill();   // water
+  // Ripple rings, so the water reads as moving even with nobody in it.
+  ctx.strokeStyle='rgba(255,255,255,.20)';ctx.lineWidth=1.1;
+  for(let i=0;i<3;i++){
+    const k=((time*0.55+i/3)%1);
+    ctx.globalAlpha=(1-k)*0.6;
+    ellipse(ctx,ba.x,ba.y-1,ba.r*0.16+ba.r*0.6*k,(ba.r*0.16+ba.r*0.6*k)*0.30);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  // Column and upper bowl.
+  ctx.fillStyle=shade('#9aa0a6',dark);
+  ctx.fillRect(ba.x-3.5,ba.y-ba.r*0.62,7,ba.r*0.62);
+  ellipse(ctx,ba.x,ba.y-ba.r*0.62,ba.r*0.30,ba.r*0.11);ctx.fill();
+  ctx.fillStyle=shade('#6f92a8',dark);
+  ellipse(ctx,ba.x,ba.y-ba.r*0.64,ba.r*0.21,ba.r*0.07);ctx.fill();
+  // The jet: four arcs of droplets, phase-offset so it never looks frozen.
+  ctx.fillStyle=shade('#cfe9f5',dark);
+  for(let j=0;j<4;j++){
+    const dir=j%2?1:-1, lane=j<2?1:0.62;
+    for(let k=0;k<5;k++){
+      const u=((time*0.9+k/5+j*0.13)%1);
+      const x=ba.x+dir*ba.r*0.52*lane*u;
+      const y=ba.y-ba.r*0.66-Math.sin(u*Math.PI)*ba.r*0.34+u*u*ba.r*0.30;
+      ctx.globalAlpha=0.30+0.5*(1-u);
+      ctx.beginPath();ctx.arc(x,y,1.7,0,7);ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(255,255,255,.22)';
+  ellipse(ctx,ba.x-ba.r*0.22,ba.y-2,ba.r*0.28,ba.r*0.06);ctx.fill();
+
+  drawGarden(ph);
+  drawMess(ph);
+}
+function roundRect(x,y,w,h,r){
+  if(h<=0) {ctx.beginPath();return;}
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+}
+
+function drawWeather(wx,dt,time){
+  // A snow-bringer overrides the forecast for as long as it is standing there.
+  if(amb.snow>0.15&&wx!=='snow') wx='snow';
+  if(!S.weather||wx==='clear'||wx==='cloud') return;
+  const snow=wx==='snow';
+  const want=snow?70:110;
+  while(drops.length<want) drops.push({x:Math.random()*W,y:Math.random()*H,
+    v:snow?rnd(18,42):rnd(360,620),s:snow?rnd(1.2,2.6):rnd(6,12),p:Math.random()*7});
+  for(const d of drops){
+    d.y+=d.v*dt;
+    if(snow) d.x+=Math.sin(time*1.2+d.p)*14*dt;
+    if(d.y>H){d.y=-10;d.x=Math.random()*W;}
+    if(snow){ctx.fillStyle='rgba(255,255,255,.8)';ctx.beginPath();ctx.arc(d.x,d.y,d.s,0,7);ctx.fill();}
+    else{ctx.strokeStyle='rgba(198,220,236,.5)';ctx.lineWidth=1.1;
+      ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-1.5,d.y+d.s);ctx.stroke();}
+  }
+}
+
+function drawNight(ph){
+  if(ph!==5&&ph!==4&&ph!==0) return;
+  const a=ph===5?0.34:0.14;
+  ctx.fillStyle='rgba(14,20,38,'+a+')';ctx.fillRect(0,0,W,H);
+}
+
+/* ---------- Loop ------------------------------------------------------ */
+let last=performance.now(), time=0, dockDirty=true, hudDirty=true, lastPh=-1, lastSeason=-1;
+function frame(now){
+  // Clamped both ways — a first frame timestamped before boot would run
+  // every animation backwards.
+  const dt=clamp((now-last)/1000,0,0.05); last=now; time+=dt;
+  const t=clock(), ph=phaseOf(t.hour), wx=weatherOf(t);
+
+  if(ph!==lastPh||t.season!==lastSeason){lastPh=ph;lastSeason=t.season;hudDirty=true;}
+
+  ctx.clearRect(0,0,W,H);
+  // Sky-scale effects sit between the gradient and the scenery, so an aurora
+  // is behind the hills and a murmuration is behind the tree.
+  ambientFx(dt);
+  drawSky(t,ph,wx,time);
+  drawFxBack(ph);
+  drawLand(t,ph,wx,time);
+
+  // birds behind nothing in particular — drawn in y order so the ones on the
+  // lawn overlap the ones on the branch correctly
+  updateBirds(dt);
+  updateMess(dt);
+  updateFx(dt);
+  growTree(dt);
+  const order=birds.slice().sort((a,b)=>a.y-b.y);
+  for(const b of order) drawBird(ctx,b.sp,b.x,b.y-(b.hov||0),b.scale,b.dir,b);
+  drawFalling();
+  drawFxFront();
+
+  for(const p of puffs){
+    ctx.globalAlpha=clamp(1-p.t/1.3,0,1)*0.8;
+    ctx.fillStyle=p.c;ellipse(ctx,p.x,p.y,2.4,1.4,p.t*3);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  for(const s of sparks){
+    ctx.globalAlpha=clamp(1-s.t/0.9,0,1);
+    ctx.fillStyle='#ffe9a8';ctx.beginPath();ctx.arc(s.x,s.y,2.1,0,7);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+
+  drawWeather(wx,dt,time);
+  drawNight(ph);
+
+  spawnTimer-=dt;
+  if(spawnTimer<=0){spawnTimer=rnd(2.4,6.5)*(wx==='rain'?1.7:1);trySpawn(t,ph,wx);}
+
+  if(dockDirty){dockDirty=false;refreshDock();}
+  if(hudDirty){hudDirty=false;refreshHud(t,ph,wx);}
+
+  requestAnimationFrame(frame);
+}
+
+/* ---------- UI -------------------------------------------------------- */
+// Six kinds of food, because two hundred species will not all eat sunflower
+// hearts. Nectar and mealworms start empty — they are the two you have to
+// decide to put out, and between them they unlock a third of the guide.
+const FEEDS=[{k:'seed',ic:'🌾',n:'Seed'},{k:'nyjer',ic:'⚫',n:'Nyjer'},{k:'suet',ic:'🧈',n:'Suet'},
+  {k:'fruit',ic:'🍎',n:'Fruit'},{k:'mealworm',ic:'🪱',n:'Worms'},{k:'nectar',ic:'🌺',n:'Nectar'}];
+function buildDock(){
+  $('dock').innerHTML=FEEDS.map(f=>
+    '<div class="tool" data-feed="'+f.k+'"><div class="ic">'+f.ic+'</div>'+
+    '<div class="tx">'+f.n+'</div><div class="fill"></div></div>').join('')+
+    // The cloth sits with the food because it is the same kind of act: a
+    // thing you do to the garden between watching it.
+    '<div class="tool" id="toolClean"><div class="ic">🧽</div>'+
+    '<div class="tx">Clean</div><div class="fill"></div></div>';
+  $('dock').querySelectorAll('[data-feed]').forEach(el=>{
+    el.addEventListener('click',()=>refill(el.dataset.feed));
+  });
+  $('toolClean').addEventListener('click',cleanAll);
+}
+function refill(k){
+  if(S.feed[k]>=99){toast(FEEDS.find(f=>f.k===k).n+' is full');return;}
+  S.feed[k]=100;save();dockDirty=true;
+  toast('Refilled the '+STATION_NAME[k].toLowerCase());
+}
+function refreshDock(){
+  $('dock').querySelectorAll('[data-feed]').forEach(el=>{
+    const v=S.feed[el.dataset.feed]||0;
+    el.querySelector('.fill').style.width=v+'%';
+    el.classList.toggle('low',v<30&&v>1);
+    el.classList.toggle('empty',v<=1);
+  });
+  // The cloth fills up as the mess does — the one tool that wants to be full.
+  const el=$('toolClean'); if(!el) return;
+  const n=messCount();
+  el.querySelector('.fill').style.width=Math.min(100,n/MAX_POOP*100)+'%';
+  el.querySelector('.tx').textContent=n?'Clean '+n:'Clean';
+  el.classList.toggle('low',n>0&&n<4);
+  el.classList.toggle('empty',n===0);
+}
+const WXI={clear:'☀️',cloud:'⛅',rain:'🌧',snow:'❄️'};
+function refreshHud(t,ph,wx){
+  $('cTime').firstChild.nodeValue=WXI[wx]+' ';
+  $('tTime').textContent=PHASES[ph];
+  $('tSeason').textContent=SEASONS[t.season];
+  const g=clamp(S.tree||0,0,1);
+  $('tTree').textContent=treeStage(g);
+  $('tTreePct').textContent=Math.round(g*100)+'%';
+}
+function refreshCounts(){
+  const n=Object.keys(S.guide).length;
+  // The species count reads out in two places and one of them — the HUD chip —
+  // is optional: it competes for a strip that also carries the clock and the
+  // tree, and gets dropped on a narrow screen. Missing chip is a layout
+  // decision, not a fault, so this writes where it can and skips the rest
+  // rather than throwing on boot and taking the whole garden with it.
+  const tc=$('tCount'); if(tc) tc.textContent=n;
+  const gc=$('gCount'); if(gc) gc.textContent=n+' / '+TOTAL;
+  const cc=$('cCount'), ccs=cc&&cc.querySelector('small');
+  if(ccs) ccs.textContent='/'+TOTAL;
+}
+let toastT=0;
+function toast(msg){
+  const el=$('toast');el.textContent=msg;el.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),1900);
+}
+
+function openSheet(id){$(id).classList.add('on');}
+function closeSheets(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));}
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeSheets));
+document.querySelectorAll('.sheet').forEach(s=>s.addEventListener('click',e=>{if(e.target===s) closeSheets();}));
+
+/* A portrait has to frame anything from a six-gram goldcrest to a heron with
+   a neck, so the box is measured from the bird's own dimensions rather than
+   assumed. Size still reads: a raven is drawn bigger than a wren, just not
+   twelve times bigger, or one of them would be a dot. */
+function portrait(canvas,sp,silhouette){
+  const g=canvas.getContext('2d');
+  const w=canvas.width,h=canvas.height;
+  g.clearRect(0,0,w,h);
+  const p=sp.pat||{};
+  const tail=sp.tail, lift=(p.stilt?9.5:0)+(p.neck?9:0), crest=p.crest||p.tuft?5:0;
+  const wide=21+tail, tall=30+lift+crest;
+  const fit=Math.min(w/(wide+6), h/(tall+6));
+  const sc=fit*(0.74+0.26*clamp(sp.sz,0.5,2.1)/2.1);
+  // Horizontal extent runs from the tail tip to the bill tip; centre on that
+  // rather than on the feet, or a long-tailed tit hangs off the left edge.
+  const cx=w/2-((13-(6+tail))/2)*sc;
+  const cy=h/2+(tall/2)*sc;
+  if(silhouette){
+    g.save();g.globalAlpha=.45;
+    const flat='#0d1418';
+    const sil={c:{b:flat,w:flat,h:flat,bl:flat,k:flat,lg:flat},
+      pat:{sil:1,stilt:p.stilt?flat:0,neck:p.neck,crest:p.crest?flat:0,tuft:p.tuft?flat:0,
+        plume:p.plume?flat:0,owl:p.owl},
+      tail:tail,beak:sp.beak,sz:sp.sz};
+    drawBird(g,sil,cx,cy,sc,1,{});
+    g.restore();
+    return;
+  }
+  drawBird(g,sp,cx,cy,sc,1,{});
+}
+/* Two hundred cards means two hundred portraits. Drawing them all on open cost
+   most of a second and held a canvas apiece in memory, so each one is rendered
+   once into a data URL the first time it scrolls into view, then cached — an
+   <img> the browser can page out beats a live canvas it cannot. */
+const PORTRAITS={};
+let pcv=null;
+function portraitURL(sp,sil){
+  const key=sp.id+(sil?'!':'');
+  if(PORTRAITS[key]) return PORTRAITS[key];
+  if(!pcv){pcv=document.createElement('canvas');pcv.width=148;pcv.height=112;}
+  portrait(pcv,sp,sil);
+  return (PORTRAITS[key]=pcv.toDataURL());
+}
+let guideObs=null;
+function guideObserver(){
+  if(guideObs) return guideObs;
+  if(!window.IntersectionObserver) return null;
+  guideObs=new IntersectionObserver(es=>{
+    for(const e of es){
+      if(!e.isIntersecting) continue;
+      const img=e.target, sp=byId[img.dataset.sp];
+      if(sp&&!img.getAttribute('src')) img.src=portraitURL(sp,img.dataset.sil==='1');
+      guideObs.unobserve(img);
+    }
+  },{root:$('guideScroll'),rootMargin:'300px'});
+  return guideObs;
+}
+
+// Guide filters. `seen` is a three-way: 0 everything, 1 logged, 2 still missing.
+const gFilter={q:'',r:0,seen:0};
+function buildChips(){
+  const el=$('gChips'); if(!el||el.childElementCount) return;
+  const chips=[{k:'all',lab:'All'},{k:'seen',lab:'Logged'},{k:'missing',lab:'Missing'}];
+  for(let i=1;i<=6;i++) chips.push({k:'r'+i,lab:RARITY[i]});
+  el.innerHTML=chips.map(c=>'<div class="gchip" data-k="'+c.k+'">'+c.lab+'</div>').join('');
+  el.querySelectorAll('.gchip').forEach(c=>c.addEventListener('click',()=>{
+    const k=c.dataset.k;
+    if(k==='all'){gFilter.r=0;gFilter.seen=0;}
+    else if(k==='seen') gFilter.seen=gFilter.seen===1?0:1;
+    else if(k==='missing') gFilter.seen=gFilter.seen===2?0:2;
+    else{const r=+k.slice(1);gFilter.r=gFilter.r===r?0:r;}
+    buildGuide();
+  }));
+}
+function syncChips(){
+  $('gChips').querySelectorAll('.gchip').forEach(c=>{
+    const k=c.dataset.k;
+    const on = k==='all'? (!gFilter.r&&!gFilter.seen)
+      : k==='seen'? gFilter.seen===1
+      : k==='missing'? gFilter.seen===2
+      : gFilter.r===+k.slice(1);
+    c.classList.toggle('on',on);
+  });
+}
+function buildGuide(){
+  buildChips();syncChips();
+  const grid=$('guideGrid'), obs=guideObserver();
+  grid.innerHTML='';
+  const q=gFilter.q.trim().toLowerCase();
+  let shown=0;
+  // Grouped by family, in the order the list declares them — a field guide is
+  // ordered by what a bird *is*, not by how hard it was to find.
+  for(const gname of GROUPS){
+    const fam=SP.filter(sp=>sp.g===gname);
+    const list=fam.filter(sp=>{
+      const got=!!S.guide[sp.id];
+      if(gFilter.r&&sp.r!==gFilter.r) return false;
+      if(gFilter.seen===1&&!got) return false;
+      if(gFilter.seen===2&&got) return false;
+      if(q){
+        // An unlogged bird cannot be searched by name — that would give the
+        // answer away. Its family and rarity are fair game.
+        const hay=(got?sp.n+' '+sp.l+' ':'')+gname+' '+RARITY[sp.r];
+        if(hay.toLowerCase().indexOf(q)<0) return false;
+      }
+      return true;
+    });
+    if(!list.length) continue;
+    const got=fam.filter(sp=>S.guide[sp.id]).length;
+    const head=document.createElement('div');
+    head.className='ghead';
+    head.innerHTML='<b>'+gname+'</b><span>'+got+' / '+fam.length+'</span>';
+    grid.appendChild(head);
+    for(const sp of list){
+      shown++;
+      const seen=!!S.guide[sp.id], gd=S.guide[sp.id];
+      const bond=gd?bondOf(gd.pet):0;
+      const d=document.createElement('div');
+      d.className='card'+(seen?' r'+sp.r:' locked');
+      let foot;
+      if(seen&&bond) foot='<div class="pips">'+
+        [0,1,2,3,4].map(i=>'<div class="pip'+(i<bond?' on':'')+'"></div>').join('')+'</div>';
+      else if(seen&&gd.count>1) foot='<div class="badge">×'+gd.count+'</div>';
+      else foot='<div class="badge r'+sp.r+'">'+RARITY[sp.r]+'</div>';
+      d.innerHTML='<img data-sp="'+sp.id+'" data-sil="'+(seen?'0':'1')+'" alt="">'+
+        '<div class="nm">'+(seen?sp.n:'???')+'</div>'+foot;
+      grid.appendChild(d);
+      const img=d.querySelector('img');
+      if(obs) obs.observe(img); else img.src=portraitURL(sp,!seen);
+      d.addEventListener('click',()=>showDetail(sp));
+    }
+  }
+  if(!shown){
+    const e=document.createElement('div');
+    e.className='empty-note';e.style.gridColumn='1/-1';
+    e.textContent='Nothing matches that.';
+    grid.appendChild(e);
+  }
+}
+function showDetail(sp){
+  const got=S.guide[sp.id];
+  $('dTitle').textContent=got?sp.n:'Unidentified';
+  const b=$('detailBody');
+  b.innerHTML='';
+  const c=document.createElement('canvas');c.width=380;c.height=280;
+  b.appendChild(c);portrait(c,sp,!got);
+  const add=(html,cls)=>{const e=document.createElement('div');e.className=cls||'';e.innerHTML=html;b.appendChild(e);return e;};
+  if(!got){
+    add('<span class="badge r'+sp.r+'">'+RARITY[sp.r]+'</span> <span class="badge">'+sp.g+'</span>');
+    add('Not yet identified. Watch for it in <b>'+sp.s.map(i=>SEASONS[i]).join(', ')+
+        '</b>, around <b>'+sp.t.map(i=>PHASES[i].toLowerCase()).join(', ')+
+        '</b>.','note');
+    add('<span class="fact">Try: '+sp.f.map(f=>STATION_NAME[f].toLowerCase()).join(' · ')+'</span>','facts');
+  }else{
+    add(sp.l,'latin');
+    const bond=bondOf(got.pet);
+    add('<span class="badge r'+sp.r+'">'+RARITY[sp.r]+'</span>'+
+        ' <span class="badge">seen '+got.count+'×</span>'+
+        (bond?' <span class="badge bd">'+BONDS[bond]+'</span>':''));
+    add(sp.note,'note');
+    if(sp.fx) add('<span class="badge fx">✦ '+FX_NAME[sp.fx]+'</span>');
+    const facts=['<span class="fact">'+SEASONS.filter((_,i)=>sp.s.indexOf(i)>=0).join(' · ')+'</span>',
+      '<span class="fact">'+sp.t.map(i=>PHASES[i]).join(' · ')+'</span>',
+      '<span class="fact">'+sp.f.map(f=>STATION_NAME[f]).join(' · ')+'</span>'];
+    if(sp.flock) facts.push('<span class="fact">Comes in '+sp.flock+'s</span>');
+    if(sp.shy) facts.push('<span class="fact">Shy of the hand</span>');
+    if(sp.bold) facts.push('<span class="fact">Fearless</span>');
+    add(facts.join(''),'facts');
+
+    // The bond panel. Two hundred species is a long list to fill, and this is
+    // the part that says what all the petting is actually buying.
+    const nx=bondNext(got.pet);
+    const box=add('','bondbox');
+    box.innerHTML=
+      '<div class="pips">'+[0,1,2,3,4].map(i=>'<div class="pip'+(i<bond?' on':'')+'"></div>').join('')+'</div>'+
+      '<div class="bt">'+BONDS[bond]+' · petted '+(got.pet||0)+'×</div>'+
+      '<div class="bs">'+(
+        bond>=5 ? 'Devoted. Comes far more often than it should, stays far longer, and turns up out of season.'
+        : (nx? nx.need+' more pet'+(nx.need===1?'':'s')+' to reach '+BONDS[bond+1]+'. ':'')+
+          'Trust makes a species visit more often and linger longer'+
+          (bond>=4?', and it will now turn up outside its season.':bond>=3?'. One more level and it stops minding the season.':'.')
+      )+'</div>';
+
+    const d=new Date(got.first);
+    add('<div style="opacity:.55;font-size:11.5px;font-weight:700">'+sp.g+' · first logged '+
+      d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})+'</div>');
+  }
+  openSheet('shDetail');
+}
+function showNew(sp){
+  $('npName').textContent=sp.n;
+  $('npLatin').textContent=sp.l;
+  $('npNote').textContent=sp.note+(sp.fx?'\n✦ '+FX_NAME[sp.fx]+'.':'');
+  $('npKick').textContent=RARITY[sp.r]+' — new to your guide';
+  portrait($('npArt'),sp,false);
+  $('popNew').classList.add('on');
+}
+$('npOk').addEventListener('click',()=>$('popNew').classList.remove('on'));
+
+$('bGuide').addEventListener('click',()=>{buildGuide();openSheet('shGuide');});
+$('gSearch').addEventListener('input',e=>{gFilter.q=e.target.value;buildGuide();});
+$('bSet').addEventListener('click',()=>{
+  $('swClock').classList.toggle('on',S.realClock);
+  $('swWeather').classList.toggle('on',S.weather);
+  $('setClockSub').textContent=S.realClock
+    ? 'The feeder runs on your clock and calendar.'
+    : 'Accelerated: a day every six minutes, a season every four days.';
+  const days=Math.max(1,Math.round((Date.now()-S.started)/864e5));
+  let friends=0;
+  for(const k in S.guide) if(bondOf(S.guide[k].pet)>0) friends++;
+  $('statLine').textContent=Object.keys(S.guide).length+' of '+TOTAL+' species · '+
+    S.visits+' visits · '+S.taps+' identified · '+(S.pets||0)+' pets across '+friends+
+    ' species · '+S.cleaned+' cleaned up · tree '+
+    Math.round(clamp(S.tree||0,0,1)*100)+'% ('+treeStage(S.tree||0).toLowerCase()+') · open '+
+    days+' day'+(days>1?'s':'');
+  openSheet('shSet');
+});
+$('swClock').addEventListener('click',()=>{
+  S.realClock=!S.realClock;
+  if(!S.realClock) S.fastStart=Date.now();
+  $('swClock').classList.toggle('on',S.realClock);
+  $('setClockSub').textContent=S.realClock
+    ? 'The feeder runs on your clock and calendar.'
+    : 'Accelerated: a day every six minutes, a season every four days.';
+  hudDirty=true;save();
+});
+$('swWeather').addEventListener('click',()=>{
+  S.weather=!S.weather;$('swWeather').classList.toggle('on',S.weather);
+  if(!S.weather) drops=[];
+  save();
+});
+$('bReset').addEventListener('click',()=>{
+  if(!confirm('Clear the field guide and start again? Every bond you have built goes with it.')) return;
+  S=Object.assign({},DEF,{started:Date.now(),fastStart:Date.now(),guide:{},
+    feed:Object.assign({},FEED0),garden:[]});
+  poops.length=0;fxbits.length=0;lastStage='';
+  save();refreshCounts();dockDirty=true;hudDirty=true;closeSheets();toast('New logbook');
+});
+
+/* ---------- Input ----------------------------------------------------- */
+function pointerAt(e){
+  const r=cv.getBoundingClientRect();
+  const p=e.touches?e.touches[0]:e;
+  return {x:p.clientX-r.left,y:p.clientY-r.top};
+}
+cv.addEventListener('pointerdown',e=>{
+  const p=pointerAt(e);
+  if(tapAt(p.x,p.y)) return;
+  // a splat under the finger gets wiped — birds still win the tap, so you
+  // can never lose an identification to the cleaning
+  if(cleanAt(p.x,p.y)) return;
+  // tapping a feeder is a shortcut for refilling it
+  for(const k in L.stations){
+    const s=L.stations[k];
+    if(Math.abs(p.x-s.x)<s.w/2+16&&Math.abs(p.y-s.y)<s.h/2+16){refill(k);return;}
+  }
+  // the mealworm dish stands on the lawn rather than hanging, so it is not in
+  // L.stations and needs its own hit test
+  const wm=L.worm;
+  if(Math.abs(p.x-wm.x)<wm.r+12&&Math.abs(p.y-wm.y)<wm.r*0.5+18){refill('mealworm');return;}
+});
+
+/* ---------- Boot ------------------------------------------------------ */
+load();
+buildDock();
+fit();
+initAmbient();
+// fit() has run, so surfaceAt() knows where the lawn is
+seedMess(S.mess||0);
+lastStage=treeStage(S.tree||0);
+refreshCounts();
+refreshDock();
+refreshHud(clock(),phaseOf(clock().hour),weatherOf(clock()));
+window.addEventListener('resize',()=>{fit();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){last=performance.now();hudDirty=true;}});
+setInterval(()=>{hudDirty=true;},20000);
+requestAnimationFrame(frame);
+
+if(!Object.keys(S.guide).length){
+  setTimeout(()=>toast('Tap a bird to identify it'),1200);
+  setTimeout(()=>toast('Tap it again to pet it'),4600);
+}else if(!S.pets){
+  setTimeout(()=>toast('Tap a logged bird again to pet it'),1600);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#16261a"/>
+<title>Mossling</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --line:rgba(255,255,255,.22);
+    --gold:#e8c34d; --gold2:#e8a02b;
+    --accent:#6bcf7a; --accent2:#e8905a;
+    --bad:#ff6b6b;
+    --ui-font:'Nunito',system-ui,sans-serif;
+    --dis-font:'Baloo 2',system-ui,sans-serif;
+    --r:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{font-family:var(--ui-font);background:#0e1a12;color:#fff;
+    display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+  #app{position:relative;width:100%;height:100%;max-width:520px;max-height:100vh;
+    overflow:hidden;background:#16261a;box-shadow:0 0 80px rgba(0,0,0,.6)}
+  @media(min-width:700px){#app{max-width:min(92vw,900px)}}
+  canvas#terra{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  .hud{position:absolute;top:0;left:0;right:0;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;gap:8px;align-items:flex-start;z-index:20;pointer-events:none}
+  .hud>*{pointer-events:auto}
+  .chip{background:rgba(10,26,14,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:999px;padding:7px 13px;display:flex;align-items:center;gap:7px;
+    font-weight:800;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
+  .icbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(10,26,14,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    display:grid;place-items:center;font-size:17px;cursor:pointer;color:#fff;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .12s;flex:none}
+  .icbtn:active{transform:scale(.9)}
+  .icbtn.off{opacity:.45}
+  .spacer{flex:1}
+
+  .strip{position:absolute;top:calc(58px + env(safe-area-inset-top));left:12px;right:12px;z-index:19;display:flex;gap:8px;pointer-events:none}
+  #boostRow{position:absolute;top:calc(98px + env(safe-area-inset-top));left:12px;right:12px;z-index:19;
+    display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+  .boostpill{background:rgba(232,195,77,.2);border:1px solid rgba(232,195,77,.55);color:#f5e6b0;
+    border-radius:999px;padding:4px 10px;font-size:10.5px;font-weight:800;display:flex;align-items:center;gap:4px;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:pulse 1.8s ease-in-out infinite}
+  .meter{flex:1;background:rgba(10,26,14,.5);border:1px solid var(--line);border-radius:999px;
+    padding:5px 10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .meter .lab{font-size:9.5px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;opacity:.75;display:flex;justify-content:space-between}
+  .bar{height:6px;border-radius:999px;background:rgba(255,255,255,.16);margin-top:4px;overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:999px;transition:width .45s cubic-bezier(.3,1,.4,1)}
+  #tidyFill{background:linear-gradient(90deg,#6bcf7a,#5fc48a)}
+  #waterFill{background:linear-gradient(90deg,#5fb0e8,#6bcf7a)}
+
+  .dock{position:absolute;left:0;right:0;bottom:0;z-index:20;padding:10px 10px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center}
+  .tool{position:relative;flex:1;max-width:110px;border-radius:16px;cursor:pointer;padding:10px 4px 8px;
+    font-family:var(--ui-font);color:#fff;background:rgba(10,26,14,.6);border:1px solid var(--line);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;align-items:center;gap:3px;
+    transition:transform .12s,background .2s;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .tool:active{transform:translateY(2px) scale(.96)}
+  .tool .ic{font-size:21px;line-height:1}
+  .tool .tx{font-size:10.5px;font-weight:800;letter-spacing:.03em}
+  .tool.armed{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3a2a00;border-color:#fff6;
+    box-shadow:0 0 0 3px rgba(232,195,77,.28),0 10px 26px rgba(0,0,0,.35)}
+  .tool.armed .tx{color:#3a2a00}
+  .badge{position:absolute;top:4px;right:6px;background:var(--bad);border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;line-height:1.5}
+
+  .scrim{position:absolute;inset:0;z-index:40;display:none;background:rgba(4,16,8,.62);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center}
+  .scrim.on{display:flex;animation:fade .22s ease}
+  @keyframes fade{from{opacity:0}}
+  .sheet{width:100%;max-height:86%;background:linear-gradient(180deg,#1c3520,#0f1f14);
+    border-top-left-radius:26px;border-top-right-radius:26px;border-top:1px solid rgba(255,255,255,.2);
+    display:flex;flex-direction:column;animation:up .3s cubic-bezier(.2,1,.3,1);box-shadow:0 -20px 60px rgba(0,0,0,.5)}
+  @keyframes up{from{transform:translateY(100%)}}
+  .sheet.center{border-radius:24px;margin:auto 14px;max-width:400px;animation:pop .28s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes pop{from{transform:scale(.85);opacity:0}}
+  .scrim.mid{align-items:center}
+  .grab{width:38px;height:4px;border-radius:9px;background:rgba(255,255,255,.3);margin:9px auto 2px;flex:none}
+  .shead{display:flex;align-items:center;gap:10px;padding:10px 18px 12px;flex:none;border-bottom:1px solid rgba(255,255,255,.1)}
+  .shead h2{font-family:var(--dis-font);font-size:23px;font-weight:800;flex:1}
+  .x{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;
+    font-size:16px;cursor:pointer;display:grid;place-items:center;flex:none}
+  .sbody{overflow-y:auto;padding:14px 16px 22px;-webkit-overflow-scrolling:touch;flex:1}
+  .sbody::-webkit-scrollbar{width:0}
+  .tabs{display:flex;gap:6px;padding:0 16px 12px;flex:none;flex-wrap:wrap}
+  .tab{flex:1;min-width:64px;padding:8px 2px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);
+    color:#fff;font-weight:800;font-size:11.5px;cursor:pointer;font-family:var(--ui-font)}
+  .tab.on{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3a2a00;border-color:transparent}
+
+  .card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:var(--r);
+    padding:12px;margin-bottom:10px;display:flex;gap:11px;align-items:center}
+  .card .art{width:52px;height:52px;border-radius:14px;flex:none;display:grid;place-items:center;background:rgba(0,0,0,.22);overflow:hidden}
+  .card .art canvas{width:100%;height:100%}
+  .card .art .emo{font-size:26px}
+  .card .info{flex:1;min-width:0}
+  .card .nm{font-weight:900;font-size:14.5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .card .sub{font-size:11.5px;opacity:.72;margin-top:2px;line-height:1.35}
+  .card.fx-boost,.row.fx-boost{border-color:rgba(232,195,77,.5);animation:fxglow 2.2s ease-in-out infinite}
+  @keyframes fxglow{0%,100%{box-shadow:0 0 0 1px rgba(232,195,77,.22),0 4px 14px rgba(232,195,77,.08)}
+    50%{box-shadow:0 0 0 1px rgba(232,195,77,.5),0 4px 18px rgba(232,195,77,.3)}}
+  .btn{border:none;border-radius:12px;padding:9px 13px;font-weight:900;font-size:12.5px;cursor:pointer;
+    font-family:var(--ui-font);background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3a2a00;
+    flex:none;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .12s;white-space:nowrap}
+  .btn:active{transform:scale(.93)}
+  .btn.ghost{background:rgba(255,255,255,.14);color:#fff;box-shadow:none}
+  .btn.mint{background:linear-gradient(180deg,#6bcf7a,#3fa65c);color:#04321a}
+  .btn[disabled]{opacity:.35;pointer-events:none}
+  .btn.wide{width:100%;padding:13px;font-size:14px;margin-top:6px}
+  .qty{display:flex;align-items:center;gap:5px;flex:none}
+  .qty button{width:23px;height:23px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.14);
+    color:#fff;font-weight:900;font-size:13px;cursor:pointer;display:grid;place-items:center;padding:0;font-family:var(--ui-font)}
+  .qty button:active{transform:scale(.9)}
+  .qty button[disabled]{opacity:.3;pointer-events:none}
+  .qty .qn{min-width:15px;text-align:center;font-weight:900;font-size:12.5px}
+
+  .rar{font-size:9px;font-weight:900;padding:2px 6px;border-radius:6px;letter-spacing:.05em}
+  .r-common{background:#9db9a3;color:#16261a}
+  .r-rare{background:#7cc6ff;color:#0a2a45}
+  .r-epic{background:#c79bff;color:#2b0d47}
+  .r-legend{background:linear-gradient(90deg,var(--gold),var(--accent2));color:#3a2a00}
+  .r-mythic{background:linear-gradient(90deg,#ff6b6b,#feca57,#48dbfb,#1dd1a1,#a55eea);color:#1a0a2e}
+  .r-ancient{background:linear-gradient(90deg,#0a2013,#1d9450,#3adf8c,#0a2013);color:#d5ffe9}
+
+  .empty{text-align:center;padding:34px 16px;opacity:.75;font-size:13px;line-height:1.6}
+  .empty .e{font-size:40px;display:block;margin-bottom:8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:9px}
+  .row .l{font-weight:800;font-size:13.5px}
+  .row .d{font-size:11px;opacity:.68;margin-top:2px}
+
+  .sw{width:50px;height:28px;border-radius:999px;background:rgba(255,255,255,.2);position:relative;
+    cursor:pointer;flex:none;transition:background .2s;border:none}
+  .sw:after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+    background:#fff;transition:transform .22s cubic-bezier(.3,1.4,.5,1)}
+  .sw.on{background:linear-gradient(90deg,var(--gold),var(--gold2))}
+  .sw.on:after{transform:translateX(22px)}
+
+  .themes{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  .th{border-radius:15px;padding:11px;cursor:pointer;border:2px solid transparent;position:relative;
+    display:flex;flex-direction:column;gap:7px;transition:transform .12s}
+  .th:active{transform:scale(.96)}
+  .th.on{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.22)}
+  .th .tn{font-weight:900;font-size:12.5px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .th .dots{display:flex;gap:4px}
+  .th .dots i{width:13px;height:13px;border-radius:50%;display:block;border:1px solid rgba(255,255,255,.35)}
+  .th .lk{position:absolute;top:7px;right:8px;font-size:11px}
+
+  input[type=text]{width:100%;padding:12px 13px;border-radius:13px;border:1px solid var(--line);
+    background:rgba(0,0,0,.28);color:#fff;font-size:15px;font-family:var(--ui-font);font-weight:700}
+  input:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+  .st{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:10px 11px}
+  .st .v{font-family:var(--dis-font);font-size:20px;font-weight:800}
+  .st .k{font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.07em;font-weight:800;margin-top:1px}
+
+  .ach{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;margin-bottom:8px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+  .ach.got{background:linear-gradient(90deg,rgba(232,195,77,.2),rgba(107,207,122,.12));border-color:rgba(232,195,77,.45)}
+  .ach .ai{font-size:22px;width:38px;height:38px;border-radius:11px;background:rgba(0,0,0,.25);display:grid;place-items:center;flex:none}
+  .ach.got .ai{background:linear-gradient(135deg,var(--gold),var(--accent))}
+  .ach .an{font-weight:900;font-size:13px}
+  .ach .ad{font-size:11px;opacity:.7;margin-top:1px}
+  .ach .ac{margin-left:auto;font-size:16px;flex:none}
+  .ach.locked{opacity:.55}
+
+  #toasts{position:absolute;top:calc(104px + env(safe-area-inset-top));left:0;right:0;z-index:60;display:flex;flex-direction:column;
+    align-items:center;gap:6px;pointer-events:none}
+  .toast{background:rgba(10,26,14,.9);border:1px solid var(--line);border-radius:999px;padding:8px 16px;
+    font-weight:800;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    animation:tin .3s cubic-bezier(.2,1.4,.4,1), tout .3s ease 2.2s forwards;
+    backdrop-filter:blur(10px);max-width:90%;text-align:center}
+  .toast.gold{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#3a2a00;border-color:#fff5}
+  @keyframes tin{from{transform:translateY(-16px) scale(.85);opacity:0}}
+  @keyframes tout{to{transform:translateY(-10px);opacity:0}}
+
+  #floats{position:absolute;inset:0;z-index:15;pointer-events:none;overflow:hidden}
+  .fl{position:absolute;font-weight:900;font-size:15px;color:var(--gold);
+    text-shadow:0 2px 6px rgba(0,0,0,.6);animation:flup 1.1s ease-out forwards}
+  @keyframes flup{to{transform:translate(-50%,-52px) scale(1.15);opacity:0}}
+
+  #banner{position:absolute;top:-140px;left:14px;right:14px;z-index:70;
+    background:linear-gradient(135deg,#e8c34d,#6bcf7a);color:#1a2a12;border-radius:20px;padding:13px 15px;
+    display:flex;gap:11px;align-items:center;box-shadow:0 14px 40px rgba(0,0,0,.5);
+    transition:top .5s cubic-bezier(.2,1.4,.4,1)}
+  #banner.show{top:calc(14px + env(safe-area-inset-top))}
+  #banner .bi{font-size:26px}
+  #banner .bt{font-size:9.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
+  #banner .bn{font-weight:900;font-size:15px;font-family:var(--dis-font)}
+
+  .reward{text-align:center;padding:8px 4px 4px}
+  .reward .big{font-size:56px;animation:bob 2s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
+  .reward h3{font-family:var(--dis-font);font-size:26px;margin:6px 0 2px}
+  .reward p{opacity:.78;font-size:13px;line-height:1.5}
+  .amt{font-family:var(--dis-font);font-size:38px;font-weight:800;color:var(--gold);margin:10px 0 2px}
+  .streak{display:flex;gap:5px;justify-content:center;margin:14px 0 4px}
+  .streak i{width:26px;height:26px;border-radius:9px;background:rgba(255,255,255,.12);display:grid;place-items:center;
+    font-size:11px;font-weight:900;font-style:normal;border:1px solid rgba(255,255,255,.15)}
+  .streak i.on{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#3a2a00;border-color:transparent}
+
+  .hint{position:absolute;bottom:calc(86px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:18;
+    background:rgba(10,26,14,.75);border:1px solid var(--line);border-radius:999px;padding:6px 14px;
+    font-size:11.5px;font-weight:800;backdrop-filter:blur(10px);white-space:nowrap;
+    animation:pulse 1.8s ease-in-out infinite;pointer-events:none}
+  @keyframes pulse{0%,100%{opacity:.75}50%{opacity:1}}
+  .hint.hide{display:none}
+
+  .plantrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+  .mini{font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(0,0,0,.28)}
+  .mini.warn{background:rgba(255,107,107,.3)}
+  .mini.good{background:rgba(92,224,141,.22)}
+
+  .deco-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .deco{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:14px;
+    padding:9px 5px;text-align:center;cursor:pointer;transition:transform .12s}
+  .deco:active{transform:scale(.94)}
+  .deco.owned{border-color:var(--accent)}
+  .deco.placed{background:rgba(107,207,122,.18)}
+  .deco .de{font-size:26px;line-height:1.2}
+  .deco .dn{font-size:9.5px;font-weight:800;margin-top:3px;opacity:.85}
+  .deco .dp{font-size:10px;font-weight:900;color:var(--gold);margin-top:3px}
+  .deco.owned .dp{color:var(--accent)}
+
+  #splash{position:absolute;inset:0;z-index:100;background:linear-gradient(180deg,#1c3a24,#0a160e);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    transition:opacity .6s;cursor:pointer}
+  #splash.gone{opacity:0;pointer-events:none}
+  #splash .lg{font-family:var(--dis-font);font-size:52px;font-weight:800;
+    background:linear-gradient(90deg,#e8c34d,#6bcf7a,#5fb0e8);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;animation:bob 3s ease-in-out infinite}
+  #splash .sb{opacity:.7;font-size:13px;font-weight:700;letter-spacing:.05em}
+  #splash .go{margin-top:22px;padding:13px 34px;border-radius:999px;border:1px solid rgba(255,255,255,.3);
+    background:rgba(255,255,255,.1);font-weight:900;font-size:14px;animation:pulse 1.6s ease-in-out infinite}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="terra"></canvas>
+  <div id="floats"></div>
+
+  <div class="hud">
+    <div class="chip" id="coinChip" style="cursor:pointer"><span>🪙</span><span id="coins">0</span><span style="opacity:.55;font-weight:900;margin-left:1px">＋</span></div>
+    <div class="chip" id="plantChip" style="cursor:pointer"><span>🌱</span><span id="plantCount">0/3</span></div>
+    <div class="chip"><span id="seasonEmo">🌸</span><span id="seasonTx">Spring</span></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="muteBtn">🔊</button>
+    <button class="icbtn" id="menuBtn">☰</button>
+  </div>
+
+  <div class="strip">
+    <div class="meter"><div class="lab"><span>Tidy</span><span id="tidyVal">100%</span></div>
+      <div class="bar"><i id="tidyFill" style="width:100%"></i></div></div>
+    <div class="meter"><div class="lab"><span>Water</span><span id="waterVal">100%</span></div>
+      <div class="bar"><i id="waterFill" style="width:100%"></i></div></div>
+  </div>
+  <div id="boostRow"></div>
+
+  <div class="hint" id="hint">Tap a tool below to begin</div>
+
+  <div class="dock">
+    <button class="tool" id="tWater"><span class="ic">💧</span><span class="tx">WATER</span><span class="badge" id="waterBadge" style="display:none"></span></button>
+    <button class="tool" id="tPrune"><span class="ic">✂️</span><span class="tx">PRUNE</span></button>
+    <button class="tool" id="tShop"><span class="ic">🛒</span><span class="tx">MARKET</span></button>
+    <button class="tool" id="tGarden"><span class="ic">🌿</span><span class="tx">GARDEN</span></button>
+  </div>
+
+  <div id="toasts"></div>
+  <div id="banner"><div class="bi">🏆</div><div><div class="bt">Achievement</div><div class="bn" id="bnName"></div></div></div>
+
+  <div class="scrim" id="scrim">
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="shead"><span class="chip" id="shCoins" style="display:none"><span>🪙</span><span id="shCoinsVal">0</span></span><span class="chip" id="shPlants" style="display:none"><span>🌱</span><span id="shPlantsVal">0</span></span><h2 id="shTitle">Title</h2><button class="x" id="shX">✕</button></div>
+      <div class="tabs" id="shTabs" style="display:none"></div>
+      <div class="sbody" id="shBody"></div>
+    </div>
+  </div>
+
+  <div class="scrim mid" id="scrim2">
+    <div class="sheet center">
+      <div class="shead"><h2 id="sh2Title">Title</h2><button class="x" id="sh2X">✕</button></div>
+      <div class="sbody" id="sh2Body"></div>
+    </div>
+  </div>
+
+  <div id="splash">
+    <div class="lg">Mossling</div>
+    <div class="sb">a tiny terrarium to tend</div>
+    <div class="go">Tap to start growing</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const K='mossling.save.v1';
+const SLOTS_KEY='mossling.slots.v1', ACTIVE_KEY='mossling.activeSlot';
+const slotKey=id=>'mossling.save.'+id;
+function loadSlots(){
+  try{const raw=localStorage.getItem(SLOTS_KEY);const arr=raw?JSON.parse(raw):[];return Array.isArray(arr)?arr:[];}
+  catch(e){return [];}
+}
+function saveSlots(arr){try{localStorage.setItem(SLOTS_KEY,JSON.stringify(arr));}catch(e){}}
+function getActiveSlot(){try{return localStorage.getItem(ACTIVE_KEY);}catch(e){return null;}}
+function setActiveSlot(id){try{localStorage.setItem(ACTIVE_KEY,id);}catch(e){}}
+function activeKey(){const id=getActiveSlot();return id?slotKey(id):null;}
+function updateSlotMeta(id){
+  if(!id||!S)return;
+  const slots=loadSlots();
+  const i=slots.findIndex(x=>x.id===id);
+  const meta={id:id,name:S.name,difficulty:S.difficulty||'normal',coins:S.coins,totalCoins:S.totalCoins,
+    plantCount:S.plants.length,achCount:Object.keys(S.ach).length,streak:S.streak,updated:Date.now()};
+  if(i>=0)slots[i]=meta; else slots.push(meta);
+  saveSlots(slots);
+}
+function ensureSlots(){
+  let slots=loadSlots();
+  const active=getActiveSlot();
+  if(slots.length===0){
+    let legacy=null;
+    try{legacy=localStorage.getItem(K);}catch(e){}
+    if(legacy){
+      const id='s'+Date.now();
+      try{localStorage.setItem(slotKey(id),legacy);}catch(e){}
+      let name='Plant Parent', diffId='normal', coins=0, plantCount=0;
+      try{const d=JSON.parse(legacy);name=d.name||name;coins=d.coins||0;plantCount=(d.plants||[]).length;diffId=d.difficulty||'normal';}catch(e){}
+      slots=[{id:id,name:name,difficulty:diffId,coins:coins,plantCount:plantCount,updated:Date.now()}];
+      saveSlots(slots); setActiveSlot(id);
+      return id;
+    }
+    return null;
+  }
+  if(active&&slots.some(s=>s.id===active))return active;
+  const fallback=slots.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))[0];
+  if(fallback){setActiveSlot(fallback.id);return fallback.id;}
+  return null;
+}
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const now=()=>Date.now();
+const fmt=n=>{
+  n=Math.floor(n);
+  const neg=n<0?'-':''; n=Math.abs(n);
+  if(n>=1e12)return neg+(n/1e12).toFixed(n>=1e14?0:1).replace(/\.0$/,'')+'T';
+  if(n>=1e9)return neg+(n/1e9).toFixed(n>=1e11?0:1).replace(/\.0$/,'')+'B';
+  if(n>=1e6)return neg+(n/1e6).toFixed(n>=1e8?0:1).replace(/\.0$/,'')+'M';
+  if(n>=1e4)return neg+(n/1e3).toFixed(1)+'k';
+  return neg+String(n);
+};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------------- Seasons ---------------- */
+const SEASONS={
+  spring:{name:'Spring',emo:'🌸',sky:['#bff2dd','#eafff2'],soil:'#5c4a34',accent:'#ffb7d5',mote:'#ffd9ec',music:'birds',growMul:1.25},
+  summer:{name:'Summer',emo:'☀️',sky:['#bfe9ff','#eafcff'],soil:'#4a3a28',accent:'#ffd166',mote:'#fff3c4',music:'water',growMul:1.1},
+  autumn:{name:'Autumn',emo:'🍂',sky:['#f2c58a','#fff0d9'],soil:'#5a3f24',accent:'#ff9051',mote:'#ffcf9a',music:'lofi',growMul:.9},
+  winter:{name:'Winter',emo:'❄️',sky:['#dbeeff','#f5fbff'],soil:'#463c30',accent:'#9fe4ff',mote:'#ffffff',music:'bells',growMul:.65},
+};
+function seasonNow(){const m=new Date().getMonth();
+  if(m>=2&&m<=4)return'spring'; if(m>=5&&m<=7)return'summer'; if(m>=8&&m<=10)return'autumn'; return'winter';}
+
+/* ---------------- Species (plants) ---------------- */
+const SPECIES=[
+  {id:'sprout',n:'Sprout',r:'common',price:0,c:['#5fae52','#7ecf6a','#c8f2b0'],shape:'flower',size:.7,spd:1.2,water:1.0,income:1,waterBonus:2,
+    bio:'Every terrarium starts here. Two round leaves and endless optimism.'},
+  {id:'babytears',n:"Baby's Tears",r:'common',price:50,c:['#3f8f4a','#6bc47a','#bdf0c4'],shape:'moss',size:.6,spd:.6,water:1.3,income:2,
+    bio:'A carpet of leaves smaller than a fingernail. Spreads wherever it\'s happy.'},
+  {id:'jade',n:'Jade Plant',r:'common',price:70,c:['#3f7d5c','#5fae7c','#a9e6c0'],shape:'succulent',size:.9,spd:.5,water:.6,income:3,sellBonus:1.15,
+    bio:'Chubby, patient, and famously hard to kill. Said to bring good luck to its keeper.'},
+  {id:'pothos',n:'Pothos',r:'common',price:65,c:['#2e6b3f','#4f9e5c','#c8e6a0'],shape:'vine',size:.85,spd:1.0,water:1.0,income:3,
+    bio:'A trailing vine that will happily climb, drape, or dangle over anything nearby.'},
+  {id:'polkadot',n:'Polka Dot Begonia',r:'common',price:60,c:['#7a2f6a','#c85fa8','#f2b8e0'],shape:'flower',size:.75,spd:1.1,water:1.1,income:2,luckyChance:.05,
+    bio:'Freckled leaves in a color nobody expects from a houseplant. Occasionally drops a lucky seed pod.'},
+  {id:'airfern',n:'Air Fern',r:'common',price:80,c:['#3f8f6a','#6bc49a','#c8f0d8'],shape:'fern',size:.8,spd:1.4,water:.9,income:3,tidyHelp:true,
+    bio:'Feathery and undemanding — it seems to tidy the air just by sitting there.'},
+  {id:'stringpearls',n:'String of Pearls',r:'rare',price:200,c:['#4a8f5a','#7ecf8a','#d4f2c0'],shape:'vine',size:.8,spd:.7,water:.5,income:6,sellBonus:1.1,
+    bio:'Beads on a string, dangling over the rim like tiny green pearls.'},
+  {id:'flytrap',n:'Venus Flytrap',r:'rare',price:240,c:['#2f6b3a','#4a9a52','#ff6b7a'],shape:'carnivorous',size:.85,spd:.4,water:.8,income:7,tidyHelp:true,
+    bio:'Snaps shut on anything that wanders too close. The terrarium\'s tiny, toothy bodyguard.'},
+  {id:'mooncactus',n:'Moon Cactus',r:'rare',price:260,c:['#ff5a7a','#ffab5e','#4a8f5a'],shape:'cactus',size:.9,spd:.3,water:.4,income:7,
+    bio:'A neon cap grafted onto a green base. Looks fake. Isn\'t.'},
+  {id:'maidenhair',n:'Maidenhair Fern',r:'rare',price:230,c:['#3a7a5a','#5fae8a','#bdf0d4'],shape:'fern',size:.85,spd:1.6,water:1.4,income:6,waterBonus:3,
+    bio:'Lacy and delicate — the first to wilt if you forget the watering can, and the first to bounce back.'},
+  {id:'peacelily',n:'Peace Lily',r:'rare',price:280,c:['#2f6b45','#4f9e6a','#f5f5f0'],shape:'flower',size:1.0,spd:.9,water:1.1,income:8,waterHelp:true,
+    bio:'A single white bloom above dark green leaves. Somehow keeps its neighbors hydrated too.'},
+  {id:'bonsaimaple',n:'Bonsai Maple',r:'epic',price:650,c:['#8a3020','#c85a3a','#e8905a'],shape:'bonsai',size:1.1,spd:.4,water:.7,income:16,xpMul:1.4,
+    bio:'A century of tree, patiently shrunk into a single pot. Changes color with the seasons.'},
+  {id:'orchid',n:'Orchid',r:'epic',price:750,c:['#7a2f7a','#c85fc8','#f2c8f2'],shape:'flower',size:1.0,spd:.6,water:.9,income:18,sellBonus:1.3,
+    bio:'Elegant, slow, and worth the wait. Prized by keepers who like to show off a little.'},
+  {id:'pitcher',n:'Pitcher Plant',r:'epic',price:700,c:['#8a2f3a','#c85a5a','#e8c85a'],shape:'carnivorous',size:1.05,spd:.5,water:.9,income:17,luckyChance:.08,
+    bio:'Deep, dramatic pitchers dangling like tiny lanterns. Occasionally digests something worth a bonus.'},
+  {id:'ghostplant',n:'Ghost Plant',r:'legend',price:1400,c:['#d8d8e0','#f0f0f8','#8a8aa0'],shape:'fungus',size:.9,spd:.2,water:.6,income:32,glow:true,
+    bio:'Pale as moonlight and just as strange — it makes no chlorophyll at all, living off the soil beneath it.'},
+  {id:'fireflyfern',n:'Firefly Fern',r:'legend',price:1500,c:['#c8ff9a','#f2ffcf','#5a9a3a'],shape:'fern',size:.95,spd:1.3,water:1.0,income:34,glow:true,doubleChance:.08,
+    bio:'Its fronds glimmer faintly after dark — no one\'s quite sure why, and everyone\'s a little charmed by it.'},
+  {id:'dragonstree',n:"Dragon's Blood Tree",r:'mythic',price:3200,c:['#5a2f1a','#8a4a2a','#c8905a'],shape:'tree',size:1.3,spd:.3,water:.6,income:70,glow:true,incomeAura:1.1,
+    bio:'A dramatic umbrella of spiked leaves atop a trunk that bleeds deep red resin when cut. The whole terrarium seems calmer with it around.'},
+  {id:'worldtree',n:'World Tree Sapling',r:'ancient',price:8000,c:['#2fae7a','#5affc8','#0a3a2a'],shape:'tree',size:1.5,spd:.2,water:.5,income:180,glow:true,incomeAura:1.25,xpMul:1.5,
+    bio:'Legend says every terrarium is secretly connected through roots like this one. Probably just a legend. Probably.'},
+];
+const spec=id=>SPECIES.find(s=>s.id===id);
+const RAR={common:'Common',rare:'Rare',epic:'Epic',legend:'Legendary',mythic:'Mythic',ancient:'Ancient'};
+const NAMES=['Fern Gully','Mossy','Sprig','Clover','Basil','Pip','Twiggy','Bramble','Petal','Ivy','Thistle','Juniper',
+  'Hazel','Willow','Marigold','Poppy','Rosemary','Sage','Fennel','Dandelion','Cricket','Fiddlehead','Acorn','Bracken',
+  'Lichen','Meadow','Birch','Cedar','Holly','Lark','Wren','Nettle','Sorrel','Chive','Clementine','Buttercup',
+  'Sunny','Dewdrop','Pebble','Frond'];
+function newName(used,sp){
+  const pool=NAMES.filter(n=>!used.includes(n));
+  return pool.length?pick(pool):sp.n+' '+(used.length+1);
+}
+
+/* ---------------- Water types (fertilizer) ---------------- */
+const WATERS=[
+  {id:'rain',n:'Rainwater',fill:20,price:0},
+  {id:'filtered',n:'Filtered Water',fill:35,price:8},
+  {id:'fertilizer',n:'Liquid Fertilizer',fill:55,price:22},
+  {id:'compost',n:'Compost Tea',fill:75,price:48},
+  {id:'vitamin',n:'Vitamin Drops',fill:90,price:90},
+  {id:'mineral',n:'Mineral Mix',fill:100,price:150},
+];
+
+/* ---------------- Pots (containers) ---------------- */
+const POTS=[
+  {lvl:1,n:'Jam Jar',price:0,cap:3,mossMul:1.0,incomeMul:1.0},
+  {lvl:2,n:'Mason Jar',price:300,cap:4,mossMul:.95,incomeMul:1.08},
+  {lvl:3,n:'Fishbowl Terrarium',price:900,cap:5,mossMul:.9,incomeMul:1.16},
+  {lvl:4,n:'Glass Cloche',price:2200,cap:6,mossMul:.85,incomeMul:1.26},
+  {lvl:5,n:'Apothecary Jar',price:5000,cap:7,mossMul:.8,incomeMul:1.38},
+  {lvl:6,n:'Geometric Terrarium',price:11000,cap:8,mossMul:.74,incomeMul:1.52},
+  {lvl:7,n:'Bay Window Case',price:24000,cap:9,mossMul:.68,incomeMul:1.7},
+  {lvl:8,n:'Greenhouse Cabinet',price:52000,cap:10,mossMul:.6,incomeMul:1.9},
+];
+const potDef=()=>POTS[clamp(S.pot-1,0,POTS.length-1)];
+function potZoom(){return clamp(1-(potDef().lvl-1)*0.045,0.45,1);}
+
+/* ---------------- Tools (watering cans) ---------------- */
+const TOOLS=[
+  {lvl:1,n:'Tin Watering Can',price:0,slow:1.0,waterMul:1.0},
+  {lvl:2,n:'Copper Watering Can',price:260,slow:.82,waterMul:.9},
+  {lvl:3,n:'Brass Mister',price:800,slow:.66,waterMul:.78},
+  {lvl:4,n:'Self-Wicking Spike',price:2000,slow:.5,waterMul:.65},
+  {lvl:5,n:'Auto-Drip Line',price:4800,slow:.36,waterMul:.5},
+  {lvl:6,n:'Cloud Mister 9000',price:10500,slow:.22,waterMul:.35},
+];
+const toolDef=()=>TOOLS[clamp(S.tool-1,0,TOOLS.length-1)];
+
+/* ---------------- Auto-misters ---------------- */
+const MISTERS=[
+  {n:'Drip Tray',price:600,cap:40,interval:14},
+  {n:'Timed Mister',price:2200,cap:80,interval:10},
+  {n:'Humidity Dome',price:6000,cap:150,interval:7},
+  {n:'Fogger Ring',price:14000,cap:260,interval:4.5},
+  {n:'Climate Cell',price:30000,cap:420,interval:2.5},
+];
+const misterDef=()=>S.mister>0?MISTERS[clamp(S.mister-1,0,MISTERS.length-1)]:null;
+
+/* ---------------- Difficulties ---------------- */
+const DIFFICULTIES=[
+  {id:'casual',n:'Casual',d:'Slow decay, generous income. Just vibes.',mossMul:.55,waterMul:.55,incomeMul:1.15},
+  {id:'normal',n:'Normal',d:'A balanced little ecosystem to manage.',mossMul:1.0,waterMul:1.0,incomeMul:1.0},
+  {id:'hardy',n:'Hardy',d:'Faster decay, sharper rewards for staying on top of it.',mossMul:1.55,waterMul:1.45,incomeMul:1.2},
+];
+const diffDef=()=>DIFFICULTIES.find(d=>d.id===S.difficulty)||DIFFICULTIES[1];
+
+/* ---------------- Decorations ---------------- */
+const DECOS=[
+  {id:'pebbles',n:'Pebbles',e:'🪨',price:30},
+  {id:'mushroom',n:'Tiny Mushroom',e:'🍄',price:45},
+  {id:'fairydoor',n:'Fairy Door',e:'🚪',price:220},
+  {id:'lantern',n:'Mini Lantern',e:'🏮',price:150},
+  {id:'driftwood',n:'Driftwood',e:'🪵',price:80},
+  {id:'crystal',n:'Crystal Cluster',e:'💎',price:400},
+  {id:'bridge',n:'Tiny Bridge',e:'🌉',price:260},
+  {id:'birdbath',n:'Birdbath',e:'⛲',price:340},
+  {id:'gnome',n:'Garden Gnome',e:'🧙',price:180},
+  {id:'lights',n:'Twinkle Lights',e:'✨',price:300},
+  {id:'butterfly',n:'Butterfly Charm',e:'🦋',price:120},
+  {id:'ladybug',n:'Ladybug Figure',e:'🐞',price:90},
+  {id:'snail',n:'Snail Shell',e:'🐌',price:60},
+  {id:'well',n:'Little Well',e:'🪣',price:200},
+  {id:'pinwheel',n:'Pinwheel',e:'🎡',price:160},
+  {id:'chime',n:'Wind Chime',e:'🎐',price:210},
+  {id:'bench',n:'Tiny Bench',e:'🪑',price:140},
+  {id:'signpost',n:'Signpost',e:'🛖',price:100},
+  {id:'acorn',n:'Acorn Pile',e:'🌰',price:40},
+  {id:'feather',n:'Feather',e:'🪶',price:35},
+  {id:'seashell',n:'Seashell',e:'🐚',price:70},
+  {id:'moonstone',n:'Moonstone',e:'🌙',price:520},
+];
+
+/* ---------------- Themes (terrarium vibes) ---------------- */
+const THEMES=[
+  {id:'auto',n:'Follow Season',price:0,locked:false},
+  {id:'desert',n:'Desert Bowl',price:400,locked:true},
+  {id:'mossyfloor',n:'Mossy Forest Floor',price:400,locked:true},
+  {id:'tropical',n:'Tropical Glasshouse',price:600,locked:true},
+  {id:'zenrock',n:'Zen Rock Garden',price:600,locked:true},
+  {id:'bioluminescent',n:'Midnight Glow',price:1200,locked:true},
+  {id:'cottagecore',n:'Cottagecore Jar',price:800,locked:true},
+  {id:'coastal',n:'Coastal Driftwood',price:800,locked:true},
+  {id:'alpine',n:'Alpine Terrarium',price:900,locked:true},
+  {id:'blossom',n:'Cherry Blossom',price:1000,locked:true},
+  {id:'harvest',n:'Autumn Harvest',price:1000,locked:true},
+  {id:'frosted',n:'Frosted Winter',price:1000,locked:true},
+  {id:'goldenhour',n:'Golden Hour',price:1400,locked:true},
+];
+const THEME_PAL={
+  desert:{name:'Desert',emo:'🏜️',sky:['#ffe3b0','#fff6e0'],soil:'#8a6a3a',accent:'#ff9e57',mote:'#ffe6b8'},
+  mossyfloor:{name:'Mossy Floor',emo:'🌲',sky:['#c8e8c0','#eaf8e4'],soil:'#3a3020',accent:'#6bcf7a',mote:'#d9f2c8'},
+  tropical:{name:'Tropical',emo:'🌴',sky:['#b0f0e0','#e0fff8'],soil:'#3a2a1a',accent:'#5affc8',mote:'#c8fff0'},
+  zenrock:{name:'Zen Rock',emo:'🪨',sky:['#e8e0d0','#f5f0e6'],soil:'#7a7264',accent:'#8fae9a',mote:'#eee6d6'},
+  bioluminescent:{name:'Midnight Glow',emo:'🌌',sky:['#0a1230','#1c2a5c'],soil:'#0a1420',accent:'#5affc8',mote:'#8fd0ff'},
+  cottagecore:{name:'Cottagecore',emo:'🧺',sky:['#ffe8d0','#fff6ec'],soil:'#6a4a2a',accent:'#e8905a',mote:'#ffe0c0'},
+  coastal:{name:'Coastal',emo:'🐚',sky:['#cdeaf5','#eefbff'],soil:'#8a7a5a',accent:'#5fb0e8',mote:'#e0f5ff'},
+  alpine:{name:'Alpine',emo:'⛰️',sky:['#dceaf5','#f2f8ff'],soil:'#5a5648',accent:'#8fc0e8',mote:'#ffffff'},
+  blossom:{name:'Blossom',emo:'🌸',sky:['#ffd9ec','#fff0f8'],soil:'#5a4030',accent:'#ff8fc0',mote:'#ffd9ec'},
+  harvest:{name:'Harvest',emo:'🍁',sky:['#f2c58a','#fff0d9'],soil:'#5a3f24',accent:'#ff9051',mote:'#ffcf9a'},
+  frosted:{name:'Frosted',emo:'❄️',sky:['#dbeeff','#f5fbff'],soil:'#463c30',accent:'#9fe4ff',mote:'#ffffff'},
+  goldenhour:{name:'Golden Hour',emo:'🌇',sky:['#ffcf8a','#ffe6c0'],soil:'#5a3a20',accent:'#ffb05e',mote:'#ffe0a0'},
+};
+
+/* ---------------- Charms (per-plant cosmetic) ---------------- */
+const CHARMS=[
+  {id:'ribbon',n:'Ribbon',e:'🎀',price:80},
+  {id:'bow',n:'Tiny Bow Tie',e:'🪢',price:80},
+  {id:'ladybugcharm',n:'Ladybug Friend',e:'🐞',price:120},
+  {id:'bee',n:'Bee Friend',e:'🐝',price:120},
+  {id:'star',n:'Star Sticker',e:'⭐',price:140},
+  {id:'heart',n:'Heart Sticker',e:'💚',price:140},
+  {id:'crown',n:'Tiny Crown',e:'👑',price:260},
+  {id:'glasses',n:'Tiny Glasses',e:'👓',price:180},
+  {id:'hat',n:'Tiny Hat',e:'🎩',price:200},
+  {id:'sparkle',n:'Sparkle Dust',e:'✨',price:300},
+];
+const PAINTKIT={price:400};
+const PALETTE=['#ff3b30','#ff9e57','#ffce4d','#a8e063','#6bcf7a','#3fc9a6','#5fb0e8','#7c6cff','#c79bff','#ff7fb0','#8a6a4a','#ffffff'];
+
+/* ---------------- Achievements ---------------- */
+const ACHS=[
+  {id:'first',n:'First Sprout',d:'Bring home your first plant.',e:'🌱',cond:s=>s.plants.length>=1},
+  {id:'collect5',n:'Budding Collector',d:'Own 5 different species.',e:'🗂️',cond:s=>speciesOwnedCount()>=5},
+  {id:'collect10',n:'Green Thumb',d:'Own 10 different species.',e:'🧤',cond:s=>speciesOwnedCount()>=10},
+  {id:'collect18',n:'Full Terrarium',d:'Own every species in the wild.',e:'🏆',cond:s=>speciesOwnedCount()>=SPECIES.length},
+  {id:'rare1',n:'Something Rarer',d:'Own a Rare plant.',e:'💠',cond:s=>s.plants.some(f=>spec(f.sp).r==='rare')},
+  {id:'epic1',n:'Epic Foliage',d:'Own an Epic plant.',e:'🔮',cond:s=>s.plants.some(f=>spec(f.sp).r==='epic')},
+  {id:'legend1',n:'Legendary Leaves',d:'Own a Legendary plant.',e:'🌟',cond:s=>s.plants.some(f=>spec(f.sp).r==='legend')},
+  {id:'mythic1',n:'Mythic Bloom',d:'Own a Mythic plant.',e:'🐉',cond:s=>s.plants.some(f=>spec(f.sp).r==='mythic')},
+  {id:'ancient1',n:'World Tree',d:'Own the Ancient World Tree Sapling.',e:'🌳',cond:s=>s.plants.some(f=>spec(f.sp).r==='ancient')},
+  {id:'coins1k',n:'Pocket Change',d:'Earn 1,000 coins lifetime.',e:'🪙',cond:s=>s.totalCoins>=1000},
+  {id:'coins10k',n:'Nice Little Nest Egg',d:'Earn 10,000 coins lifetime.',e:'💰',cond:s=>s.totalCoins>=10000},
+  {id:'coins100k',n:'Terrarium Tycoon',d:'Earn 100,000 coins lifetime.',e:'🏦',cond:s=>s.totalCoins>=100000},
+  {id:'coins1m',n:'Millionaire Moss',d:'Earn 1,000,000 coins lifetime.',e:'💎',cond:s=>s.totalCoins>=1000000},
+  {id:'water100',n:'Never Thirsty',d:'Water your plants 100 times.',e:'💧',cond:s=>s.waters>=100},
+  {id:'prune100',n:'Tidy Habit',d:'Prune the terrarium 100 times.',e:'✂️',cond:s=>s.prunes>=100},
+  {id:'mist100',n:'Gentle Hands',d:'Mist a plant 100 times.',e:'🤲',cond:s=>s.mists>=100},
+  {id:'propagate10',n:'Cutting Garden',d:'Propagate 10 cuttings.',e:'🌿',cond:s=>s.propagations>=10},
+  {id:'streak3',n:'Three Days Running',d:'Log in 3 days in a row.',e:'📅',cond:s=>s.streak>=3},
+  {id:'streak7',n:'A Whole Week',d:'Log in 7 days in a row.',e:'🗓️',cond:s=>s.streak>=7},
+  {id:'streak30',n:'Devoted Keeper',d:'Log in 30 days in a row.',e:'🏵️',cond:s=>s.streak>=30},
+  {id:'allseasons',n:'Four Seasons',d:'Witness spring, summer, autumn and winter.',e:'🍂',cond:s=>Object.keys(s.seasonsSeen||{}).length>=4},
+  {id:'games3',n:'Playful Sprout',d:'Play all three garden games at least once.',e:'🎮',cond:s=>(s.lastSunCatch?1:0)+(s.lastBugSquish?1:0)+(s.lastSeedMatch?1:0)>=3},
+  {id:'potmax',n:'Room to Grow',d:'Own the biggest terrarium container.',e:'🏺',cond:s=>s.pot>=POTS.length},
+  {id:'toolmax',n:'Master Waterer',d:'Own the best watering tool.',e:'🚿',cond:s=>s.tool>=TOOLS.length},
+  {id:'rename1',n:'A Proper Name',d:'Rename a plant.',e:'🏷️',cond:s=>s.renames>=1},
+  {id:'theme1',n:'Redecorated',d:'Unlock a terrarium theme.',e:'🎨',cond:s=>Object.keys(s.themesOwned||{}).length>=1},
+  {id:'deco10',n:'Cozy Corner',d:'Place 10 decorations.',e:'🪴',cond:s=>s.decoPlaced.length>=10},
+  {id:'perfect',n:'Picture Perfect',d:'Reach 100% Tidy and 100% Water at once.',e:'📸',cond:s=>s.tidy>=100&&s.water>=100},
+  {id:'maxstage',n:'Full Bloom',d:'Grow a plant to its final stage.',e:'🌺',cond:s=>s.plants.some(f=>plantStage(f)>=4)},
+];
+function speciesOwnedCount(){return new Set(S.plants.map(f=>f.sp)).size;}
+function speciesTraitLabel(sp){
+  if(sp.tidyHelp)return '✂️ Helps keep the terrarium tidy';
+  if(sp.waterHelp)return '💧 Helps everyone stay hydrated longer';
+  if(sp.luckyChance)return '🍀 Chance of a bonus seed pod when watered';
+  if(sp.waterBonus)return '🌦️ Always gives a few extra coins when watered';
+  if(sp.sellBonus&&sp.sellBonus>1)return '💎 Worth extra when sold';
+  if(sp.xpMul&&sp.xpMul>1)return '📈 Grows faster than most';
+  if(sp.doubleChance)return '🎲 Chance to double its income tick';
+  if(sp.incomeAura&&sp.incomeAura>1)return '✨ Boosts nearby plants\' income';
+  return null;
+}
+
+/* ---------------- Audio (procedural, no assets) ---------------- */
+const A={ctx:null,master:null,musicGain:null,sfxGain:null,cur:null,nodes:[],timer:null};
+function audioInit(){
+  if(A.ctx)return;
+  try{
+    A.ctx=new (window.AudioContext||window.webkitAudioContext)();
+    A.master=A.ctx.createGain(); A.master.gain.value=1; A.master.connect(A.ctx.destination);
+    A.musicGain=A.ctx.createGain(); A.musicGain.gain.value=S.music?.25:0; A.musicGain.connect(A.master);
+    A.sfxGain=A.ctx.createGain(); A.sfxGain.gain.value=S.sound?.5:0; A.sfxGain.connect(A.master);
+  }catch(e){}
+}
+function audioResume(){if(A.ctx&&A.ctx.state==='suspended')A.ctx.resume().catch(()=>{});}
+function noiseBuf(sec){const c=A.ctx,b=c.createBuffer(1,Math.max(1,(c.sampleRate*sec)|0),c.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1; return b;}
+function sfx(type){
+  if(!A.ctx||!S.sound)return;
+  const c=A.ctx,t=c.currentTime;
+  const mk=(f0,f1,dur,vol,wave)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.type=wave||'sine'; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.012); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g); g.connect(A.sfxGain); o.start(t); o.stop(t+dur+.02);
+  };
+  if(type==='water')mk(340,220,.22,.35,'sine');
+  else if(type==='prune')mk(900,500,.09,.3,'triangle');
+  else if(type==='mist')mk(600,900,.14,.3,'sine');
+  else if(type==='coin')mk(760,1180,.12,.32,'square');
+  else if(type==='buy')mk(500,780,.16,.3,'triangle');
+  else if(type==='sell')mk(420,260,.18,.3,'sine');
+  else if(type==='ach')mk(500,1300,.4,.3,'triangle');
+  else if(type==='bad')mk(220,120,.24,.3,'sawtooth');
+  else if(type==='lucky')mk(700,1500,.5,.32,'triangle');
+  else if(type==='tap')mk(500,700,.06,.2,'sine');
+  else if(type==='pop')mk(300,900,.1,.25,'square');
+}
+function musicStop(){
+  if(A.timer)clearTimeout(A.timer);
+  A.nodes.forEach(n=>{try{n.stop&&n.stop();}catch(e){} try{n.disconnect&&n.disconnect();}catch(e){}});
+  A.nodes=[]; A.cur=null;
+}
+function tone(f,st,dur,type,vol,dest){
+  const c=A.ctx,o=c.createOscillator(),g=c.createGain();
+  o.type=type||'sine'; o.frequency.value=f;
+  g.gain.setValueAtTime(0,st); g.gain.linearRampToValueAtTime(vol,st+.05); g.gain.exponentialRampToValueAtTime(.001,st+dur);
+  o.connect(g); g.connect(dest); o.start(st); o.stop(st+dur+.05); A.nodes.push(o);
+}
+function musicPlay(kind){
+  if(!A.ctx||!S.music)return;
+  if(A.cur===kind)return;
+  musicStop(); A.cur=kind;
+  const scales={birds:[523,587,659,784,880],water:[392,440,523,587,659],lofi:[349,415,466,523,587],bells:[440,523,659,880,988]};
+  const sc=scales[kind]||scales.birds;
+  let i=0;
+  const step=()=>{
+    if(A.cur!==kind)return;
+    const c=A.ctx, t=c.currentTime+.05;
+    tone(pick(sc),t,rnd(1.4,2.6),'sine',.05,A.musicGain);
+    if(Math.random()<.4)tone(pick(sc)/2,t+.1,rnd(1.8,3),'triangle',.03,A.musicGain);
+    i++; A.timer=setTimeout(step,rnd(1400,2600));
+  };
+  step();
+}
+function musicSync(){musicPlay(SEASONS[activeSeason()].music);}
+
+/* ---------------- State ---------------- */
+function fresh(){return{name:'Plant Parent',coins:180,totalCoins:180,tidy:100,water:100,pot:1,tool:1,mister:0,
+  difficulty:'normal',theme:'auto',sound:true,music:true,plants:[],waterInv:{rain:5,filtered:0,fertilizer:0,compost:0,vitamin:0,mineral:0},
+  waterTried:{rain:true},selWater:null,decoOwned:{},decoPlaced:[],themesOwned:{},charmsOwned:{},ach:{},
+  waters:0,prunes:0,mists:0,propagations:0,renames:0,onboarded:false,
+  growthEnd:0,waterEnd:0,tidyEnd:0,luckyEnd:0,growthBoost:0,tidyBoost:0,boost:0,boostEnd:0,
+  coinFrac:0,autoTidyFrac:0,misterAcc:0,misterStock:0,
+  lastTick:now(),lastLogin:0,streak:0,lastAch:null,seasonSeen:seasonNow(),seasonsSeen:{},
+  lastSunCatch:0,lastBugSquish:0,lastSeedMatch:0};}
+function load(){
+  try{
+    const key=activeKey(); if(!key)return fresh();
+    const raw=localStorage.getItem(key);
+    if(!raw)return fresh();
+    const d=JSON.parse(raw), s=Object.assign(fresh(),d);
+    s.onboarded=(d.onboarded===undefined)?true:!!d.onboarded;
+    s.waterInv=Object.assign({rain:0,filtered:0,fertilizer:0,compost:0,vitamin:0,mineral:0},d.waterInv||{});
+    s.ach=d.ach||{}; s.decoOwned=d.decoOwned||{}; s.waterTried=d.waterTried||{rain:true};
+    s.themesOwned=d.themesOwned||{}; s.charmsOwned=d.charmsOwned||{}; s.seasonsSeen=d.seasonsSeen||{};
+    s.decoPlaced=Array.isArray(d.decoPlaced)?d.decoPlaced.filter(p=>p&&DECOS.some(x=>x.id===p.id)):[];
+    s.plants=(Array.isArray(d.plants)?d.plants:[]).filter(x=>x&&SPECIES.some(sp=>sp.id===x.sp));
+    s.plants.forEach(f=>{f.water=typeof f.water==='number'?f.water:100;f.growth=f.growth||0;f.born=f.born||now();
+      f.charm=f.charm||null; f.potColor=f.potColor||null; f.lastMist=f.lastMist||0; f.lastPropagate=f.lastPropagate||0;});
+    s.pot=clamp(s.pot|0||1,1,POTS.length); s.tool=clamp(s.tool|0||1,1,TOOLS.length);
+    s.mister=clamp(s.mister|0||0,0,MISTERS.length);
+    s.misterStock=s.mister>0?clamp(s.misterStock|0||0,0,MISTERS[s.mister-1].cap):0;
+    s.misterAcc=(typeof s.misterAcc==='number')?s.misterAcc:0;
+    return s;
+  }catch(e){return fresh();}
+}
+let saveT=0;
+function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,180);}
+function saveNow(){
+  const id=getActiveSlot(); if(!id)return;
+  try{localStorage.setItem(slotKey(id),JSON.stringify(S));}catch(e){}
+  updateSlotMeta(id);
+}
+
+let dispZoom=1;
+function activeSeason(){return SEASONS[S.theme]?S.theme:seasonNow();}
+function pal(){return THEME_PAL[S.theme]||SEASONS[activeSeason()];}
+function waterCount(){return Object.values(S.waterInv).reduce((a,b)=>a+(b||0),0);}
+function boostMul(){return now()<S.boostEnd?(1+S.boost):1;}
+function growthBoostActive(){return now()<(S.growthEnd||0);}
+function tidyBoostActive(){return now()<(S.tidyEnd||0);}
+function luckyBoostActive(){return now()<(S.luckyEnd||0);}
+function plantLevel(f){return clamp(1+Math.floor((f.growth||0)/20),1,10);}
+function plantLevelMul(f){return 1+(plantLevel(f)-1)*.05;}
+function plantStage(f){
+  const g=f.growth||0;
+  if(g<8)return 0; if(g<25)return 1; if(g<55)return 2; if(g<100)return 3; return 4;
+}
+const STAGE_NAMES=['Seed','Sprout','Young','Mature','Blooming'];
+const STARTER_GROWTH=8; // new plants start at Sprout, skipping the bare Seed stage
+
+/* ---------------- Canvas / render setup ---------------- */
+const cv=$('terra'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function updateWorldSize(){
+  const r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+}
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  const r=$('app').getBoundingClientRect();
+  cv.width=Math.round(r.width*DPR); cv.height=Math.round(r.height*DPR);
+  cv.style.width=r.width+'px'; cv.style.height=r.height+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  updateWorldSize();
+  layoutPlants();
+}
+window.addEventListener('resize',resize);
+
+function soilTopY(){return H*0.5;}
+let ents=[]; // rendered plant entities {f, sp, x, y, phase}
+function layoutPlants(){
+  dispZoom=potZoom();
+  const cap=potDef().cap;
+  const cols=Math.min(5,Math.max(3,Math.ceil(Math.sqrt(cap))));
+  const rows=Math.ceil(cap/cols);
+  const marginX=W*0.12;
+  const bedTop=soilTopY()+H*0.04, bedBottom=H*0.86;
+  const usableW=W-marginX*2, usableH=bedBottom-bedTop;
+  const cellW=usableW/cols, cellH=usableH/Math.max(1,rows);
+  ents=S.plants.map((f,i)=>{
+    const col=i%cols, row=Math.floor(i/cols);
+    const x=marginX+cellW*(col+.5);
+    const y=bedTop+cellH*(row+.5);
+    return {f,sp:spec(f.sp),x,y,phase:rnd(0,Math.PI*2)};
+  });
+}
+function findEntAt(x,y){
+  let best=null,bd=1e9;
+  for(const e of ents){
+    const r=42*dispZoom*(0.7+ (e.sp.size||1)*.3);
+    const dx=x-e.x, dy=y-(e.y-r*.6);
+    const d=Math.hypot(dx,dy);
+    if(d<r&&d<bd){bd=d;best=e;}
+  }
+  return best;
+}
+
+function shade(hex,amt){
+  const c=hex.replace('#',''); const n=parseInt(c,16);
+  let r=(n>>16)+amt, g=((n>>8)&255)+amt, b=(n&255)+amt;
+  r=clamp(r,0,255); g=clamp(g,0,255); b=clamp(b,0,255);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+/* ---------------- Background ---------------- */
+let motes=[];
+function initFx(){
+  motes=[];
+  const n=18;
+  for(let i=0;i<n;i++)motes.push({x:rnd(0,1),y:rnd(0,1),r:rnd(1,3),spd:rnd(.02,.06),drift:rnd(-1,1)});
+}
+function bg(t){
+  const p=pal();
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,p.sky[0]); g.addColorStop(1,p.sky[1]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // glass rim highlight
+  ctx.save();
+  ctx.globalAlpha=.12;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.min(W,H)*.02;
+  ctx.beginPath(); ctx.roundRect(6,6,W-12,H-12,26); ctx.stroke();
+  ctx.restore();
+  // soil floor
+  const soilTop=soilTopY();
+  const sg=ctx.createLinearGradient(0,soilTop,0,H);
+  sg.addColorStop(0,shade(p.soil,30)); sg.addColorStop(1,shade(p.soil,-20));
+  ctx.fillStyle=sg;
+  ctx.beginPath();
+  ctx.moveTo(0,soilTop);
+  for(let x=0;x<=W;x+=W/20)ctx.lineTo(x,soilTop+Math.sin(x*0.02+t*0.0006)*6);
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
+  // motes
+  ctx.fillStyle=p.mote;
+  motes.forEach(m=>{
+    m.y-=m.spd*0.004; m.x+=Math.sin(t*0.0007+m.drift)*0.0006;
+    if(m.y<-.05){m.y=1.05;m.x=rnd(0,1);}
+    ctx.globalAlpha=.5;
+    ctx.beginPath(); ctx.arc(m.x*W,m.y*H,m.r,0,7); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+/* ---------------- Deco layout & draw ---------------- */
+function layoutDeco(){
+  return S.decoPlaced.map((d,i)=>({d,x:0.08+ (i%6)*0.15 + rnd(-.01,.01), y:0.78+Math.floor(i/6)*0.06}));
+}
+function decoDraw(d,t){
+  const def=DECOS.find(x=>x.id===d.d.id); if(!def)return;
+  const x=d.x*W, y=d.y*H;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.font=(Math.min(W,H)*0.05)+'px serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.globalAlpha=.95;
+  ctx.fillText(def.e,0,Math.sin(t*0.001+x)*2);
+  ctx.restore();
+}
+
+/* ---------------- Plant drawing ---------------- */
+function drawPlantBase(x,y,scale,ringColor){
+  const p=pal();
+  ctx.save();
+  ctx.translate(x,y);
+  const rw=27*scale, rh=10*scale;
+  // soft shadow grounding the plant into the bed
+  ctx.fillStyle='rgba(0,0,0,0.16)';
+  ctx.beginPath(); ctx.ellipse(1.5*scale,rh*0.55,rw*1.1,rh*1.0,0,0,7); ctx.fill();
+  if(ringColor){
+    // decorative garden edging (unlocked via Paint Kit)
+    ctx.fillStyle=ringColor;
+    ctx.beginPath(); ctx.ellipse(0,0,rw,rh,0,0,7); ctx.fill();
+    ctx.fillStyle=shade(p.soil,18);
+    ctx.beginPath(); ctx.ellipse(0,rh*0.08,rw*0.7,rh*0.62,0,0,7); ctx.fill();
+  }else{
+    // bare soil mound the plant is rooted in, blended with the ground
+    const g=ctx.createRadialGradient(0,-rh*0.3,0,0,0,rw);
+    g.addColorStop(0,shade(p.soil,24)); g.addColorStop(1,shade(p.soil,-10));
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.ellipse(0,0,rw,rh,0,0,7); ctx.fill();
+  }
+  ctx.restore();
+}
+function clusterBlobs(cx,cy,n,rBase,colors,wig){
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2+wig*0.2;
+    const rr=rBase*(0.7+Math.sin(i*2.1)*0.15);
+    const bx=cx+Math.cos(a)*rBase*0.55, by=cy+Math.sin(a)*rBase*0.4-rBase*0.3;
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.beginPath(); ctx.ellipse(bx,by,rr*0.6,rr*0.5,a,0,7); ctx.fill();
+  }
+  ctx.fillStyle=colors[colors.length-1];
+  ctx.beginPath(); ctx.arc(cx,cy-rBase*0.2,rBase*0.45,0,7); ctx.fill();
+}
+function drawPlant(e,t){
+  const {f,sp,x,y}=e;
+  const stage=plantStage(f);
+  const growScale=0.35+stage*0.18;
+  const scale=(0.55+(sp.size||1)*.45)*dispZoom*growScale;
+  const wig=Math.sin(t*0.0012*(sp.spd||1)+e.phase)*0.12;
+  drawPlantBase(x,y,dispZoom*(0.7+(sp.size||1)*.3),f.potColor||null);
+  if(stage===0){
+    ctx.save(); ctx.translate(x,y-2);
+    ctx.fillStyle=sp.c[0];
+    ctx.beginPath(); ctx.ellipse(0,0,7*dispZoom,5*dispZoom,0,0,7); ctx.fill();
+    ctx.restore();
+    return;
+  }
+  const baseY=y-4*dispZoom;
+  const R=34*scale;
+  ctx.save();
+  ctx.translate(x,baseY);
+  ctx.rotate(wig*0.3);
+  if(sp.glow){
+    ctx.save(); ctx.globalAlpha=.35;
+    ctx.fillStyle=sp.c[1]; ctx.beginPath(); ctx.arc(0,-R*0.4,R*1.3,0,7); ctx.fill();
+    ctx.restore();
+  }
+  if(sp.shape==='succulent'||sp.shape==='moss'){
+    clusterBlobs(0,-R*0.25,sp.shape==='moss'?9:6,R*(sp.shape==='moss'?0.55:0.85),sp.c,wig);
+  }else if(sp.shape==='vine'){
+    ctx.strokeStyle=sp.c[0]; ctx.lineWidth=3*scale;
+    for(let i=0;i<3;i++){
+      const dir=(i-1)*0.5;
+      ctx.beginPath(); ctx.moveTo(0,-R*0.1);
+      const cx1=dir*R*0.6, cy1=-R*0.1+R*0.5+Math.sin(t*0.001+i)*4;
+      const cx2=dir*R*1.1, cy2=R*0.9+Math.sin(t*0.0012+i)*4;
+      ctx.quadraticCurveTo(cx1,cy1,cx2,cy2);
+      ctx.stroke();
+      for(let j=0;j<4;j++){
+        const jt=j/4;
+        const lx=cx2*jt, ly=(-R*0.1)+(cy2-(-R*0.1))*jt;
+        ctx.fillStyle=sp.c[1];
+        ctx.beginPath(); ctx.ellipse(lx,ly,4*scale,3*scale,dir,0,7); ctx.fill();
+      }
+    }
+    ctx.fillStyle=sp.c[2]||sp.c[1];
+    ctx.beginPath(); ctx.arc(0,-R*0.35,R*0.3,0,7); ctx.fill();
+  }else if(sp.shape==='fern'){
+    ctx.strokeStyle=sp.c[0];
+    for(let i=-3;i<=3;i++){
+      const a=(i/3)*1.1+wig;
+      ctx.save(); ctx.rotate(a);
+      ctx.lineWidth=2*scale;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-R*(0.8+Math.abs(i)*0.03)); ctx.stroke();
+      for(let k=1;k<=5;k++){
+        const ly=-R*(0.8)*(k/5);
+        ctx.fillStyle=sp.c[1];
+        ctx.beginPath(); ctx.ellipse(4*scale,ly,4*scale,2*scale,0,0,7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-4*scale,ly,4*scale,2*scale,0,0,7); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }else if(sp.shape==='cactus'){
+    ctx.fillStyle=sp.c[2]||sp.c[0];
+    ctx.beginPath(); ctx.roundRect(-R*0.28,-R*0.9,R*0.56,R*0.9,R*0.28); ctx.fill();
+    ctx.strokeStyle=shade(sp.c[2]||sp.c[0],-30); ctx.lineWidth=1.2*scale;
+    for(let i=-1;i<=1;i++){ctx.beginPath(); ctx.moveTo(i*R*0.18,-R*0.85); ctx.lineTo(i*R*0.18,-R*0.05); ctx.stroke();}
+    ctx.fillStyle=sp.c[0];
+    ctx.beginPath(); ctx.arc(0,-R*0.95,R*0.22,0,7); ctx.fill();
+    ctx.fillStyle=sp.c[1];
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*R*0.2,-R*0.95+Math.sin(a)*R*0.2,R*0.05,0,7); ctx.fill();
+    }
+  }else if(sp.shape==='flower'){
+    ctx.strokeStyle=sp.c[0]; ctx.lineWidth=3*scale;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-R*0.85); ctx.stroke();
+    ctx.fillStyle=sp.c[0];
+    for(const s of [-1,1]){
+      ctx.beginPath(); ctx.ellipse(s*R*0.22,-R*0.45,R*0.22,R*0.12,s*0.6,0,7); ctx.fill();
+    }
+    const petals=6;
+    for(let i=0;i<petals;i++){
+      const a=(i/petals)*Math.PI*2;
+      ctx.fillStyle=sp.c[2]||sp.c[1];
+      ctx.beginPath(); ctx.ellipse(Math.cos(a)*R*0.22,-R*0.85+Math.sin(a)*R*0.22,R*0.16,R*0.09,a,0,7); ctx.fill();
+    }
+    ctx.fillStyle=sp.c[1];
+    ctx.beginPath(); ctx.arc(0,-R*0.85,R*0.12,0,7); ctx.fill();
+  }else if(sp.shape==='carnivorous'){
+    ctx.strokeStyle=sp.c[0]; ctx.lineWidth=3*scale;
+    for(const s of [-1,0,1]){
+      ctx.beginPath(); ctx.moveTo(s*R*0.14,0); ctx.lineTo(s*R*0.3,-R*0.8); ctx.stroke();
+      ctx.fillStyle=s===0?(sp.c[2]||sp.c[1]):sp.c[1];
+      const open=(Math.sin(t*0.0015+e.phase+s)+1)/2*0.3+0.08;
+      ctx.beginPath();
+      ctx.ellipse(s*R*0.3,-R*0.82,R*0.16,R*0.1*(1+open),0,0,7);
+      ctx.fill();
+    }
+  }else if(sp.shape==='fungus'){
+    ctx.fillStyle=sp.c[0];
+    for(const s of [-1,0,1]){
+      const hh=R*(0.5+Math.abs(s)*0.15);
+      ctx.fillRect(s*R*0.2-1.5*scale,-hh,3*scale,hh);
+      ctx.fillStyle=sp.c[1];
+      ctx.beginPath(); ctx.ellipse(s*R*0.2,-hh,R*0.16,R*0.1,0,Math.PI,0); ctx.fill();
+      ctx.fillStyle=sp.c[2]||sp.c[0];
+      ctx.beginPath(); ctx.arc(s*R*0.2,-hh,1.5*scale,0,7); ctx.fill();
+      ctx.fillStyle=sp.c[0];
+    }
+  }else if(sp.shape==='bonsai'||sp.shape==='tree'){
+    const trunkH=R*(sp.shape==='tree'?0.9:0.7);
+    ctx.strokeStyle=sp.c[0]; ctx.lineWidth=(sp.shape==='tree'?7:5)*scale; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.quadraticCurveTo(R*0.15,-trunkH*0.6,R*0.05,-trunkH);
+    ctx.stroke();
+    clusterBlobs(R*0.05,-trunkH,sp.shape==='tree'?10:7,R*(sp.shape==='tree'?0.75:0.55),[sp.c[1],sp.c[2]||sp.c[1],sp.c[1]],wig);
+  }
+  ctx.restore();
+  // charm
+  if(f.charm){
+    const cdef=CHARMS.find(c=>c.id===f.charm);
+    if(cdef){
+      ctx.save(); ctx.font=(16*dispZoom)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(cdef.e,x+18*dispZoom,y-8*dispZoom);
+      ctx.restore();
+    }
+  }
+  // name tag if low water
+  if(f.water<25){
+    ctx.save();
+    ctx.font=(11*dispZoom)+'px sans-serif'; ctx.textAlign='center';
+    ctx.fillStyle='#ffd9d9';
+    ctx.fillText('💧?',x,y+16*dispZoom);
+    ctx.restore();
+  }
+}
+
+/* ---------------- Pests ---------------- */
+let pests=[];
+function maybeSpawnPest(){
+  if(pests.length>=4)return;
+  if(S.tidy>70)return;
+  if(Math.random()>0.02)return;
+  pests.push({x:rnd(0.1,0.9)*W,y:rnd(0.4,0.68)*H,vx:rnd(-.3,.3),vy:rnd(-.15,.15),born:now(),kind:pick(['🐛','🪲','🦟'])});
+}
+function drawPests(t){
+  ctx.save();
+  ctx.font=(18*dispZoom)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  pests.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0.05*W||p.x>0.95*W)p.vx*=-1;
+    if(p.y<0.36*H||p.y>0.7*H)p.vy*=-1;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(Math.sin(now()*0.005)*0.2);
+    ctx.fillText(p.kind,0,0);
+    ctx.restore();
+  });
+  ctx.restore();
+}
+function tryPruneAt(x,y){
+  for(let i=0;i<pests.length;i++){
+    if(Math.hypot(pests[i].x-x,pests[i].y-y)<26){
+      pests.splice(i,1);
+      S.tidy=clamp(S.tidy+3,0,100); S.prunes++;
+      addCoins(2,true,x,y); sfx('pop'); checkAch(); save();
+      return true;
+    }
+  }
+  return false;
+}
+
+/* ---------------- Water droplet fx ---------------- */
+let drops=[];
+function spawnDrops(x,y){
+  for(let i=0;i<8;i++)drops.push({x,y,vx:rnd(-1.2,1.2),vy:rnd(-2.6,-1),life:1});
+}
+function stepDrops(){
+  drops.forEach(d=>{d.x+=d.vx;d.y+=d.vy;d.vy+=0.14;d.life-=0.03;});
+  drops=drops.filter(d=>d.life>0);
+}
+function drawDrops(){
+  ctx.save();
+  drops.forEach(d=>{
+    ctx.globalAlpha=clamp(d.life,0,1);
+    ctx.fillStyle='#7fd0ff';
+    ctx.beginPath(); ctx.arc(d.x,d.y,3,0,7); ctx.fill();
+  });
+  ctx.restore();
+}
+
+/* ---------------- Sparkle / bloom fx (rare finds) ---------------- */
+let blooms=[];
+function spawnBloom(x,y,core,mid,maxR,maxLife,peak){
+  blooms.push({x,y,core,mid,maxR,maxLife,peak,life:0});
+}
+function drawSparkle(x,y,r,rot){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+  ctx.beginPath();
+  for(let i=0;i<4;i++){
+    const a=(i/4)*Math.PI*2;
+    ctx.moveTo(0,0);
+    ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+  }
+  ctx.strokeStyle='#fff'; ctx.lineWidth=r*0.15; ctx.stroke();
+  ctx.restore();
+}
+function stepBlooms(dt){
+  blooms.forEach(b=>b.life+=dt);
+  blooms=blooms.filter(b=>b.life<b.maxLife);
+}
+function drawBlooms(t){
+  blooms.forEach(b=>{
+    const p=b.life/b.maxLife;
+    const r=b.maxR*Math.min(1,p/b.peak);
+    ctx.save();
+    ctx.globalAlpha=1-p;
+    const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,r);
+    g.addColorStop(0,b.core); g.addColorStop(1,b.mid);
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,r,0,7); ctx.fill();
+    drawSparkle(b.x,b.y,r*0.5,t*0.002);
+    ctx.restore();
+  });
+}
+function spawnRarityFx(e){
+  const sp=e.sp;
+  if(sp.r==='epic')spawnBloom(e.x,e.y-20,'#f2c8f2','#c79bff',60,1,0.4);
+  else if(sp.r==='legend')spawnBloom(e.x,e.y-20,'#fff3c4','#e8c34d',80,1.3,0.4);
+  else if(sp.r==='mythic')spawnBloom(e.x,e.y-20,'#ffffff','#a55eea',100,1.6,0.4);
+  else if(sp.r==='ancient')spawnBloom(e.x,e.y-20,'#d5ffe9','#1d9450',120,2,0.4);
+}
+
+/* ---------------- Floating text ---------------- */
+function floatText(x,y,text,gold){
+  const el=document.createElement('div');
+  el.className='fl'+(gold?' gold':''); el.style.left=x+'px'; el.style.top=y+'px'; el.textContent=text;
+  if(gold)el.style.color='var(--gold)';
+  $('floats').appendChild(el);
+  setTimeout(()=>el.remove(),1150);
+}
+
+/* ---------------- Sim tick ---------------- */
+let awaySummary=null;
+function tickWorld(){
+  const t=now();
+  let el=(t-S.lastTick)/1000;
+  if(!isFinite(el)||el<0)el=0;
+  if(el>43200)el=43200;
+  const wasAway=el>=120;
+  S.lastTick=t;
+  if(el<=0)return;
+  const mins=el/60;
+  const dd=diffDef(), pd=potDef(), td=toolDef();
+  const slow=td.slow;
+  const prevTidy=S.tidy;
+  const bioload=S.plants.reduce((a,f)=>a+(spec(f.sp).size||1)*.05,0);
+  const baseDecay=(0.24+bioload)*mins*2*dd.mossMul*pd.mossMul;
+  const toolDecay=baseDecay*slow;
+  const tidyHelpCount=S.plants.filter(f=>spec(f.sp).tidyHelp).length;
+  const tidyHelpMul=Math.max(.6,1-tidyHelpCount*.08);
+  const tidyBoostMul=tidyBoostActive()?Math.max(.05,1-(S.tidyBoost||0)):1;
+  S.tidy=clamp(S.tidy-toolDecay*tidyHelpMul*tidyBoostMul,0,100);
+  let autoCoins=0;
+  if(slow<1){
+    const avoided=baseDecay*(1-slow);
+    const rawAuto=(avoided/2.4)*10+(S.autoTidyFrac||0);
+    autoCoins=Math.floor(rawAuto);
+    S.autoTidyFrac=rawAuto-autoCoins;
+    if(autoCoins>0){S.prunes+=Math.round(avoided/2.4);addCoins(autoCoins,false);}
+  }
+  const waterHelpCount=S.plants.filter(f=>spec(f.sp).waterHelp).length;
+  const waterHelpMul=Math.max(.7,1-waterHelpCount*.06);
+  S.plants.forEach(f=>{
+    const sp=spec(f.sp);
+    f.water=clamp(f.water-0.4*sp.water*mins*dd.waterMul*td.waterMul*waterHelpMul,0,100);
+  });
+  const mdDef=misterDef();
+  if(mdDef&&S.misterStock>0&&S.plants.length){
+    S.misterAcc=(S.misterAcc||0)+mins;
+    let guard=0;
+    while(S.misterAcc>=mdDef.interval&&S.misterStock>0&&guard<1000){
+      const per=22/S.plants.length;
+      S.plants.forEach(f=>{f.water=clamp(f.water+per,0,100);});
+      S.misterStock--; S.misterAcc-=mdDef.interval; guard++;
+    }
+    if(S.misterStock<=0)S.misterAcc=0;
+  }
+  S.water=S.plants.length?S.plants.reduce((a,f)=>a+f.water,0)/S.plants.length:100;
+  const auraMul=S.plants.reduce((m,f)=>Math.max(m,spec(f.sp).incomeAura||1),1);
+  let plantCoins=0, topPlant=null, topAmt=0;
+  if(S.tidy>25){
+    const seasonGrow=SEASONS[seasonNow()].growMul;
+    const inc=S.plants.reduce((a,f)=>a+(f.water>25?spec(f.sp).income*plantLevelMul(f):0),0)*dd.incomeMul*pd.incomeMul*auraMul;
+    const raw=inc*mins*Math.pow(S.tidy/100,1.6)*boostMul()+(S.coinFrac||0);
+    plantCoins=Math.floor(raw);
+    S.coinFrac=raw-plantCoins;
+    if(plantCoins>0)addCoins(plantCoins,false);
+    S.plants.forEach(f=>{
+      if(f.water<=25)return;
+      const sp=spec(f.sp);
+      const growthMul=growthBoostActive()?(1+(S.growthBoost||0)):1;
+      f.growth=(f.growth||0)+mins*0.06*(sp.xpMul||1)*seasonGrow*growthMul;
+    });
+    if(wasAway){
+      S.plants.forEach(f=>{
+        if(f.water<=25)return;
+        const amt=spec(f.sp).income*plantLevelMul(f)*dd.incomeMul*pd.incomeMul*auraMul*mins*Math.pow(S.tidy/100,1.6)*boostMul();
+        if(amt>topAmt){topAmt=amt;topPlant=f;}
+      });
+    }
+  }
+  if(Math.abs(prevTidy-S.tidy)>3){}
+  if(wasAway&&(plantCoins+autoCoins)>0){
+    awaySummary={total:plantCoins+autoCoins,plant:plantCoins,tidy:autoCoins,mins:mins,
+      topName:topPlant?topPlant.name:null,topSp:topPlant?spec(topPlant.sp).n:null};
+  }
+}
+function addCoins(n,fx,x,y){
+  n=Math.round(n); if(n===0)return;
+  S.coins+=n; if(n>0)S.totalCoins+=n;
+  if(fx){ sfx('coin'); floatText(x,y,'+'+fmt(n)); }
+  refreshHUD(); checkAch();
+}
+function spend(n){ if(S.coins<n)return false; S.coins-=n; refreshHUD(); save(); return true; }
+
+/* ---------------- Interaction: pointer + tools ---------------- */
+let armed=null; // 'water' | 'prune' | null
+function setArmed(a){
+  armed=(armed===a)?null:a;
+  $('tWater').classList.toggle('armed',armed==='water');
+  $('tPrune').classList.toggle('armed',armed==='prune');
+  updateHint();
+}
+function updateHint(){
+  const h=$('hint');
+  if(armed==='water')h.textContent='Tap or drag across the terrarium to water';
+  else if(armed==='prune')h.textContent='Tap weeds/bugs to tidy up';
+  else h.textContent=S.plants.length?'Tap a plant to mist it':'Visit the Market to bring home your first plant';
+}
+function currentWater(){
+  if(S.selWater&&S.waterInv[S.selWater]>0)return S.selWater;
+  const w=WATERS.find(w=>S.waterInv[w.id]>0);
+  return w?w.id:null;
+}
+function openWaterPicker(){
+  const html=WATERS.map(w=>{
+    const owned=S.waterInv[w.id]||0;
+    const sel=currentWater()===w.id;
+    return `<div class="row ${sel?'fx-boost':''}" data-pick-water="${w.id}" style="cursor:pointer">
+      <div><div class="l">${esc(w.n)}</div><div class="d">+${w.fill} water each${owned?` · ${owned} in stock`:' · none in stock — buy in Market'}</div></div>
+      <div class="mini ${owned?'good':'warn'}">${owned}</div>
+    </div>`;
+  }).join('');
+  openModal('Choose water',`<div class="sbody" style="padding:0">${html}</div>`);
+  $('sh2Body').querySelectorAll('[data-pick-water]').forEach(r=>r.addEventListener('click',()=>{
+    S.selWater=r.dataset.pickWater; closeModal(); refreshHUD(); save();
+  }));
+}
+function dropWater(x,y){
+  const wid=currentWater();
+  if(!wid||!S.waterInv[wid]){ toast('No water in stock — visit the Market','error'); return; }
+  const e=findEntAt(x,y);
+  const targets=e?[e]:ents;
+  if(!targets.length)return;
+  S.waterInv[wid]--; S.waters++;
+  const wDef=WATERS.find(w=>w.id===wid);
+  const per=wDef.fill/(e?1:Math.max(1,targets.length));
+  targets.forEach(en=>{
+    const f=en.f, sp=en.sp;
+    const wasLow=f.water<30;
+    f.water=clamp(f.water+per,0,100);
+    if(sp.waterBonus&&wasLow)addCoins(sp.waterBonus,false);
+    if(sp.luckyChance&&Math.random()<sp.luckyChance)rollLucky(f,en.x,en.y);
+  });
+  spawnDrops(x,y); sfx('water');
+  refreshHUD(); refreshBoosts(); checkAch(); save();
+}
+const LUCKY_BONUS={common:80,rare:150,epic:280,legend:500,mythic:900,ancient:1800};
+function rollLucky(f,x,y){
+  const sp=spec(f.sp);
+  const amt=LUCKY_BONUS[sp.r]||80;
+  addCoins(amt,true,x,y);
+  spawnBloom(x,y-10,'#fff3c4','#e8c34d',50,.9,.4);
+  sfx('lucky'); toast('🍀 A lucky seed pod! +'+fmt(amt));
+}
+function scrub(x,y){
+  if(tryPruneAt(x,y))return;
+  S.tidy=clamp(S.tidy+2.5,0,100); S.prunes++;
+  spawnDrops(x,y); sfx('prune');
+  refreshHUD(); checkAch(); save();
+}
+function stackBoost(magKey,endKey,inc,dur,msg){
+  const active=now()<(S[endKey]||0);
+  S[magKey]=active?Math.min(2,(S[magKey]||0)+inc):inc;
+  S[endKey]=now()+dur;
+  toast(msg); refreshBoosts(); save();
+}
+const MIST_COIN_COOLDOWN=60000;
+function mistPlant(e){
+  const f=e.f, sp=e.sp;
+  const before=plantStage(f);
+  f.growth=(f.growth||0)+1.2;
+  sfx('mist');
+  if(now()-(f.lastMist||0)>=MIST_COIN_COOLDOWN){
+    f.lastMist=now(); S.mists++;
+    let coins=Math.round(4+plantLevel(f)*1.5);
+    if(sp.doubleChance&&Math.random()<sp.doubleChance)coins*=2;
+    addCoins(coins,true,e.x,e.y-30);
+  }
+  if(plantStage(f)>before)spawnRarityFx(e);
+  refreshHUD(); checkAch(); save();
+}
+function pos(ev){
+  const r=cv.getBoundingClientRect();
+  const p=ev.touches?ev.touches[0]:ev;
+  return {x:p.clientX-r.left,y:p.clientY-r.top};
+}
+let dragging=false;
+function down(ev){
+  audioInit(); audioResume();
+  const p=pos(ev); dragging=true;
+  if(armed==='water')dropWater(p.x,p.y);
+  else if(armed==='prune')scrub(p.x,p.y);
+  else{
+    const e=findEntAt(p.x,p.y);
+    if(e)mistPlant(e);
+  }
+}
+function move(ev){
+  if(!dragging)return;
+  const p=pos(ev);
+  if(armed==='water'&&Math.random()<0.35)dropWater(p.x,p.y);
+  else if(armed==='prune')scrub(p.x,p.y);
+}
+function endPointer(){dragging=false;}
+cv.addEventListener('mousedown',down); cv.addEventListener('mousemove',move); window.addEventListener('mouseup',endPointer);
+cv.addEventListener('touchstart',e=>{e.preventDefault();down(e);},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();move(e);},{passive:false});
+cv.addEventListener('touchend',endPointer);
+
+/* ---------------- HUD refresh ---------------- */
+function refreshHUD(){
+  $('coins').textContent=fmt(S.coins);
+  $('plantCount').textContent=S.plants.length+'/'+potDef().cap;
+  $('tidyVal').textContent=Math.round(S.tidy)+'%'; $('tidyFill').style.width=S.tidy+'%';
+  $('waterVal').textContent=Math.round(S.water)+'%'; $('waterFill').style.width=S.water+'%';
+  const sp=SEASONS[seasonNow()];
+  $('seasonEmo').textContent=sp.emo; $('seasonTx').textContent=sp.name;
+  const wCount=waterCount();
+  const badge=$('waterBadge');
+  if(wCount>0&&wCount<10){badge.style.display='flex';badge.textContent=wCount;}else badge.style.display='none';
+  updateHint();
+}
+function boostMinsLeft(end){return Math.max(1,Math.ceil((end-now())/60000));}
+function refreshBoosts(){
+  const row=$('boostRow'); const pills=[];
+  if(growthBoostActive())pills.push(`<div class="boostpill">📈 Growth ×${(1+(S.growthBoost||0)).toFixed(1)} · ${boostMinsLeft(S.growthEnd)}m</div>`);
+  if(tidyBoostActive())pills.push(`<div class="boostpill">✂️ Auto-tidy · ${boostMinsLeft(S.tidyEnd)}m</div>`);
+  if(now()<S.boostEnd)pills.push(`<div class="boostpill">🪙 Income ×${(1+S.boost).toFixed(1)} · ${boostMinsLeft(S.boostEnd)}m</div>`);
+  row.innerHTML=pills.join('');
+}
+
+/* ---------------- Toasts ---------------- */
+let toastQ=[], toastBusy=false;
+function toast(msg,kind){
+  toastQ.push({msg,kind}); if(!toastBusy)advanceToast();
+}
+function advanceToast(){
+  if(!toastQ.length){toastBusy=false;return;}
+  toastBusy=true;
+  const {msg,kind}=toastQ.shift();
+  const el=document.createElement('div');
+  el.className='toast'+(kind==='gold'?' gold':'');
+  el.textContent=msg;
+  $('toasts').appendChild(el);
+  setTimeout(()=>{el.remove(); advanceToast();},2500);
+}
+
+/* ---------------- Achievements ---------------- */
+function has(id){return !!S.ach[id];}
+function grant(id){
+  if(has(id))return;
+  const a=ACHS.find(x=>x.id===id); if(!a)return;
+  S.ach[id]={ts:now()}; S.lastAch=id;
+  sfx('ach');
+  $('bnName').textContent=a.n;
+  $('banner').classList.add('show');
+  setTimeout(()=>$('banner').classList.remove('show'),3200);
+  save();
+}
+function checkAch(){
+  ACHS.forEach(a=>{ if(!has(a.id)&&a.cond(S))grant(a.id); });
+}
+
+/* ---------------- Sheets / modals ---------------- */
+let lastShopTab=null, sellMode=false, sellSel=new Set();
+function openSheet(title,html,tabs,onTab,showCoins,showPlants){
+  $('shTitle').textContent=title;
+  $('shBody').innerHTML=html;
+  $('shCoins').style.display=showCoins?'flex':'none';
+  $('shPlants').style.display=showPlants?'flex':'none';
+  if(showCoins)$('shCoinsVal').textContent=fmt(S.coins);
+  if(showPlants)$('shPlantsVal').textContent=S.plants.length;
+  const tabsEl=$('shTabs');
+  if(tabs){
+    tabsEl.style.display='flex';
+    tabsEl.innerHTML=tabs.map(tb=>`<button class="tab ${tb.id===lastShopTab?'on':''}" data-tab="${tb.id}">${esc(tb.label)}</button>`).join('');
+    tabsEl.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{lastShopTab=b.dataset.tab; onTab(b.dataset.tab);}));
+  }else{
+    tabsEl.style.display='none'; tabsEl.innerHTML='';
+  }
+  $('scrim').classList.add('on');
+}
+function closeSheet(){$('scrim').classList.remove('on');lastShopTab=null;sellMode=false;sellSel=new Set();}
+function openModal(title,html){
+  $('sh2Title').textContent=title; $('sh2Body').innerHTML=html; $('scrim2').classList.add('on');
+}
+let activeGameCleanup=null;
+function closeModal(){
+  $('scrim2').classList.remove('on');
+  if(activeGameCleanup){ activeGameCleanup(); activeGameCleanup=null; }
+}
+$('shX').addEventListener('click',closeSheet);
+$('sh2X').addEventListener('click',closeModal);
+$('scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet();});
+$('scrim2').addEventListener('click',e=>{if(e.target.id==='scrim2')closeModal();});
+
+/* ---------------- Market (shop) ---------------- */
+function openShop(tab){
+  const tabs=[{id:'seeds',label:'Seeds'},{id:'water',label:'Water'},{id:'pots',label:'Pots'},{id:'tools',label:'Tools'},
+    {id:'decor',label:'Decor'},{id:'themes',label:'Themes'},{id:'charms',label:'Charms'}];
+  const go=(t)=>{
+    let html='';
+    if(t==='seeds'){
+      html=SPECIES.map(sp=>{
+        const owned=S.plants.filter(f=>f.sp===sp.id).length;
+        const affordable=S.coins>=sp.price;
+        const full=S.plants.length>=potDef().cap;
+        return `<div class="card">
+          <div class="art"><span class="emo">🌱</span></div>
+          <div class="info">
+            <div class="nm">${esc(sp.n)} <span class="rar r-${sp.r}">${RAR[sp.r]}</span>${owned?`<span class="mini good">×${owned}</span>`:''}</div>
+            <div class="sub">${esc(sp.bio)}</div>
+          </div>
+          <button class="btn" data-buy-seed="${sp.id}" ${(!affordable||full)?'disabled':''}>${sp.price===0?'Free':'🪙 '+fmt(sp.price)}</button>
+        </div>`;
+      }).join('');
+    }else if(t==='water'){
+      html=WATERS.map(w=>{
+        const owned=S.waterInv[w.id]||0;
+        return `<div class="card">
+          <div class="art"><span class="emo">💧</span></div>
+          <div class="info"><div class="nm">${esc(w.n)}</div><div class="sub">Restores ${w.fill} water · you have ${owned}</div></div>
+          <button class="btn" data-buy-water="${w.id}" ${S.coins<w.price&&w.price>0?'disabled':''}>${w.price===0?'Free':'🪙 '+fmt(w.price)}</button>
+        </div>`;
+      }).join('');
+    }else if(t==='pots'){
+      html=POTS.map(p=>{
+        const owned=S.pot>=p.lvl, current=S.pot===p.lvl;
+        return `<div class="card ${current?'fx-boost':''}">
+          <div class="art"><span class="emo">🏺</span></div>
+          <div class="info"><div class="nm">${esc(p.n)} ${current?'<span class="mini good">Current</span>':''}</div>
+          <div class="sub">Holds ${p.cap} plants · ${Math.round((1-p.mossMul)*100)}% slower mess · +${Math.round((p.incomeMul-1)*100)}% income</div></div>
+          <button class="btn" data-buy-pot="${p.lvl}" ${owned||S.coins<p.price?'disabled':''}>${owned?'Owned':'🪙 '+fmt(p.price)}</button>
+        </div>`;
+      }).join('');
+    }else if(t==='tools'){
+      html=TOOLS.map(tl=>{
+        const owned=S.tool>=tl.lvl, current=S.tool===tl.lvl;
+        return `<div class="card ${current?'fx-boost':''}">
+          <div class="art"><span class="emo">🚿</span></div>
+          <div class="info"><div class="nm">${esc(tl.n)} ${current?'<span class="mini good">Current</span>':''}</div>
+          <div class="sub">${Math.round((1-tl.slow)*100)}% slower mess buildup · ${Math.round((1-tl.waterMul)*100)}% slower thirst</div></div>
+          <button class="btn" data-buy-tool="${tl.lvl}" ${owned||S.coins<tl.price?'disabled':''}>${owned?'Owned':'🪙 '+fmt(tl.price)}</button>
+        </div>`;
+      }).join('')+`<div class="section-title" style="margin:14px 0 8px;font-weight:900">Auto-Misters</div>`+
+      MISTERS.map((m,i)=>{
+        const lvl=i+1, owned=S.mister>=lvl, current=S.mister===lvl;
+        return `<div class="card ${current?'fx-boost':''}">
+          <div class="art"><span class="emo">🌫️</span></div>
+          <div class="info"><div class="nm">${esc(m.n)} ${current?'<span class="mini good">Current</span>':''}</div>
+          <div class="sub">Auto-waters every ${m.interval}min · holds ${m.cap} charge</div></div>
+          <button class="btn" data-buy-mister="${lvl}" ${owned||S.coins<m.price?'disabled':''}>${owned?'Owned':'🪙 '+fmt(m.price)}</button>
+        </div>`;
+      }).join('');
+    }else if(t==='decor'){
+      html=`<div class="deco-grid">${DECOS.map(d=>{
+        const owned=S.decoOwned[d.id], placed=S.decoPlaced.some(p=>p.id===d.id);
+        return `<div class="deco ${owned?'owned':''} ${placed?'placed':''}" data-deco="${d.id}">
+          <div class="de">${d.e}</div><div class="dn">${esc(d.n)}</div>
+          <div class="dp">${owned?(placed?'Placed':'Tap to place'):'🪙 '+fmt(d.price)}</div>
+        </div>`;
+      }).join('')}</div>`;
+    }else if(t==='themes'){
+      html=`<div class="themes">${THEMES.map(th=>{
+        const owned=th.id==='auto'||S.themesOwned[th.id];
+        const cur=S.theme===th.id;
+        const p=THEME_PAL[th.id]||SEASONS[seasonNow()];
+        return `<div class="th ${cur?'on':''}" data-theme="${th.id}" style="background:linear-gradient(135deg,${p.sky[0]},${p.sky[1]})">
+          <div class="tn" style="color:#16261a">${esc(th.n)}</div>
+          <div class="dots"><i style="background:${p.soil}"></i><i style="background:${p.accent}"></i></div>
+          ${owned?'':`<div class="lk">🔒 ${th.price}🪙</div>`}
+        </div>`;
+      }).join('')}</div>`;
+    }else if(t==='charms'){
+      html=`<div class="deco-grid">${CHARMS.map(c=>{
+        const owned=S.charmsOwned[c.id];
+        return `<div class="deco ${owned?'owned':''}" data-charm="${c.id}">
+          <div class="de">${c.e}</div><div class="dn">${esc(c.n)}</div>
+          <div class="dp">${owned?'Owned':'🪙 '+fmt(c.price)}</div>
+        </div>`;
+      }).join('')}</div><p style="opacity:.7;font-size:12px;margin-top:10px">Owned charms can be applied to any plant from its detail page.</p>`;
+    }
+    openSheet('Market',html,tabs,go,true,true);
+    wireShop(t);
+  };
+  lastShopTab=tab||lastShopTab||'seeds';
+  go(lastShopTab);
+}
+function wireShop(t){
+  $('shBody').querySelectorAll('[data-buy-seed]').forEach(b=>b.addEventListener('click',()=>{
+    const sp=spec(b.dataset.buySeed);
+    if(S.plants.length>=potDef().cap){toast('Terrarium is full — upgrade your pot','error');return;}
+    if(!spend(sp.price)){toast('Not enough coins','error');return;}
+    const used=S.plants.map(f=>f.name);
+    S.plants.push({id:'p'+now()+Math.floor(Math.random()*999),sp:sp.id,name:newName(used,sp),born:now(),growth:STARTER_GROWTH,water:100,charm:null,potColor:null,lastMist:0,lastPropagate:0});
+    sfx('buy'); toast('Welcome, '+sp.n+'!'); layoutPlants(); refreshHUD(); checkAch(); save(); openShop('seeds');
+  }));
+  $('shBody').querySelectorAll('[data-buy-water]').forEach(b=>b.addEventListener('click',()=>{
+    const w=WATERS.find(x=>x.id===b.dataset.buyWater);
+    if(w.price>0&&!spend(w.price))return;
+    S.waterInv[w.id]=(S.waterInv[w.id]||0)+1; S.waterTried[w.id]=true;
+    sfx('buy'); refreshHUD(); save(); openShop('water');
+  }));
+  $('shBody').querySelectorAll('[data-buy-pot]').forEach(b=>b.addEventListener('click',()=>{
+    const lvl=+b.dataset.buyPot; const def=POTS[lvl-1];
+    if(S.pot>=lvl)return;
+    if(!spend(def.price))return;
+    S.pot=lvl; sfx('buy'); toast('Upgraded to '+def.n); layoutPlants(); refreshHUD(); checkAch(); save(); openShop('pots');
+  }));
+  $('shBody').querySelectorAll('[data-buy-tool]').forEach(b=>b.addEventListener('click',()=>{
+    const lvl=+b.dataset.buyTool; const def=TOOLS[lvl-1];
+    if(S.tool>=lvl)return;
+    if(!spend(def.price))return;
+    S.tool=lvl; sfx('buy'); toast('New tool: '+def.n); refreshHUD(); checkAch(); save(); openShop('tools');
+  }));
+  $('shBody').querySelectorAll('[data-buy-mister]').forEach(b=>b.addEventListener('click',()=>{
+    const lvl=+b.dataset.buyMister; const def=MISTERS[lvl-1];
+    if(S.mister>=lvl)return;
+    if(!spend(def.price))return;
+    S.mister=lvl; S.misterStock=def.cap; sfx('buy'); toast('Installed: '+def.n); refreshHUD(); save(); openShop('tools');
+  }));
+  $('shBody').querySelectorAll('[data-deco]').forEach(d=>d.addEventListener('click',()=>{
+    const def=DECOS.find(x=>x.id===d.dataset.deco);
+    if(!S.decoOwned[def.id]){
+      if(!spend(def.price))return;
+      S.decoOwned[def.id]=true; sfx('buy');
+    }
+    const placedIdx=S.decoPlaced.findIndex(p=>p.id===def.id);
+    if(placedIdx>=0)S.decoPlaced.splice(placedIdx,1);
+    else S.decoPlaced.push({id:def.id});
+    save(); checkAch(); openShop('decor');
+  }));
+  $('shBody').querySelectorAll('[data-theme]').forEach(th=>th.addEventListener('click',()=>{
+    const def=THEMES.find(x=>x.id===th.dataset.theme);
+    if(def.id!=='auto'&&!S.themesOwned[def.id]){
+      if(!spend(def.price))return;
+      S.themesOwned[def.id]=true; sfx('buy');
+    }
+    S.theme=def.id; musicSync(); save(); checkAch(); openShop('themes');
+  }));
+  $('shBody').querySelectorAll('[data-charm]').forEach(c=>c.addEventListener('click',()=>{
+    const def=CHARMS.find(x=>x.id===c.dataset.charm);
+    if(!S.charmsOwned[def.id]){
+      if(!spend(def.price))return;
+      S.charmsOwned[def.id]=true; sfx('buy'); toast("Charm unlocked — apply it from any plant's detail page.");
+    }
+    save(); openShop('charms');
+  }));
+}
+
+/* ---------------- Garden (collection) ---------------- */
+function plantRowCard(f){
+  const sp=spec(f.sp);
+  const stage=plantStage(f);
+  return `<div class="row-card card" data-open="${f.id}" style="cursor:pointer">
+    <div class="art"><span class="emo">🌿</span></div>
+    <div class="info">
+      <div class="nm">${esc(f.name)} <span class="rar r-${sp.r}">${RAR[sp.r]}</span></div>
+      <div class="sub">${esc(sp.n)} · ${STAGE_NAMES[stage]} · Lv.${plantLevel(f)} · 💧${Math.round(f.water)}%</div>
+    </div>
+  </div>`;
+}
+function openGarden(){
+  const html=S.plants.length?S.plants.map(plantRowCard).join(''):
+    `<div class="empty"><span class="e">🌱</span>Nothing planted yet.<br>Visit the Market to bring home your first seed.</div>`;
+  openSheet('Garden',html,null,null,true,true);
+  $('shBody').querySelectorAll('[data-open]').forEach(r=>r.addEventListener('click',()=>openPlant(r.dataset.open)));
+}
+function sellPrice(f){
+  const sp=spec(f.sp);
+  return Math.round((sp.price*0.4+plantLevel(f)*8)*(sp.sellBonus||1));
+}
+function propagateCost(sp){return Math.max(30,Math.round(sp.price*0.5));}
+function canPropagate(f){
+  const sp=spec(f.sp);
+  return plantStage(f)>=3 && S.plants.filter(x=>x.sp===f.sp&&plantStage(x)>=3).length>=2 && (now()-(f.lastPropagate||0))>3600000;
+}
+function propagatePlant(id){
+  const f=S.plants.find(x=>x.id===id); if(!f)return;
+  const sp=spec(f.sp);
+  if(!canPropagate(f)){toast('Needs another mature '+sp.n+' nearby, and an hour since its last cutting','error');return;}
+  if(S.plants.length>=potDef().cap){toast('Terrarium is full','error');return;}
+  const cost=propagateCost(sp);
+  if(!spend(cost))return;
+  f.lastPropagate=now();
+  const used=S.plants.map(x=>x.name);
+  S.plants.push({id:'p'+now()+Math.floor(Math.random()*999),sp:sp.id,name:newName(used,sp),born:now(),growth:STARTER_GROWTH,water:80,charm:null,potColor:null,lastMist:0,lastPropagate:0});
+  S.propagations++; sfx('buy'); toast('A cutting took root! 🌿'); layoutPlants(); refreshHUD(); checkAch(); save(); openPlant(id);
+}
+function openPlant(id){
+  const f=S.plants.find(x=>x.id===id);
+  if(!f){ openGarden(); return; }
+  const sp=spec(f.sp);
+  const stage=plantStage(f);
+  const trait=speciesTraitLabel(sp);
+  openModal(esc(f.name),`
+    <div style="text-align:center;padding:6px 0 14px">
+      <div style="font-size:52px">🌿</div>
+      <div class="rar r-${sp.r}" style="display:inline-block;margin-top:4px">${RAR[sp.r]}</div>
+    </div>
+    <div class="stats">
+      <div class="st"><div class="v">${STAGE_NAMES[stage]}</div><div class="k">Stage</div></div>
+      <div class="st"><div class="v">Lv.${plantLevel(f)}</div><div class="k">Level</div></div>
+      <div class="st"><div class="v">${Math.round(f.water)}%</div><div class="k">Water</div></div>
+      <div class="st"><div class="v">🪙${fmt(sellPrice(f))}</div><div class="k">Sell value</div></div>
+    </div>
+    <p class="desc" style="opacity:.8;font-size:13px;line-height:1.5;margin-bottom:8px">${esc(sp.bio)}</p>
+    ${trait?`<div class="mini good" style="display:inline-block;margin-bottom:10px">${trait}</div>`:''}
+    <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn" id="pMist">🤲 Mist</button>
+      <button class="btn ghost" id="pRename">🏷️ Rename</button>
+      <button class="btn ghost" id="pCharm">✨ Charm</button>
+      <button class="btn mint" id="pProp" ${canPropagate(f)?'':'disabled'}>🌿 Propagate 🪙${fmt(propagateCost(sp))}</button>
+      <button class="btn ghost" id="pSell" style="background:rgba(255,107,107,.25)">Sell 🪙${fmt(sellPrice(f))}</button>
+    </div>
+  `);
+  $('pMist').addEventListener('click',()=>{
+    const e=ents.find(x=>x.f.id===f.id)||{f,sp,x:W/2,y:H*0.5,phase:0};
+    mistPlant(e); openPlant(id);
+  });
+  $('pRename').addEventListener('click',()=>renamePlant(id));
+  $('pCharm').addEventListener('click',()=>openCustomize(id));
+  $('pProp').addEventListener('click',()=>propagatePlant(id));
+  $('pSell').addEventListener('click',()=>{
+    if(!confirm('Sell '+f.name+' for 🪙'+fmt(sellPrice(f))+'?'))return;
+    const idx=S.plants.findIndex(x=>x.id===id);
+    if(idx>=0){addCoins(sellPrice(f),false); S.plants.splice(idx,1); sfx('sell'); layoutPlants(); closeModal(); refreshHUD(); save();}
+  });
+}
+function renamePlant(id){
+  const f=S.plants.find(x=>x.id===id); if(!f)return;
+  openModal('Rename',`<input type="text" id="renameInput" value="${esc(f.name)}" maxlength="18"><button class="btn wide" id="renameGo" style="margin-top:10px">Save</button>`);
+  $('renameGo').addEventListener('click',()=>{
+    const v=$('renameInput').value.trim();
+    if(v){f.name=v; S.renames++; save(); checkAch(); toast('Renamed to '+v);}
+    closeModal(); openPlant(id);
+  });
+}
+function openCustomize(id){
+  const f=S.plants.find(x=>x.id===id); if(!f)return;
+  const owned=Object.keys(S.charmsOwned).filter(cid=>CHARMS.some(c=>c.id===cid));
+  const charmHtml=owned.length?`<div class="deco-grid">${owned.map(cid=>{
+    const c=CHARMS.find(x=>x.id===cid);
+    return `<div class="deco ${f.charm===cid?'placed':''}" data-set-charm="${cid}"><div class="de">${c.e}</div><div class="dn">${esc(c.n)}</div></div>`;
+  }).join('')}<div class="deco ${!f.charm?'placed':''}" data-set-charm=""><div class="de">🚫</div><div class="dn">None</div></div></div>`
+    :`<p style="opacity:.7;font-size:13px">No charms owned yet — find them in the Market.</p>`;
+  const paintOwned=!!S.charmsOwned._paint;
+  openModal('Customize '+esc(f.name),`
+    <div class="tabs" style="padding:0 0 10px"><span class="tab on">Charm</span></div>
+    ${charmHtml}
+    <div class="section-title" style="margin:16px 0 8px;font-weight:900">Garden edging</div>
+    ${paintOwned?`<div class="deco-grid">${PALETTE.map(c=>`<div class="deco ${f.potColor===c?'placed':''}" data-set-color="${c}" style="padding:16px 5px"><div style="width:24px;height:24px;border-radius:50%;background:${c};margin:0 auto;border:2px solid #fff"></div></div>`).join('')}</div>`
+      :`<button class="btn wide" id="buyPaint">Unlock Paint Kit 🪙${fmt(PAINTKIT.price)}</button>`}
+  `);
+  $('sh2Body').querySelectorAll('[data-set-charm]').forEach(el=>el.addEventListener('click',()=>{
+    f.charm=el.dataset.setCharm||null; save(); openCustomize(id);
+  }));
+  const buyBtn=$('buyPaint');
+  if(buyBtn)buyBtn.addEventListener('click',()=>{
+    if(!spend(PAINTKIT.price))return;
+    S.charmsOwned._paint=true; sfx('buy'); save(); openCustomize(id);
+  });
+  $('sh2Body').querySelectorAll('[data-set-color]').forEach(el=>el.addEventListener('click',()=>{
+    f.potColor=el.dataset.setColor; save(); openCustomize(id);
+  }));
+}
+function openEncyclopedia(){
+  const html=SPECIES.map(sp=>{
+    const owned=S.plants.some(f=>f.sp===sp.id);
+    return `<div class="card" style="opacity:${owned?1:.45}">
+      <div class="art"><span class="emo">${owned?'🌿':'❔'}</span></div>
+      <div class="info"><div class="nm">${owned?esc(sp.n):'???'} <span class="rar r-${sp.r}">${RAR[sp.r]}</span></div>
+      <div class="sub">${owned?esc(sp.bio):'Not yet discovered.'}</div></div>
+    </div>`;
+  }).join('');
+  openModal('Plant Compendium',`<div class="sbody" style="padding:0;max-height:60vh;overflow-y:auto">${html}</div>`);
+}
+
+/* ---------------- Minigames (3, daily) ---------------- */
+function dayNum(t){const d=new Date(t); return d.getFullYear()*400+d.getMonth()*32+d.getDate();}
+
+function canPlaySunCatch(){return (S.lastSunCatch||0)!==dayNum(now());}
+function openSunCatch(){
+  if(!canPlaySunCatch()){toast('Come back tomorrow for another round','error');return;}
+  let score=0, timeLeft=12, running=true;
+  openModal('Sun Catch',`
+    <p style="opacity:.8;font-size:13px;margin-bottom:8px">Tap the sun drops before they fall! 12 seconds.</p>
+    <div style="position:relative;height:220px;background:rgba(255,255,255,.06);border-radius:14px;overflow:hidden" id="scArena"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:800"><span>Score: <span id="scScore">0</span></span><span id="scTime">12s</span></div>
+  `);
+  const arena=$('scArena');
+  const spawner=setInterval(()=>{
+    if(!running)return;
+    const d=document.createElement('div');
+    d.textContent='☀️'; d.style.position='absolute'; d.style.left=rnd(5,85)+'%'; d.style.top='-30px';
+    d.style.fontSize='26px'; d.style.transition='top 2.2s linear'; d.style.cursor='pointer';
+    arena.appendChild(d);
+    requestAnimationFrame(()=>{d.style.top='220px';});
+    d.addEventListener('click',()=>{ if(!running)return; score++; $('scScore').textContent=score; d.remove(); sfx('pop'); });
+    setTimeout(()=>d.remove(),2300);
+  },550);
+  const timer=setInterval(()=>{
+    timeLeft--; $('scTime').textContent=timeLeft+'s';
+    if(timeLeft<=0){
+      clearInterval(timer); clearInterval(spawner); running=false; activeGameCleanup=null;
+      const reward=score*15;
+      S.lastSunCatch=dayNum(now());
+      addCoins(reward,false); sfx('coin'); save(); checkAch();
+      openModal('Sun Catch',`<div class="reward"><div class="big">☀️</div><h3>Caught ${score}!</h3><div class="amt">🪙 +${fmt(reward)}</div><p>Come back tomorrow for another round.</p></div><button class="btn wide" id="scDone">Nice</button>`);
+      $('scDone').addEventListener('click',closeModal);
+    }
+  },1000);
+  activeGameCleanup=()=>{clearInterval(timer);clearInterval(spawner);running=false;};
+}
+
+function canPlayBugSquish(){return (S.lastBugSquish||0)!==dayNum(now());}
+function openBugSquish(){
+  if(!canPlayBugSquish()){toast('Come back tomorrow for another round','error');return;}
+  let score=0, timeLeft=12, running=true;
+  const cells=9;
+  openModal('Bug Squish',`
+    <p style="opacity:.8;font-size:13px;margin-bottom:8px">Tap the bugs before they scurry off! 12 seconds.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="bsGrid">
+      ${Array.from({length:cells}).map((_,i)=>`<div class="deco" data-cell="${i}" style="height:64px;display:flex;align-items:center;justify-content:center"></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:800"><span>Score: <span id="bsScore">0</span></span><span id="bsTime">12s</span></div>
+  `);
+  const cellsEl=[...document.querySelectorAll('[data-cell]')];
+  let activeCell=-1;
+  const pop=()=>{
+    if(activeCell>=0)cellsEl[activeCell].textContent='';
+    activeCell=Math.floor(Math.random()*cells);
+    cellsEl[activeCell].textContent=pick(['🐛','🪲','🦟']);
+  };
+  cellsEl.forEach((c,i)=>c.addEventListener('click',()=>{
+    if(!running||i!==activeCell||!c.textContent)return;
+    score++; $('bsScore').textContent=score; c.textContent=''; activeCell=-1; sfx('pop');
+  }));
+  const spawner=setInterval(()=>{ if(running)pop(); },700);
+  const timer=setInterval(()=>{
+    timeLeft--; $('bsTime').textContent=timeLeft+'s';
+    if(timeLeft<=0){
+      clearInterval(timer); clearInterval(spawner); running=false; activeGameCleanup=null;
+      const reward=score*15;
+      S.lastBugSquish=dayNum(now());
+      addCoins(reward,false); S.tidy=clamp(S.tidy+score*1.5,0,100); sfx('coin'); save(); checkAch();
+      openModal('Bug Squish',`<div class="reward"><div class="big">🐞</div><h3>Squished ${score}!</h3><div class="amt">🪙 +${fmt(reward)}</div><p>Tidy boosted too. Come back tomorrow.</p></div><button class="btn wide" id="bsDone">Nice</button>`);
+      $('bsDone').addEventListener('click',closeModal);
+    }
+  },1000);
+  activeGameCleanup=()=>{clearInterval(timer);clearInterval(spawner);running=false;};
+}
+
+function canPlaySeedMatch(){return (S.lastSeedMatch||0)!==dayNum(now());}
+function openSeedMatch(){
+  if(!canPlaySeedMatch()){toast('Come back tomorrow for another round','error');return;}
+  const icons=['🌱','🌻','🍀','🌵','🍄','🌿'];
+  const deck=[...icons,...icons].sort(()=>Math.random()-.5);
+  let first=null, lock=false, matched=0, moves=0;
+  openModal('Seed Match',`
+    <p style="opacity:.8;font-size:13px;margin-bottom:8px">Find all the matching seed pairs.</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="smGrid">
+      ${deck.map((_,i)=>`<div class="deco" data-card="${i}" style="height:56px;display:flex;align-items:center;justify-content:center;font-size:22px">❔</div>`).join('')}
+    </div>
+    <div style="margin-top:8px;font-weight:800">Moves: <span id="smMoves">0</span></div>
+  `);
+  const cards=[...document.querySelectorAll('[data-card]')];
+  cards.forEach((c,i)=>c.addEventListener('click',()=>{
+    if(lock||c.dataset.done||c===first)return;
+    c.textContent=deck[i]; sfx('tap');
+    if(!first){first=c; first._idx=i; return;}
+    moves++; $('smMoves').textContent=moves;
+    if(deck[first._idx]===deck[i]){
+      c.dataset.done='1'; first.dataset.done='1'; matched++; first=null; sfx('pop');
+      if(matched===icons.length){
+        lock=true;
+        const reward=Math.max(40,220-moves*8);
+        S.lastSeedMatch=dayNum(now());
+        addCoins(reward,false); sfx('coin'); save(); checkAch();
+        setTimeout(()=>openModal('Seed Match',`<div class="reward"><div class="big">🌻</div><h3>Solved in ${moves} moves!</h3><div class="amt">🪙 +${fmt(reward)}</div><p>Come back tomorrow for another round.</p></div><button class="btn wide" id="smDone">Nice</button>`),400);
+        setTimeout(()=>{const b=$('smDone'); if(b)b.addEventListener('click',closeModal);},450);
+      }
+    }else{
+      lock=true;
+      setTimeout(()=>{ c.textContent='❔'; first.textContent='❔'; first=null; lock=false; },600);
+    }
+  }));
+}
+function openMinigames(){
+  openModal('Garden Games',`
+    <div class="row" data-mg="sun"><div><div class="l">☀️ Sun Catch</div><div class="d">Reflex tapping · daily</div></div><div class="mini ${canPlaySunCatch()?'good':'warn'}">${canPlaySunCatch()?'Ready':'Done today'}</div></div>
+    <div class="row" data-mg="bug"><div><div class="l">🐞 Bug Squish</div><div class="d">Whack-a-mole · daily</div></div><div class="mini ${canPlayBugSquish()?'good':'warn'}">${canPlayBugSquish()?'Ready':'Done today'}</div></div>
+    <div class="row" data-mg="seed"><div><div class="l">🌻 Seed Match</div><div class="d">Memory pairs · daily</div></div><div class="mini ${canPlaySeedMatch()?'good':'warn'}">${canPlaySeedMatch()?'Ready':'Done today'}</div></div>
+  `);
+  $('sh2Body').querySelectorAll('[data-mg]').forEach(r=>r.addEventListener('click',()=>{
+    const k=r.dataset.mg;
+    if(k==='sun')openSunCatch(); else if(k==='bug')openBugSquish(); else openSeedMatch();
+  }));
+}
+
+/* ---------------- Menu / settings / achievements / slots ---------------- */
+function buildStatsCard(){
+  return `<div class="stats">
+    <div class="st"><div class="v">${fmt(S.totalCoins)}</div><div class="k">Lifetime coins</div></div>
+    <div class="st"><div class="v">${S.plants.length}</div><div class="k">Plants</div></div>
+    <div class="st"><div class="v">${speciesOwnedCount()}/${SPECIES.length}</div><div class="k">Species found</div></div>
+    <div class="st"><div class="v">${S.streak}</div><div class="k">Day streak</div></div>
+  </div>`;
+}
+function openAch(){
+  const html=ACHS.map(a=>{
+    const got=has(a.id);
+    return `<div class="ach ${got?'got':'locked'}"><div class="ai">${a.e}</div>
+      <div style="flex:1"><div class="an">${esc(a.n)}</div><div class="ad">${esc(a.d)}</div></div>
+      <div class="ac">${got?'✅':'🔒'}</div></div>`;
+  }).join('');
+  const count=ACHS.filter(a=>has(a.id)).length;
+  openModal('Achievements ('+count+'/'+ACHS.length+')',`<div class="sbody" style="padding:0;max-height:60vh;overflow-y:auto">${html}</div>`);
+}
+function openSettings(){
+  openModal('Settings',`
+    ${buildStatsCard()}
+    <div class="row"><div><div class="l">Sound effects</div></div><button class="sw ${S.sound?'on':''}" id="swSound"></button></div>
+    <div class="row"><div><div class="l">Ambient music</div></div><button class="sw ${S.music?'on':''}" id="swMusic"></button></div>
+    <button class="btn wide" id="openEncy">📖 Plant Compendium</button>
+    <button class="btn wide ghost" id="openAchBtn" style="margin-top:8px">🏆 Achievements</button>
+    <button class="btn wide ghost" id="openSlotsBtn" style="margin-top:8px">💾 Save slots</button>
+    <button class="btn wide ghost" id="exportBtn" style="margin-top:8px">⬆️ Export save</button>
+    <button class="btn wide ghost" id="importBtn" style="margin-top:8px">⬇️ Import save</button>
+    <button class="btn wide" id="resetBtn" style="margin-top:14px;background:rgba(255,107,107,.3);color:#fff">Reset this terrarium</button>
+  `);
+  $('swSound').addEventListener('click',()=>{S.sound=!S.sound; if(A.sfxGain)A.sfxGain.gain.value=S.sound?.5:0; save(); openSettings();});
+  $('swMusic').addEventListener('click',()=>{S.music=!S.music; if(A.musicGain)A.musicGain.gain.value=S.music?.25:0; if(S.music)musicSync(); else musicStop(); save(); openSettings();});
+  $('openEncy').addEventListener('click',openEncyclopedia);
+  $('openAchBtn').addEventListener('click',openAch);
+  $('openSlotsBtn').addEventListener('click',openSaveSlots);
+  $('exportBtn').addEventListener('click',exportSave);
+  $('importBtn').addEventListener('click',importSave);
+  $('resetBtn').addEventListener('click',()=>{
+    if(!confirm("This wipes this terrarium's progress. Are you sure?"))return;
+    const id=getActiveSlot();
+    S=fresh(); S.onboarded=false;
+    if(id){try{localStorage.setItem(slotKey(id),JSON.stringify(S));}catch(e){} updateSlotMeta(id);}
+    closeModal(); location.reload();
+  });
+}
+function openMenu(){
+  openModal('Menu',`
+    <button class="btn wide" id="mMarket">🛒 Market</button>
+    <button class="btn wide" id="mGarden" style="margin-top:8px">🌿 Garden</button>
+    <button class="btn wide" id="mGames" style="margin-top:8px">🎮 Garden Games</button>
+    <button class="btn wide ghost" id="mSettings" style="margin-top:8px">⚙️ Settings</button>
+  `);
+  $('mMarket').addEventListener('click',()=>{closeModal();openShop();});
+  $('mGarden').addEventListener('click',()=>{closeModal();openGarden();});
+  $('mGames').addEventListener('click',()=>{closeModal();openMinigames();});
+  $('mSettings').addEventListener('click',()=>{closeModal();openSettings();});
+}
+function openSaveSlots(){
+  const slots=loadSlots(); const active=getActiveSlot();
+  const html=slots.map(s=>`<div class="row"><div><div class="l">${esc(s.name)} ${s.id===active?'<span class="mini good">Active</span>':''}</div>
+    <div class="d">${s.plantCount||0} plants · 🪙${fmt(s.coins||0)} · ${s.difficulty||'normal'}</div></div>
+    <div style="display:flex;gap:6px">${s.id!==active?`<button class="btn btn-sm" data-switch="${s.id}">Play</button>`:''}${slots.length>1?`<button class="btn btn-sm ghost" data-del="${s.id}" style="background:rgba(255,107,107,.25)">Del</button>`:''}</div>
+  </div>`).join('');
+  openModal('Save slots',`${html}<button class="btn wide" id="newSlotBtn" style="margin-top:10px">+ New terrarium</button>`);
+  $('sh2Body').querySelectorAll('[data-switch]').forEach(b=>b.addEventListener('click',()=>switchSlot(b.dataset.switch)));
+  $('sh2Body').querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>confirmDeleteSlot(b.dataset.del)));
+  $('newSlotBtn').addEventListener('click',openNewSlotPicker);
+}
+function switchSlot(id){ setActiveSlot(id); closeModal(); location.reload(); }
+function openNewSlotPicker(){
+  openModal('New terrarium',`<input type="text" id="newSlotName" placeholder="Your name" maxlength="18"><button class="btn wide" id="newSlotGo" style="margin-top:10px">Start</button>`);
+  $('newSlotGo').addEventListener('click',()=>{
+    const name=$('newSlotName').value.trim()||'Plant Parent';
+    const id='s'+Date.now();
+    const fr=fresh(); fr.name=name; fr.onboarded=false;
+    try{localStorage.setItem(slotKey(id),JSON.stringify(fr));}catch(e){}
+    setActiveSlot(id); updateSlotMeta(id); closeModal(); location.reload();
+  });
+}
+function confirmDeleteSlot(id){
+  if(!confirm('Delete this terrarium forever?'))return;
+  try{localStorage.removeItem(slotKey(id));}catch(e){}
+  const slots=loadSlots().filter(s=>s.id!==id); saveSlots(slots);
+  if(getActiveSlot()===id)setActiveSlot(slots[0]?slots[0].id:null);
+  closeModal(); if(slots.length)openSaveSlots(); else location.reload();
+}
+function exportSave(){
+  const data=JSON.stringify(S);
+  openModal('Export save',`<p style="opacity:.75;font-size:12.5px;margin-bottom:8px">Copy this text somewhere safe.</p><textarea readonly style="width:100%;height:140px;background:rgba(0,0,0,.3);color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px">${esc(data)}</textarea>`);
+}
+function importSave(){
+  openModal('Import save',`<textarea id="importArea" style="width:100%;height:140px;background:rgba(0,0,0,.3);color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px" placeholder="Paste save text here"></textarea><button class="btn wide" id="importGo" style="margin-top:10px">Import</button>`);
+  $('importGo').addEventListener('click',()=>{
+    try{
+      const d=JSON.parse($('importArea').value);
+      const id=getActiveSlot()||('s'+Date.now());
+      setActiveSlot(id);
+      localStorage.setItem(slotKey(id),JSON.stringify(d));
+      updateSlotMeta(id);
+      closeModal(); location.reload();
+    }catch(e){ toast("That didn't look like a valid save",'error'); }
+  });
+}
+
+/* ---------------- Onboarding / daily / season ---------------- */
+const ONBOARD=[
+  {t:'Welcome to Mossling',b:'A tiny terrarium, yours to tend. Water it, keep it tidy, and watch it grow.'},
+  {t:'💧 Water',b:'Tap WATER, then tap or drag across your plants to keep them hydrated.'},
+  {t:'✂️ Prune',b:'Mess builds up over time — tap PRUNE to tidy weeds and squish the odd bug.'},
+  {t:'🌿 Mist for coins',b:'With no tool armed, tap any plant directly to mist it for a little bonus.'},
+];
+function runOnboarding(i){
+  if(i>=ONBOARD.length){ S.onboarded=true; save(); checkDaily(); checkSeason(); return; }
+  const step=ONBOARD[i];
+  openModal(step.t,`<p style="opacity:.85;font-size:14px;line-height:1.6">${step.b}</p><button class="btn wide" id="obNext" style="margin-top:14px">${i===ONBOARD.length-1?"Let's grow":'Next'}</button>`);
+  $('obNext').addEventListener('click',()=>{closeModal(); runOnboarding(i+1);});
+}
+function showWelcomeBack(){
+  if(!awaySummary||awaySummary.total<=0){awaySummary=null;return;}
+  const hrs=awaySummary.mins/60;
+  const timeStr=hrs>=1?Math.round(hrs)+'h':Math.round(awaySummary.mins)+'m';
+  openModal('Welcome back!',`
+    <div class="reward">
+      <div class="big">🌿</div>
+      <h3>Your garden grew!</h3>
+      <p>While you were away for ${timeStr}, your plants kept working.</p>
+      <div class="amt">🪙 +${fmt(awaySummary.total)}</div>
+      ${awaySummary.topName?`<p style="margin-top:6px">${esc(awaySummary.topName)} the ${esc(awaySummary.topSp)} earned the most.</p>`:''}
+    </div>
+    <button class="btn wide" id="wbDone">Nice</button>
+  `);
+  $('wbDone').addEventListener('click',closeModal);
+  awaySummary=null;
+}
+function checkDaily(){
+  const d=dayNum(now());
+  const lastDay=S.lastLogin?dayNum(S.lastLogin):0;
+  if(lastDay===d)return;
+  const streakAlive=lastDay===(d-1);
+  S.streak=streakAlive?S.streak+1:1;
+  S.lastLogin=now();
+  const reward=20+Math.min(300,S.streak*15);
+  setTimeout(()=>{
+    openModal('Daily bonus',`
+      <div class="reward"><div class="big">📅</div><h3>Day ${S.streak}</h3>
+      <div class="amt">🪙 +${fmt(reward)}</div>
+      <div class="streak">${Array.from({length:7}).map((_,i)=>`<i class="${(S.streak-1)%7>=i?'on':''}">${i+1}</i>`).join('')}</div>
+      </div><button class="btn wide" id="dailyDone">Thanks</button>
+    `);
+    addCoins(reward,false); sfx('coin'); checkAch(); save();
+    $('dailyDone').addEventListener('click',closeModal);
+  },awaySummary?900:200);
+}
+function checkSeason(){
+  const s=seasonNow();
+  S.seasonsSeen[s]=true;
+  if(S.seasonSeen!==s){
+    S.seasonSeen=s;
+    toast(SEASONS[s].emo+' '+SEASONS[s].name+' has arrived');
+    musicSync();
+  }
+  checkAch(); save();
+}
+
+/* ---------------- Boot ---------------- */
+let S=null;
+function proceedIntoGame(){
+  $('splash').classList.add('gone');
+  audioInit(); audioResume(); musicSync();
+  refreshHUD(); refreshBoosts();
+  if(!S.onboarded){
+    runOnboarding(0);
+  }else{
+    if(awaySummary)showWelcomeBack();
+    checkDaily(); checkSeason();
+  }
+}
+function startNewSlot(diffId,name){
+  const id='s'+Date.now();
+  const fr=fresh(); fr.name=name||'Plant Parent'; fr.difficulty=diffId; fr.onboarded=false;
+  try{localStorage.setItem(slotKey(id),JSON.stringify(fr));}catch(e){}
+  setActiveSlot(id); updateSlotMeta(id);
+  S=load(); layoutPlants();
+}
+function renderDifficultyPicker(){
+  openModal('Choose your pace',`
+    ${DIFFICULTIES.map(d=>`<div class="row" data-diff="${d.id}" style="cursor:pointer"><div><div class="l">${esc(d.n)}</div><div class="d">${esc(d.d)}</div></div><div class="mini">Pick</div></div>`).join('')}
+    <input type="text" id="startName" placeholder="Your name (optional)" style="margin-top:10px">
+  `);
+  $('sh2Body').querySelectorAll('[data-diff]').forEach(r=>r.addEventListener('click',()=>{
+    const name=$('startName').value.trim();
+    startNewSlot(r.dataset.diff,name);
+    closeModal();
+    proceedIntoGame();
+  }));
+}
+function boot(){
+  const activeId=ensureSlots();
+  S=activeId?load():fresh();
+  resize();
+  refreshHUD();
+  $('splash').addEventListener('click',function go(){
+    $('splash').removeEventListener('click',go);
+    $('splash').classList.add('gone');
+    if(!activeId){ renderDifficultyPicker(); }
+    else{ proceedIntoGame(); }
+  },{once:true});
+
+  $('coinChip').addEventListener('click',openShop);
+  $('plantChip').addEventListener('click',openGarden);
+  $('muteBtn').addEventListener('click',()=>{
+    S.sound=!S.sound; S.music=!S.sound?false:S.music;
+    if(A.sfxGain)A.sfxGain.gain.value=S.sound?.5:0;
+    if(A.musicGain)A.musicGain.gain.value=(S.sound&&S.music)?.25:0;
+    $('muteBtn').textContent=S.sound?'🔊':'🔇';
+    if(!S.sound)musicStop(); else musicSync();
+    save();
+  });
+  $('menuBtn').addEventListener('click',openMenu);
+  $('tWater').addEventListener('click',()=>{
+    if(waterCount()<=1&&!currentWater()){ openWaterPicker(); return; }
+    if(armed!=='water'){ if(waterCount()>1)openWaterPicker(); }
+    setArmed('water');
+  });
+  $('tWater').addEventListener('dblclick',openWaterPicker);
+  $('tPrune').addEventListener('click',()=>setArmed('prune'));
+  $('tShop').addEventListener('click',()=>openShop());
+  $('tGarden').addEventListener('click',()=>openGarden());
+
+  initFx();
+  let last=performance.now();
+  function loop(t){
+    const dt=Math.min(0.1,(t-last)/1000); last=t;
+    tickWorld();
+    maybeSpawnPest();
+    stepDrops(); stepBlooms(dt);
+    bg(t);
+    layoutDeco().forEach(d=>decoDraw(d,t));
+    ents.slice().sort((a,b)=>a.y-b.y).forEach(e=>drawPlant(e,t));
+    drawPests(t);
+    drawDrops();
+    drawBlooms(t);
+    if(Math.random()<0.02)refreshHUD();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  setInterval(()=>{ if(!$('splash').classList.contains('gone'))return; refreshHUD(); refreshBoosts(); },1000);
+}
+boot();
+</script>
+</body>
+</html>

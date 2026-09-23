@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0B0D14">
+<title>Stained Glass Maker</title>
+<style>
+:root{
+  --bg:#0B0D14; --bg2:#141824; --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.11);
+  --text:#EAEEF7; --muted:#93A0B8; --accent:#E0B15C;
+  --radius:16px;
+  --font-display:'Avenir Next','Segoe UI',system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--font-body);color:var(--text);
+  background:linear-gradient(170deg,var(--bg2),var(--bg));
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+#app{height:100dvh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.brand{font-family:var(--font-display);font-weight:800;font-size:18px}
+.brand span{display:block;font-family:var(--font-body);font-weight:400;font-size:10.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.spacer{flex:1}
+.iconbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:16px;background:var(--panel);border:1px solid var(--line);transition:transform .15s,background .2s}
+.iconbtn:hover{background:rgba(255,255,255,.13)}
+.iconbtn:active{transform:scale(.9)}
+
+.stage{flex:1;display:grid;place-items:center;padding:8px;min-height:0}
+.wrap{position:relative;aspect-ratio:1;width:100%;max-width:min(100%,calc(100dvh - 246px));max-height:100%}
+canvas{
+  position:absolute;inset:0;width:100%;height:100%;display:block;
+  border-radius:8px;touch-action:none;cursor:pointer;
+  box-shadow:0 20px 56px rgba(0,0,0,.62),0 0 0 1px rgba(255,255,255,.07);
+}
+
+.controls{padding:8px 16px calc(14px + env(safe-area-inset-bottom));display:grid;gap:10px;max-width:640px;width:100%;margin:0 auto}
+.swatches{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.sw{width:32px;height:32px;border-radius:8px;border:2px solid transparent;transition:transform .15s,border-color .2s;box-shadow:inset 0 2px 6px rgba(255,255,255,.25)}
+.sw:hover{transform:scale(1.1)}
+.sw.on{border-color:#fff;transform:scale(1.14)}
+.sw.clear{background:repeating-linear-gradient(45deg,rgba(255,255,255,.16) 0 5px,rgba(255,255,255,.05) 5px 10px)}
+
+.row{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap}
+.label{font-size:11.5px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+input[type=range]{flex:1;min-width:120px;height:28px;-webkit-appearance:none;appearance:none;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:99px;background:rgba(255,255,255,.15)}
+input[type=range]::-moz-range-track{height:5px;border-radius:99px;background:rgba(255,255,255,.15)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;margin-top:-7.5px;background:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-radius:50%;background:var(--accent)}
+
+.btn{padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;background:var(--panel);border:1px solid var(--line);transition:background .2s,transform .15s}
+.btn:hover{background:rgba(255,255,255,.13)}
+.btn:active{transform:scale(.95)}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#C08A34);color:#1C1408;border-color:transparent;font-weight:700}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{padding:9px 15px;font-size:13px;font-weight:600;transition:background .2s}
+.seg button.on{background:var(--accent);color:#1C1408}
+
+.toast{
+  position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-12px);
+  background:rgba(18,22,32,.97);border:1px solid var(--line);padding:11px 20px;border-radius:999px;
+  font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-height:740px){ .wrap{max-width:min(100%,calc(100dvh - 224px))} .brand span{display:none} }
+@media (prefers-reduced-motion:reduce){ .btn,.iconbtn,.sw{transition:none} }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">Stained Glass<span>Maker</span></div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnUndo" aria-label="Undo" title="Undo">&#8630;</button>
+    <button class="iconbtn" id="btnFill" aria-label="Fill all at random" title="Fill at random">&#127912;</button>
+  </div>
+
+  <div class="stage">
+    <div class="wrap"><canvas id="glass"></canvas></div>
+  </div>
+
+  <div class="controls">
+    <div class="swatches" id="swatches"></div>
+    <div class="row">
+      <span class="label">Light</span>
+      <input type="range" id="light" min="10" max="100" value="72" aria-label="Light behind the glass">
+      <div class="seg" id="patterns"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnNew">New pattern</button>
+      <button class="btn" id="btnClear">Clear glass</button>
+      <button class="btn primary" id="btnSave">Save PNG</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Stained Glass Maker
+
+   Every pattern is a list of polygons, whatever generated them, and one
+   point-in-polygon test handles taps for all of them. That is the whole
+   architecture — adding a new window shape means writing a generator
+   that returns polygons, and nothing else changes.
+
+   The "light shining through" is real compositing rather than a picture
+   of it: a warm radial source is painted first, each piece of glass goes
+   over it with alpha so the source shows through the colour, and the
+   lead comes last on top. Turn the light down and the colours go muddy
+   and deep, exactly as glass does at dusk.
+   ===================================================================== */
+
+var TAU = Math.PI * 2;
+var STORE = 'stainedglass.v1';
+
+var GLASS = [
+  { name:'Ruby',    c:'#D2323C' }, { name:'Amber',   c:'#E8912B' },
+  { name:'Gold',    c:'#F0C33C' }, { name:'Emerald', c:'#2E9E63' },
+  { name:'Teal',    c:'#1F9BA6' }, { name:'Sapphire',c:'#2C5BC4' },
+  { name:'Violet',  c:'#7B4BC4' }, { name:'Rose',    c:'#D45C93' },
+  { name:'Ivory',   c:'#EDE3CE' }, { name:'Slate',   c:'#43506B' }
+];
+var PATTERNS = ['Rose', 'Lattice', 'Fan'];
+
+var cv = document.getElementById('glass');
+var g = cv.getContext('2d');
+var DPR = 1, S = 0;
+var regions = [];            // { pts:[[x,y]...] in 0..1 space, fill:index|null }
+var current = 0;
+var lightLevel = .72;
+var patternIdx = 0;
+var undoStack = [];
+
+/* ---------- pattern generators ----------
+   All work in a 0..1 square so a resize never regenerates the window;
+   the same polygons just get multiplied by the new size. */
+
+function genRose(){
+  var out = [];
+  var cx = .5, cy = .5;
+  var rings = 5;
+  var maxR = .48;
+  // Centre boss.
+  out.push({ pts:circlePts(cx, cy, maxR * .13, 24), fill:null });
+  for (var i = 0; i < rings; i++) {
+    var r0 = maxR * (.13 + .87 * (i / rings));
+    var r1 = maxR * (.13 + .87 * ((i + 1) / rings));
+    // More wedges further out, so the pieces stay roughly equal in area
+    // instead of becoming long thin slivers at the rim.
+    var wedges = 8 + i * 4;
+    for (var w = 0; w < wedges; w++) {
+      var a0 = (w / wedges) * TAU, a1 = ((w + 1) / wedges) * TAU;
+      out.push({ pts:ringSegment(cx, cy, r0, r1, a0, a1), fill:null });
+    }
+  }
+  return out;
+}
+function circlePts(cx, cy, r, n){
+  var p = [];
+  for (var i = 0; i < n; i++) { var a = (i / n) * TAU; p.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+  return p;
+}
+function ringSegment(cx, cy, r0, r1, a0, a1){
+  var p = [], steps = 6, i, a;
+  for (i = 0; i <= steps; i++) { a = a0 + (a1 - a0) * (i / steps); p.push([cx + Math.cos(a) * r0, cy + Math.sin(a) * r0]); }
+  for (i = steps; i >= 0; i--) { a = a0 + (a1 - a0) * (i / steps); p.push([cx + Math.cos(a) * r1, cy + Math.sin(a) * r1]); }
+  return p;
+}
+
+function genLattice(){
+  // Recursive subdivision, then some quads cut corner to corner. Stopping
+  // on area rather than depth keeps the pieces a similar size whatever
+  // the split points happen to be.
+  var out = [];
+  function split(x, y, w, h, depth){
+    if (depth > 5 || w * h < .012 || (depth > 2 && Math.random() < .28)) {
+      if (Math.random() < .35) {
+        // Cut this pane into two triangles.
+        if (Math.random() < .5) {
+          out.push({ pts:[[x,y],[x+w,y],[x+w,y+h]], fill:null });
+          out.push({ pts:[[x,y],[x+w,y+h],[x,y+h]], fill:null });
+        } else {
+          out.push({ pts:[[x,y],[x+w,y],[x,y+h]], fill:null });
+          out.push({ pts:[[x+w,y],[x+w,y+h],[x,y+h]], fill:null });
+        }
+      } else {
+        out.push({ pts:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]], fill:null });
+      }
+      return;
+    }
+    var vertical = w > h ? true : (h > w ? false : Math.random() < .5);
+    var t = .35 + Math.random() * .3;
+    if (vertical) { split(x, y, w * t, h, depth + 1); split(x + w * t, y, w * (1 - t), h, depth + 1); }
+    else { split(x, y, w, h * t, depth + 1); split(x, y + h * t, w, h * (1 - t), depth + 1); }
+  }
+  split(.03, .03, .94, .94, 0);
+  return out;
+}
+
+function genFan(){
+  // A rising fan: wedges from a point below the panel, crossed by arcs.
+  var out = [];
+  var cx = .5, cy = 1.06;
+  var bands = 6, wedges = 11;
+  for (var b = 0; b < bands; b++) {
+    var r0 = .18 + (b / bands) * .9;
+    var r1 = .18 + ((b + 1) / bands) * .9;
+    for (var w = 0; w < wedges; w++) {
+      var a0 = Math.PI + (w / wedges) * Math.PI;
+      var a1 = Math.PI + ((w + 1) / wedges) * Math.PI;
+      var seg = ringSegment(cx, cy, r0, r1, a0, a1);
+      // Anything entirely off the panel is not worth keeping.
+      var inside = seg.some(function(p){ return p[0] > -.05 && p[0] < 1.05 && p[1] > -.05 && p[1] < 1.05; });
+      if (inside) out.push({ pts:seg, fill:null });
+    }
+  }
+  return out;
+}
+
+function generate(keepFills){
+  var old = regions;
+  regions = patternIdx === 0 ? genRose() : patternIdx === 1 ? genLattice() : genFan();
+  if (keepFills && old.length) {
+    for (var i = 0; i < regions.length && i < old.length; i++) regions[i].fill = old[i].fill;
+  }
+}
+
+/* ---------- hit testing ---------- */
+function pointInPoly(x, y, pts){
+  var inside = false;
+  for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    var xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+/* ---------- rendering ---------- */
+function resize(){
+  var rect = cv.getBoundingClientRect();
+  S = Math.max(1, Math.round(Math.min(rect.width, rect.height)));
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(S * DPR); cv.height = Math.round(S * DPR);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  draw();
+}
+window.addEventListener('resize', function(){ setTimeout(resize, 60); }, { passive:true });
+
+function render(ctx, size){
+  // 1. The light behind the window.
+  ctx.fillStyle = '#05070C';
+  ctx.fillRect(0, 0, size, size);
+  var lx = size * .42, ly = size * .34;
+  var sun = ctx.createRadialGradient(lx, ly, 0, lx, ly, size * 1.05);
+  var L = lightLevel;
+  sun.addColorStop(0, 'rgba(255,246,222,' + (.95 * L) + ')');
+  sun.addColorStop(.32, 'rgba(255,225,170,' + (.55 * L) + ')');
+  sun.addColorStop(.7, 'rgba(190,170,140,' + (.18 * L) + ')');
+  sun.addColorStop(1, 'rgba(40,44,60,0)');
+  ctx.fillStyle = sun;
+  ctx.fillRect(0, 0, size, size);
+
+  // 2. The glass. Alpha, so the light above is what gives each piece its
+  //    colour — a piece far from the source really is darker.
+  for (var i = 0; i < regions.length; i++) {
+    var r = regions[i];
+    ctx.beginPath();
+    tracePoly(ctx, r.pts, size);
+    if (r.fill == null) {
+      // Clear glass still catches a little light.
+      ctx.globalAlpha = .10;
+      ctx.fillStyle = '#DDE8F5';
+    } else {
+      ctx.globalAlpha = .82;
+      ctx.fillStyle = GLASS[r.fill].c;
+    }
+    ctx.fill();
+
+    // A highlight along the upper edge, so each piece reads as a solid
+    // object with thickness rather than as a flat painted shape.
+    ctx.globalAlpha = .12;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(1, size / 420);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // 3. The lead: dark, drawn last, over everything.
+  ctx.strokeStyle = 'rgba(10,10,16,.92)';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(1.5, size / 190);
+  for (var k = 0; k < regions.length; k++) {
+    ctx.beginPath();
+    tracePoly(ctx, regions[k].pts, size);
+    ctx.stroke();
+  }
+
+  // 4. Frame.
+  ctx.strokeStyle = 'rgba(8,8,12,.95)';
+  ctx.lineWidth = Math.max(4, size / 60);
+  ctx.strokeRect(0, 0, size, size);
+}
+function tracePoly(ctx, pts, size){
+  ctx.moveTo(pts[0][0] * size, pts[0][1] * size);
+  for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * size, pts[i][1] * size);
+  ctx.closePath();
+}
+function draw(){ render(g, S); }
+
+/* ---------- interaction ---------- */
+function push(){
+  undoStack.push(regions.map(function(r){ return r.fill; }));
+  if (undoStack.length > 40) undoStack.shift();
+}
+cv.addEventListener('pointerdown', function(e){
+  var rect = cv.getBoundingClientRect();
+  var x = (e.clientX - rect.left) / rect.width;
+  var y = (e.clientY - rect.top) / rect.height;
+  // Last match wins: later regions are painted on top, so that is the one
+  // a tap should land on where two overlap.
+  var hit = -1;
+  for (var i = 0; i < regions.length; i++) if (pointInPoly(x, y, regions[i].pts)) hit = i;
+  if (hit < 0) return;
+  push();
+  regions[hit].fill = (regions[hit].fill === current) ? null : current;
+  draw(); save();
+  e.preventDefault();
+});
+
+/* ---------- controls ---------- */
+var swEl = document.getElementById('swatches');
+GLASS.forEach(function(gl, i){
+  var b = document.createElement('button');
+  b.className = 'sw' + (i === 0 ? ' on' : '');
+  b.style.background = gl.c;
+  b.title = gl.name;
+  b.setAttribute('aria-label', gl.name + ' glass');
+  b.addEventListener('click', function(){
+    current = i;
+    swEl.querySelectorAll('.sw').forEach(function(s){ s.classList.remove('on'); });
+    b.classList.add('on');
+  });
+  swEl.appendChild(b);
+});
+
+var patEl = document.getElementById('patterns');
+PATTERNS.forEach(function(p, i){
+  var b = document.createElement('button');
+  b.textContent = p;
+  b.className = i === patternIdx ? 'on' : '';
+  b.addEventListener('click', function(){
+    push(); patternIdx = i; generate(false);
+    patEl.querySelectorAll('button').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    draw(); save();
+  });
+  patEl.appendChild(b);
+});
+
+var lightIn = document.getElementById('light');
+lightIn.addEventListener('input', function(){ lightLevel = lightIn.value / 100; draw(); save(); });
+
+document.getElementById('btnNew').addEventListener('click', function(){
+  // Filled, not blank: a new pattern that arrives as a grey grid reads as
+  // 'nothing happened' rather than as a fresh window to work on.
+  push(); generate(false); randomFill(); draw(); save(); toast('New pattern');
+});
+document.getElementById('btnClear').addEventListener('click', function(){
+  push();
+  regions.forEach(function(r){ r.fill = null; });
+  draw(); save(); toast('Glass cleared');
+});
+document.getElementById('btnFill').addEventListener('click', function(){
+  push(); randomFill(); draw(); save();
+});
+// Weighted toward four colours rather than drawn uniformly from all ten: a
+// real window is cut from a chosen palette, and picking evenly across every
+// colour available just looks like confetti.
+function randomFill(){
+  var pick = [];
+  for (var i = 0; i < 4; i++) pick.push((Math.random() * GLASS.length) | 0);
+  regions.forEach(function(r){
+    r.fill = Math.random() < .1 ? null : pick[(Math.random() * pick.length) | 0];
+  });
+}
+document.getElementById('btnUndo').addEventListener('click', function(){
+  var s = undoStack.pop();
+  if (!s) { toast('Nothing to undo'); return; }
+  for (var i = 0; i < regions.length && i < s.length; i++) regions[i].fill = s[i];
+  draw(); save();
+});
+
+document.getElementById('btnSave').addEventListener('click', function(){
+  var out = document.createElement('canvas');
+  out.width = out.height = 1600;
+  render(out.getContext('2d'), 1600);
+  out.toBlob(function(blob){
+    if (!blob) { toast('Could not export'); return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'stained-glass-' + PATTERNS[patternIdx].toLowerCase() + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    toast('Saved as PNG');
+  }, 'image/png');
+});
+
+function save(){
+  try {
+    localStorage.setItem(STORE, JSON.stringify({
+      p:patternIdx, light:lightLevel, fills:regions.map(function(r){ return r.fill; })
+    }));
+  } catch (e) {}
+}
+function load(){
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (!s) return false;
+    patternIdx = s.p || 0;
+    lightLevel = typeof s.light === 'number' ? s.light : .72;
+    generate(false);
+    if (s.fills && s.fills.length === regions.length) {
+      for (var i = 0; i < regions.length; i++) regions[i].fill = s.fills[i];
+    }
+    lightIn.value = Math.round(lightLevel * 100);
+    patEl.querySelectorAll('button').forEach(function(b, i){ b.classList.toggle('on', i === patternIdx); });
+    return true;
+  } catch (e) { return false; }
+}
+
+var toastEl = document.getElementById('toast'), toastT = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ toastEl.classList.remove('show'); }, 1600);
+}
+
+if (!load()) {
+  // Open on a finished window rather than an empty grid — a blank one gives
+  // no clue that tapping is the whole interaction.
+  generate(false);
+  randomFill();
+}
+resize();
+setTimeout(resize, 120);
+})();
+</script>
+</body>
+</html>

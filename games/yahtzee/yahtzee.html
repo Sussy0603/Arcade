@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Yahtzee Dice</title>
+<style>
+:root{
+  --bg1:#2E7D5B; --bg2:#1B4A36;
+  --felt:#2F8B63;
+  --ink:#F5F2E8;
+  --panel:#25604A;
+  --die:#FDF8EC; --pip:#2B2B2B;
+  --hold:#FFC93C;
+  --accent:#FFB25C;
+  --shadow:0 6px 0 rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(170deg,var(--bg1),var(--bg2));
+  color:var(--ink);min-height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 10px 24px;user-select:none;-webkit-user-select:none;overflow-x:hidden;
+}
+header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+h1{font-size:clamp(20px,5.4vw,28px);}
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.btn:disabled{opacity:.35;cursor:default;transform:none;}
+.btn.small{padding:6px 10px;font-size:13px;}
+.btn.primary{background:linear-gradient(145deg,#FFB25C,#E8842B);color:#1B4A36;}
+.topbtns{display:flex;gap:6px;}
+.controls{width:100%;max-width:560px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;}
+.seg{display:flex;background:rgba(0,0,0,.25);border-radius:999px;padding:4px;gap:4px;}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 12px;opacity:.6;}
+.seg button.on{background:rgba(255,255,255,.16);opacity:1;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+#status{width:100%;max-width:560px;text-align:center;font-weight:800;font-size:clamp(14px,4.2vw,18px);
+  min-height:30px;margin:2px 0 6px;}
+#diceRow{display:flex;gap:10px;justify-content:center;margin:6px 0;}
+.die{
+  width:clamp(48px,13vw,64px);aspect-ratio:1;background:var(--die);border-radius:14px;border:none;cursor:pointer;
+  box-shadow:0 5px 0 rgba(0,0,0,.35);position:relative;transition:transform .12s;
+}
+.die:disabled{cursor:default;opacity:.75;}
+.die.held{transform:translateY(-8px);box-shadow:0 5px 0 rgba(0,0,0,.35),0 0 0 4px var(--hold);}
+.die svg{width:100%;height:100%;display:block;}
+.die .pip{fill:var(--pip);}
+.die.rolling{animation:jig .35s;}
+@keyframes jig{0%,100%{transform:rotate(0);}25%{transform:rotate(-9deg);}75%{transform:rotate(9deg);}}
+#rollRow{display:flex;gap:10px;justify-content:center;align-items:center;margin-bottom:8px;}
+#rollBtn{font-size:16px;padding:11px 26px;}
+#card{width:100%;max-width:560px;background:var(--panel);border-radius:18px;padding:10px;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;font-size:clamp(12px,3.4vw,14.5px);font-weight:700;}
+th,td{padding:5px 7px;text-align:center;}
+th{opacity:.75;font-size:.85em;letter-spacing:.5px;}
+tr{border-bottom:1px solid rgba(255,255,255,.08);}
+td.cat{text-align:left;opacity:.95;}
+td.sc{width:70px;}
+td.sc.open{color:var(--accent);cursor:pointer;background:rgba(255,178,92,.1);border-radius:8px;}
+td.sc.open:hover{background:rgba(255,178,92,.25);}
+td.sc.taken{opacity:.95;}
+td.sc.zero{opacity:.5;}
+tr.total td{font-size:1.1em;border-bottom:none;padding-top:8px;}
+tr.subtotal td{opacity:.8;}
+th.pcur, td.pcur{background:rgba(255,255,255,.07);}
+footer{margin-top:12px;font-size:12px;opacity:.4;font-weight:600;}
+#thinking{display:inline-block;animation:think 1s infinite;}
+@keyframes think{0%,100%{opacity:.3;}50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){#thinking,.die.rolling{animation:none;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎲 <span data-i18n="title">Yahtzee Dice</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seg" id="modeSeg">
+    <button data-mode="1p" class="on">🤖 <span data-i18n="vsBot">vs Bot</span></button>
+    <button data-mode="2p">👥 <span data-i18n="twoP">2 Players</span></button>
+  </div>
+  <div class="seg" id="diffSeg">
+    <button data-diff="easy" class="on" data-i18n="easy">Easy</button>
+    <button data-diff="medium" data-i18n="medium">Medium</button>
+    <button data-diff="hard" data-i18n="hard">Hard</button>
+  </div>
+  <button class="btn primary" id="newBtn" data-i18n="new">New Game</button>
+</div>
+
+<div id="status"></div>
+<div id="diceRow"></div>
+<div id="rollRow"><button class="btn primary" id="rollBtn"></button></div>
+<div id="card"></div>
+<footer>STeamWorkS · Yahtzee Dice</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Yahtzee Dice",vsBot:"vs Bot",twoP:"2 Players",easy:"Easy",medium:"Medium",hard:"Hard",new:"New Game",
+      you:"You",bot:"Bot",p1:"Player 1",p2:"Player 2",
+      roll:"Roll 🎲 ({n} left)",noRolls:"Pick a category",
+      turn:"{p} — roll the dice!",pick:"{p} — hold dice or pick a category",
+      botThink:"Bot is thinking",win:"{p} wins {a}–{b}! 🎉",tie:"It's a tie {a}–{b}!",
+      cats:["Aces","Twos","Threes","Fours","Fives","Sixes","3 of a Kind","4 of a Kind","Full House","Sm Straight","Lg Straight","YAHTZEE","Chance"],
+      upperSub:"Upper total",bonus:"Bonus (63+)",total:"TOTAL"},
+  fr:{title:"Yam des Dés",vsBot:"vs Robot",twoP:"2 Joueurs",easy:"Facile",medium:"Moyen",hard:"Difficile",new:"Nouvelle partie",
+      you:"Toi",bot:"Robot",p1:"Joueur 1",p2:"Joueur 2",
+      roll:"Lancer 🎲 ({n})",noRolls:"Choisis une case",
+      turn:"{p} — lance les dés !",pick:"{p} — garde des dés ou choisis une case",
+      botThink:"Le robot réfléchit",win:"{p} gagne {a}–{b} ! 🎉",tie:"Égalité {a}–{b} !",
+      cats:["As","Deux","Trois","Quatre","Cinq","Six","Brelan","Carré","Full","Petite suite","Grande suite","YAM","Chance"],
+      upperSub:"Total haut",bonus:"Bonus (63+)",total:"TOTAL"}
+};
+const SKEY="stws_yahtzee_v1";
+const NCATS=13;
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let mode=save.mode||"1p";
+let diff=save.diff||"easy";
+
+let dice,held,rollsLeft,cur,scores,over,busy=false,round;
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.mode=mode;save.diff=diff;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,t,dur,type,vol){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.setValueAtTime(f,c.currentTime+t);
+  g.gain.setValueAtTime(0,c.currentTime+t);
+  g.gain.linearRampToValueAtTime(vol||.13,c.currentTime+t+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+t+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start(c.currentTime+t);o.stop(c.currentTime+t+dur+.05);
+}
+const sRoll=()=>{for(let i=0;i<4;i++)tone(200+Math.random()*300,i*.05,.05,"square",.06);};
+const sHold=()=>tone(660,0,.07,"triangle",.12);
+const sScore=()=>{tone(523,0,.1);tone(784,.09,.16);};
+const sWin=()=>{[523,659,784,1047,1319].forEach((f,i)=>tone(f,i*.11,.15,"triangle",.13));};
+
+/* ============ scoring (pure) ============ */
+function counts(d){const c=[0,0,0,0,0,0,0];d.forEach(v=>c[v]++);return c;}
+function scoreCat(cat,d){
+  const c=counts(d),sum=d.reduce((a,b)=>a+b,0);
+  if(cat<6)return c[cat+1]*(cat+1);
+  switch(cat){
+    case 6:return Math.max(...c)>=3?sum:0;
+    case 7:return Math.max(...c)>=4?sum:0;
+    case 8:{const has3=c.some(x=>x===3),has2=c.some(x=>x===2);return (has3&&has2)||c.some(x=>x===5)?25:0;}
+    case 9:{const s=c.slice(1).map(x=>x>0?1:0).join("");return s.includes("1111")?30:0;}
+    case 10:{const s=c.slice(1).map(x=>x>0?1:0).join("");return s.includes("11111")?40:0;}
+    case 11:return Math.max(...c)>=5?50:0;
+    case 12:return sum;
+  }
+  return 0;
+}
+function upperTotal(sc){let t=0;for(let i=0;i<6;i++)if(sc[i]!=null)t+=sc[i];return t;}
+function grandTotal(sc){
+  let t=0;for(let i=0;i<NCATS;i++)if(sc[i]!=null)t+=sc[i];
+  if(upperTotal(sc)>=63)t+=35;
+  return t;
+}
+
+/* ============ bot (expected value via Monte Carlo) ============ */
+function bestOpenScore(d,sc){
+  let best=-1,bi=-1;
+  for(let i=0;i<NCATS;i++)if(sc[i]==null){
+    const v=scoreCat(i,d);
+    if(v>best){best=v;bi=i;}
+  }
+  return {cat:bi,score:best};
+}
+function pickCategory(d,sc){
+  /* value = raw + upper-bonus shaping − sacrifice regret */
+  let best=-1e9,bi=-1;
+  for(let i=0;i<NCATS;i++)if(sc[i]==null){
+    const raw=scoreCat(i,d);
+    let v=raw;
+    if(i<6)v+=(raw-(i+1)*3)*0.4;                 // reward pacing toward the 63 bonus
+    if(raw===0){
+      const regret=[1,2,3,5,7,9,10,14,12,10,16,20,8][i]; // how painful a zero is
+      v-=regret;
+    }
+    if(v>best){best=v;bi=i;}
+  }
+  return bi;
+}
+function mcHoldValue(d,mask,sc,samples){
+  let tot=0;
+  const heldVals=[];
+  for(let i=0;i<5;i++)if(mask&(1<<i))heldVals.push(d[i]);
+  const free=5-heldVals.length;
+  for(let s=0;s<samples;s++){
+    const nd=heldVals.slice();
+    for(let k=0;k<free;k++)nd.push(1+Math.floor(Math.random()*6));
+    tot+=bestOpenScore(nd,sc).score;
+  }
+  return tot/samples;
+}
+function chooseHold(d,sc,difficulty){
+  if(difficulty==="easy"){
+    if(Math.random()<.3)return Math.floor(Math.random()*32);
+    const c=counts(d);let face=1;
+    for(let f=1;f<=6;f++)if(c[f]>=c[face])face=f;
+    let m=0;for(let i=0;i<5;i++)if(d[i]===face)m|=1<<i;
+    return m;
+  }
+  const samples=difficulty==="medium"?70:160;
+  let best=-1,bm=31;
+  for(let m=0;m<32;m++){
+    const v=mcHoldValue(d,m,sc,samples);
+    if(v>best){best=v;bm=m;}
+  }
+  return bm;
+}
+
+/* ============ flow ============ */
+function newGame(){
+  scores={1:Array(NCATS).fill(null),2:Array(NCATS).fill(null)};
+  cur=1;round=1;over=false;busy=false;
+  startTurn();
+}
+function startTurn(){
+  dice=[1,1,1,1,1];held=[false,false,false,false,false];rollsLeft=3;
+  render();
+  setStatus(STR[lang].turn.replace("{p}",nameOf(cur)));
+  if(mode==="1p"&&cur===2)queueBot();
+}
+function nameOf(p){return mode==="1p"?(p===1?STR[lang].you:STR[lang].bot):(p===1?STR[lang].p1:STR[lang].p2);}
+function roll(){
+  if(over||busy||rollsLeft<=0)return;
+  sRoll();
+  for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6);
+  rollsLeft--;
+  render(true);
+  setStatus(STR[lang].pick.replace("{p}",nameOf(cur)));
+}
+function toggleHold(i){
+  if(over||busy||rollsLeft===3)return; // can't hold before first roll
+  held[i]=!held[i];sHold();render();
+}
+function takeCat(cat){
+  if(over||busy||rollsLeft===3)return;
+  if(scores[cur][cat]!=null)return;
+  scores[cur][cat]=scoreCat(cat,dice);
+  sScore();
+  advance();
+}
+function advance(){
+  if(cur===2)round++;
+  cur=3-cur;
+  if(scores[1].every(v=>v!=null)&&scores[2].every(v=>v!=null)){
+    over=true;render();
+    const a=grandTotal(scores[1]),b=grandTotal(scores[2]);
+    sWin();
+    if(a===b)setStatus(STR[lang].tie.replace("{a}",a).replace("{b}",b));
+    else setStatus(STR[lang].win.replace("{p}",nameOf(a>b?1:2)).replace("{a}",Math.max(a,b)).replace("{b}",Math.min(a,b)));
+    return;
+  }
+  startTurn();
+}
+function queueBot(){
+  busy=true;render();
+  setStatus(STR[lang].botThink+' <span id="thinking">…</span>');
+  const step=()=>{
+    if(rollsLeft>0){
+      /* decide holds (skip before first roll), then roll */
+      if(rollsLeft<3){
+        const m=chooseHold(dice,scores[2],diff);
+        /* stop early if holding everything */
+        if(m===31){finishBot();return;}
+        for(let i=0;i<5;i++)held[i]=!!(m&(1<<i));
+      }
+      sRoll();
+      for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6);
+      rollsLeft--;
+      render(true);
+      setTimeout(step,650);
+    }else finishBot();
+  };
+  const finishBot=()=>{
+    const cat=diff==="easy"?bestOpenScore(dice,scores[2]).cat:pickCategory(dice,scores[2]);
+    scores[2][cat]=scoreCat(cat,dice);
+    sScore();busy=false;
+    advance();
+  };
+  setTimeout(step,600);
+}
+
+/* ============ rendering ============ */
+const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[26,26],[50,50],[74,74]],
+  4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
+function dieSVG(v){
+  return `<svg viewBox="0 0 100 100">${PIPS[v].map(([x,y])=>`<circle class="pip" cx="${x}" cy="${y}" r="9"/>`).join("")}</svg>`;
+}
+function render(rolled){
+  const row=document.getElementById("diceRow");
+  row.innerHTML="";
+  const humanTurn=!over&&!busy&&(mode==="2p"||cur===1);
+  dice.forEach((v,i)=>{
+    const b=document.createElement("button");
+    b.className="die"+(held[i]?" held":"")+(rolled&&!held[i]?" rolling":"");
+    b.disabled=!humanTurn||rollsLeft===3;
+    b.innerHTML=dieSVG(v);
+    b.addEventListener("click",()=>toggleHold(i));
+    row.appendChild(b);
+  });
+  const rb=document.getElementById("rollBtn");
+  rb.textContent=rollsLeft>0?STR[lang].roll.replace("{n}",rollsLeft):STR[lang].noRolls;
+  rb.disabled=!humanTurn||rollsLeft<=0;
+  renderCard(humanTurn);
+}
+function renderCard(humanTurn){
+  const S=STR[lang];
+  const canPick=humanTurn&&rollsLeft<3&&!over;
+  let h=`<table><tr><th style="text-align:left">·</th><th class="${cur===1&&!over?"pcur":""}">${nameOf(1)}</th><th class="${cur===2&&!over?"pcur":""}">${nameOf(2)}</th></tr>`;
+  const cell=(p,i)=>{
+    const v=scores[p][i];
+    const isCur=p===cur&&!over;
+    if(v!=null)return `<td class="sc taken ${v===0?"zero":""} ${isCur?"pcur":""}">${v}</td>`;
+    if(isCur&&canPick){
+      const pot=scoreCat(i,dice);
+      return `<td class="sc open" data-cat="${i}">${pot}</td>`;
+    }
+    return `<td class="sc ${isCur?"pcur":""}">·</td>`;
+  };
+  for(let i=0;i<NCATS;i++){
+    h+=`<tr><td class="cat">${S.cats[i]}</td>${cell(1,i)}${cell(2,i)}</tr>`;
+    if(i===5){
+      const u1=upperTotal(scores[1]),u2=upperTotal(scores[2]);
+      h+=`<tr class="subtotal"><td class="cat">${S.upperSub}</td><td>${u1}</td><td>${u2}</td></tr>`;
+      h+=`<tr class="subtotal"><td class="cat">${S.bonus}</td><td>${u1>=63?35:"–"}</td><td>${u2>=63?35:"–"}</td></tr>`;
+    }
+  }
+  h+=`<tr class="total"><td class="cat">${S.total}</td><td>${grandTotal(scores[1])}</td><td>${grandTotal(scores[2])}</td></tr></table>`;
+  document.getElementById("card").innerHTML=h;
+  document.querySelectorAll("td.sc.open").forEach(td=>{
+    td.addEventListener("click",()=>takeCat(+td.dataset.cat));
+  });
+}
+function setStatus(t){document.getElementById("status").innerHTML=t;}
+
+/* ============ ui ============ */
+document.getElementById("rollBtn").addEventListener("click",roll);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("modeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#modeSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");mode=b.dataset.mode;persist();
+  document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+  newGame();
+});
+document.getElementById("diffSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#diffSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");diff=b.dataset.diff;persist();newGame();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();render();});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{if(STR[lang][el.dataset.i18n])el.textContent=STR[lang][el.dataset.i18n];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+}
+document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+document.querySelectorAll("#diffSeg button").forEach(b=>b.classList.toggle("on",b.dataset.diff===diff));
+document.getElementById("diffSeg").style.visibility=mode==="1p"?"visible":"hidden";
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+applyLang();newGame();
+
+window.__test={scoreCat,counts,upperTotal,grandTotal,bestOpenScore,pickCategory,chooseHold,mcHoldValue,NCATS,
+  getState:()=>({dice:dice.slice(),held:held.slice(),rollsLeft,cur,over,scores:{1:scores[1].slice(),2:scores[2].slice()}}),
+  setDice:(d)=>{dice=d;},setRolls:(r)=>{rollsLeft=r;},roll,takeCat,newGame,
+  _scores:()=>scores};
+</script>
+</body>
+</html>

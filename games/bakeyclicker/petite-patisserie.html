@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Petite Pâtisserie</title>
+<style>
+  :root{
+    --toast:#FFF3DC;
+    --butter:#FFE4C0;
+    --cream:#FFF9EE;
+    --choco:#4A2C17;
+    --choco-soft:#7A5A3E;
+    --caramel:#C77B3F;
+    --caramel-deep:#A85F28;
+    --frosting:#F2A0B5;
+    --shadow:0 6px 0 rgba(74,44,23,.12);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:ui-rounded,"Segoe UI",system-ui,-apple-system,sans-serif;
+    background:linear-gradient(180deg,var(--toast),var(--butter));
+    color:var(--choco);
+    overflow:hidden;
+    user-select:none;-webkit-user-select:none;
+  }
+  #app{
+    height:100dvh;max-width:480px;margin:0 auto;
+    display:grid;grid-template-rows:auto auto 1fr;
+    position:relative;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    padding:14px 16px 8px;text-align:center;position:relative;
+  }
+  #count{
+    font-size:2.1rem;font-weight:800;letter-spacing:-.5px;line-height:1.1;
+    transition:transform .15s;
+  }
+  #count.milestone{animation:pulse .5s}
+  @keyframes pulse{40%{transform:scale(1.15);color:var(--caramel-deep)}}
+  #cps{font-size:.95rem;color:var(--choco-soft);font-weight:600;margin-top:2px}
+  #menuBtn{
+    position:absolute;top:10px;right:12px;
+    width:44px;height:44px;border:none;border-radius:14px;
+    background:var(--cream);box-shadow:var(--shadow);
+    font-size:1.2rem;cursor:pointer;color:var(--choco);
+  }
+  #menuBtn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(74,44,23,.12)}
+
+  /* ---------- oven ---------- */
+  #ovenWrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 14px;position:relative}
+  #oven{
+    width:150px;height:150px;border:none;cursor:pointer;
+    border-radius:38px;
+    background:linear-gradient(180deg,#FFD9A0,#F5B96B);
+    box-shadow:0 10px 0 rgba(74,44,23,.18), inset 0 -6px 0 rgba(74,44,23,.08);
+    font-size:4.2rem;line-height:1;
+    transition:transform .08s;
+    position:relative;
+  }
+  #oven.squish{transform:scale(.9)}
+  #oven:focus-visible{outline:4px solid var(--frosting);outline-offset:4px}
+  #tapHint{margin-top:10px;font-size:.85rem;color:var(--choco-soft);font-weight:600}
+  .steam{
+    position:absolute;font-size:1.1rem;opacity:0;pointer-events:none;
+    animation:rise 2.6s linear infinite;
+  }
+  @keyframes rise{
+    0%{opacity:0;transform:translateY(0) scale(.8)}
+    20%{opacity:.55}
+    100%{opacity:0;transform:translateY(-64px) scale(1.25)}
+  }
+
+  /* ---------- shop ---------- */
+  #shop{
+    overflow-y:auto;padding:4px 14px 20px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .item{
+    display:flex;align-items:center;gap:12px;
+    background:var(--cream);border:none;border-radius:20px;
+    padding:12px 14px;box-shadow:var(--shadow);
+    cursor:pointer;text-align:left;width:100%;
+    font-family:inherit;color:var(--choco);
+    transition:transform .1s,opacity .2s;
+  }
+  .item:active{transform:translateY(3px)}
+  .item.locked{opacity:.45;cursor:default}
+  .item.afford{box-shadow:0 6px 0 rgba(199,123,63,.35);animation:wiggleIn .35s}
+  @keyframes wiggleIn{0%{transform:scale(.96)}60%{transform:scale(1.03)}100%{transform:scale(1)}}
+  .item .em{font-size:2rem;width:44px;text-align:center;flex:none}
+  .item .info{flex:1;min-width:0}
+  .item .nm{font-weight:800;font-size:1rem}
+  .item .cps{font-size:.8rem;color:var(--choco-soft);font-weight:600}
+  .item .buy{flex:none;text-align:right}
+  .item .cost{font-weight:800;color:var(--caramel-deep);font-size:.95rem}
+  .item .own{font-size:.8rem;color:var(--choco-soft);font-weight:700}
+
+  /* ---------- floaters & particles ---------- */
+  .floater{
+    position:fixed;pointer-events:none;font-weight:800;color:var(--caramel-deep);
+    font-size:1.15rem;animation:floatUp 1s ease-out forwards;z-index:40;
+  }
+  @keyframes floatUp{
+    0%{opacity:1;transform:translateY(0)}
+    100%{opacity:0;transform:translateY(-70px)}
+  }
+  .crumb{
+    position:fixed;pointer-events:none;font-size:1.3rem;z-index:39;
+  }
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:absolute;inset:0;z-index:50;
+    background:linear-gradient(180deg,var(--toast),var(--butter));
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:16px;padding:24px;text-align:center;
+  }
+  .overlay.panel{background:rgba(74,44,23,.35);backdrop-filter:blur(2px)}
+  .card{
+    background:var(--cream);border-radius:26px;box-shadow:var(--shadow);
+    padding:26px 22px;display:flex;flex-direction:column;gap:14px;
+    align-items:center;max-width:320px;width:100%;
+  }
+  h1{font-size:2rem;letter-spacing:-.5px}
+  .tag{color:var(--choco-soft);font-weight:600;font-size:.95rem;line-height:1.45}
+  .big{
+    border:none;border-radius:18px;cursor:pointer;
+    background:var(--caramel);color:#fff;
+    font-family:inherit;font-weight:800;font-size:1.15rem;
+    padding:14px 34px;box-shadow:0 6px 0 var(--caramel-deep);
+    min-height:52px;
+  }
+  .big:active{transform:translateY(4px);box-shadow:0 2px 0 var(--caramel-deep)}
+  .quiet{
+    border:none;border-radius:14px;cursor:pointer;
+    background:transparent;color:var(--choco-soft);
+    font-family:inherit;font-weight:700;font-size:.95rem;
+    padding:10px 18px;min-height:44px;
+  }
+  .danger{background:var(--frosting);color:var(--choco);box-shadow:0 6px 0 #D6788F}
+  .danger:active{box-shadow:0 2px 0 #D6788F}
+  #titleOven{font-size:4.5rem;animation:bob 2.4s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-8px)}}
+  .hidden{display:none !important}
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-140%);
+    background:var(--choco);color:var(--toast);font-weight:700;font-size:.9rem;
+    padding:12px 18px;border-radius:16px;z-index:60;
+    transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+    max-width:88%;text-align:center;
+  }
+  #toast.show{transform:translateX(-50%) translateY(0)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div id="count">0</div>
+    <div id="cps">0 / sec</div>
+    <button id="menuBtn" aria-label="Menu">⚙️</button>
+  </header>
+
+  <div id="ovenWrap">
+    <button id="oven" aria-label="Bake a pastry">🥐</button>
+    <div id="tapHint">tap to bake · space works too</div>
+  </div>
+
+  <div id="shop" aria-label="Helpers"></div>
+
+  <div id="toast"></div>
+
+  <!-- title -->
+  <div class="overlay" id="title">
+    <div id="titleOven">🥐</div>
+    <h1>Petite Pâtisserie</h1>
+    <p class="tag">Tap the oven to bake.<br>Hire helpers to bake for you.<br>The numbers rise forever.</p>
+    <button class="big" id="startBtn">Open the bakery</button>
+  </div>
+
+  <!-- menu -->
+  <div class="overlay panel hidden" id="menu">
+    <div class="card">
+      <h1 style="font-size:1.4rem">Paused</h1>
+      <div class="tag" id="lifetimeLine"></div>
+      <button class="big" id="resumeBtn">Back to baking</button>
+      <button class="quiet" id="resetBtn">Reset bakery</button>
+      <button class="big danger hidden" id="confirmResetBtn">Really reset? Everything is lost</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG — every tuning number lives here. Nudge freely.
+   ===================================================================== */
+const CONFIG = {
+  TAP_BASE: 1,          // pastries per hand-tap, before bonus
+  TAP_CPS_BONUS: 0.02,  // each tap also earns 2% of your per-second rate
+  COST_GROWTH: 1.15,    // each helper you own makes the next one 15% pricier
+  OFFLINE_RATE: 0.5,    // while away you earn 50% of your normal rate
+  OFFLINE_CAP_H: 8,     // ...for at most 8 hours
+  SAVE_EVERY_MS: 5000,  // autosave interval
+  UNLOCK_AHEAD: 1,      // show the next N not-yet-affordable helpers
+  TICKER_SPEED: 8,      // how fast the big number catches up (higher = snappier)
+  PARTICLES_PER_TAP: 2, // crumbs per tap (0 to disable)
+
+  HELPERS: [
+    { id:'spoon',  emoji:'🥄', name:'Wooden Spoon',      baseCost:15,     cps:0.1  },
+    { id:'bowl',   emoji:'🥣', name:'Mixing Bowl',       baseCost:100,    cps:1    },
+    { id:'bread',  emoji:'🍞', name:'Bread Oven',        baseCost:1100,   cps:8    },
+    { id:'chef',   emoji:'👩‍🍳', name:'Pastry Chef',      baseCost:12000,  cps:47   },
+    { id:'cat',    emoji:'🐈', name:'Bakery Cat',        baseCost:1.3e5,  cps:260  },
+    { id:'truck',  emoji:'🚚', name:'Delivery Truck',    baseCost:1.4e6,  cps:1400 },
+    { id:'factory',emoji:'🏭', name:'Croissant Factory', baseCost:2e7,    cps:7800 },
+    { id:'moon',   emoji:'🌙', name:'Moon Bakery',       baseCost:3.3e8,  cps:44000},
+  ],
+};
+const SAVE_KEY = 'mos-bakery-v1';
+const PASTRY_EMOJI = ['🥐','🧁','🍪','🍩','🥖','🎂'];
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const state = {
+  pastries: 0,        // spendable
+  lifetime: 0,        // total ever baked (never goes down)
+  counts: {},         // helperId -> owned
+  lastSeen: Date.now(),
+  started: false,
+};
+CONFIG.HELPERS.forEach(h => state.counts[h.id] = 0);
+
+/* =====================================================================
+   PURE LOGIC (no DOM) — easy to test
+   ===================================================================== */
+function cps(s){
+  return CONFIG.HELPERS.reduce((sum,h)=> sum + h.cps * (s.counts[h.id]||0), 0);
+}
+function tapValue(s){
+  return CONFIG.TAP_BASE + cps(s) * CONFIG.TAP_CPS_BONUS;
+}
+function costOf(h, owned){
+  return Math.ceil(h.baseCost * Math.pow(CONFIG.COST_GROWTH, owned));
+}
+function canBuy(s, h){
+  return s.pastries >= costOf(h, s.counts[h.id]);
+}
+function buy(s, h){
+  const c = costOf(h, s.counts[h.id]);
+  if (s.pastries < c) return false;
+  s.pastries -= c;
+  s.counts[h.id]++;
+  return true;
+}
+function earn(s, amount){
+  s.pastries += amount;
+  s.lifetime += amount;
+}
+function offlineEarnings(s, nowMs){
+  const dt = Math.max(0, (nowMs - s.lastSeen) / 1000);
+  const capped = Math.min(dt, CONFIG.OFFLINE_CAP_H * 3600);
+  return cps(s) * capped * CONFIG.OFFLINE_RATE;
+}
+function fmt(n){
+  if (n < 1000) return (n < 10 && n % 1 !== 0) ? n.toFixed(1) : Math.floor(n).toString();
+  const units = ['K','M','B','T','Qa','Qi','Sx','Sp','Oc','No'];
+  let u = -1;
+  while (n >= 1000 && u < units.length - 1){ n /= 1000; u++; }
+  if (n >= 1000) return n.toExponential(2);
+  return (n >= 100 ? Math.floor(n) : n.toFixed(1).replace(/\.0$/,'')) + units[u];
+}
+
+/* =====================================================================
+   SAVE / LOAD (localStorage, always wrapped)
+   ===================================================================== */
+function save(){
+  try{
+    state.lastSeen = Date.now();
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      p: state.pastries, l: state.lifetime, c: state.counts, t: state.lastSeen,
+    }));
+  }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    state.pastries = +d.p || 0;
+    state.lifetime = +d.l || 0;
+    state.lastSeen = +d.t || Date.now();
+    CONFIG.HELPERS.forEach(h => state.counts[h.id] = +(d.c && d.c[h.id]) || 0);
+    return true;
+  }catch(e){ return false; }
+}
+function wipe(){
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  state.pastries = 0; state.lifetime = 0;
+  CONFIG.HELPERS.forEach(h => state.counts[h.id] = 0);
+  state.lastSeen = Date.now();
+}
+
+/* =====================================================================
+   DOM
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const el = {
+  count:$('count'), cps:$('cps'), oven:$('oven'), shop:$('shop'),
+  title:$('title'), startBtn:$('startBtn'),
+  menu:$('menu'), menuBtn:$('menuBtn'), resumeBtn:$('resumeBtn'),
+  resetBtn:$('resetBtn'), confirmResetBtn:$('confirmResetBtn'),
+  toast:$('toast'), lifetimeLine:$('lifetimeLine'), ovenWrap:$('ovenWrap'),
+};
+let shown = 0;              // eased number on screen
+let lastMilestone = 0;      // last power of 10 celebrated
+let itemEls = {};           // helperId -> button element
+let prevAfford = {};        // for the "newly affordable" wiggle
+
+function buildShop(){
+  el.shop.innerHTML = '';
+  itemEls = {};
+  CONFIG.HELPERS.forEach(h=>{
+    const b = document.createElement('button');
+    b.className = 'item locked';
+    b.dataset.id = h.id;
+    b.innerHTML =
+      '<span class="em">'+h.emoji+'</span>'+
+      '<span class="info"><span class="nm">'+h.name+'</span><br>'+
+      '<span class="cps">+'+fmt(h.cps)+' /sec</span></span>'+
+      '<span class="buy"><span class="cost"></span><br><span class="own"></span></span>';
+    b.addEventListener('click', ()=>{
+      if (buy(state, h)){
+        juicePurchase(b);
+        renderShop(); renderHeader();
+        save();
+      }
+    });
+    el.shop.appendChild(b);
+    itemEls[h.id] = b;
+  });
+}
+
+function renderShop(){
+  let revealed = 0;
+  CONFIG.HELPERS.forEach(h=>{
+    const b = itemEls[h.id];
+    const owned = state.counts[h.id];
+    const cost = costOf(h, owned);
+    const afford = state.pastries >= cost;
+    const seen = owned > 0 || state.lifetime >= h.baseCost * 0.5 || revealed < firstLockedIndex() + CONFIG.UNLOCK_AHEAD;
+
+    b.querySelector('.cost').textContent = fmt(cost) + ' 🥐';
+    b.querySelector('.own').textContent = owned ? '× ' + owned : '';
+    b.classList.toggle('locked', !afford);
+    b.classList.toggle('afford', afford);
+    if (afford && !prevAfford[h.id]) b.classList.remove('afford'), void b.offsetWidth, b.classList.add('afford');
+    prevAfford[h.id] = afford;
+    b.style.display = seen ? '' : 'none';
+    revealed++;
+  });
+}
+function firstLockedIndex(){
+  for (let i=0;i<CONFIG.HELPERS.length;i++){
+    if (!state.counts[CONFIG.HELPERS[i].id]) return i;
+  }
+  return CONFIG.HELPERS.length;
+}
+
+function renderHeader(){
+  el.cps.textContent = fmt(cps(state)) + ' / sec';
+}
+
+/* ---------- juice ---------- */
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function floater(x, y, text){
+  if (reduceMotion) return;
+  const f = document.createElement('div');
+  f.className = 'floater';
+  f.textContent = text;
+  f.style.left = (x - 14 + (Math.random()*28-14)) + 'px';
+  f.style.top  = (y - 30) + 'px';
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(), 1000);
+}
+function crumbs(x, y){
+  if (reduceMotion) return;
+  for (let i=0;i<CONFIG.PARTICLES_PER_TAP;i++){
+    const c = document.createElement('div');
+    c.className = 'crumb';
+    c.textContent = PASTRY_EMOJI[Math.floor(Math.random()*PASTRY_EMOJI.length)];
+    document.body.appendChild(c);
+    const ang = Math.random()*Math.PI - Math.PI;      // upward half
+    const v = 120 + Math.random()*120;
+    let vx = Math.cos(ang)*v, vy = Math.sin(ang)*v - 60, px = x, py = y, t0 = performance.now();
+    (function step(t){
+      const dt = Math.min(0.03,(t - t0)/1000); t0 = t;
+      vy += 500*dt; px += vx*dt; py += vy*dt;
+      c.style.left = px+'px'; c.style.top = py+'px';
+      c.style.opacity = Math.max(0, 1 - (py - y + 120)/240);
+      if (py < y + 140) requestAnimationFrame(step); else c.remove();
+    })(t0);
+  }
+}
+function juicePurchase(btn){
+  if (reduceMotion) return;
+  const r = btn.getBoundingClientRect();
+  crumbs(r.left + r.width/2, r.top + r.height/2);
+}
+
+/* ---------- tap ---------- */
+function bake(x, y){
+  const v = tapValue(state);
+  earn(state, v);
+  el.oven.classList.add('squish');
+  setTimeout(()=>el.oven.classList.remove('squish'), 80);
+  floater(x, y, '+' + fmt(v));
+  crumbs(x, y);
+  renderShop();
+}
+el.oven.addEventListener('pointerdown', e=>{
+  bake(e.clientX || innerWidth/2, e.clientY || 200);
+});
+document.addEventListener('keydown', e=>{
+  if ((e.code === 'Space' || e.code === 'Enter') && state.started && el.menu.classList.contains('hidden')){
+    if (document.activeElement && document.activeElement.classList.contains('item')) return;
+    e.preventDefault();
+    const r = el.oven.getBoundingClientRect();
+    bake(r.left + r.width/2, r.top + r.height/2);
+  }
+  if (e.code === 'Escape' && state.started) toggleMenu();
+});
+
+/* ---------- steam ---------- */
+function makeSteam(){
+  if (reduceMotion) return;
+  for (let i=0;i<3;i++){
+    const s = document.createElement('div');
+    s.className = 'steam';
+    s.textContent = '💨';
+    s.style.left = (35 + i*30) + '%';
+    s.style.top = '10px';
+    s.style.animationDelay = (i * 0.9) + 's';
+    el.ovenWrap.appendChild(s);
+  }
+}
+
+/* ---------- overlays ---------- */
+function toggleMenu(){
+  const opening = el.menu.classList.contains('hidden');
+  el.menu.classList.toggle('hidden');
+  el.confirmResetBtn.classList.add('hidden');
+  if (opening) el.lifetimeLine.textContent = 'Baked all-time: ' + fmt(state.lifetime) + ' 🥐';
+}
+el.menuBtn.addEventListener('click', toggleMenu);
+el.resumeBtn.addEventListener('click', toggleMenu);
+el.resetBtn.addEventListener('click', ()=> el.confirmResetBtn.classList.toggle('hidden'));
+el.confirmResetBtn.addEventListener('click', ()=>{
+  wipe(); shown = 0; lastMilestone = 0;
+  renderShop(); renderHeader(); toggleMenu();
+  showToast('Fresh start. The oven is warm. 🔥');
+});
+
+el.startBtn.addEventListener('click', ()=>{
+  el.title.classList.add('hidden');
+  state.started = true;
+  save();
+});
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function showToast(msg){
+  el.toast.textContent = msg;
+  el.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.toast.classList.remove('show'), 4000);
+}
+
+/* =====================================================================
+   MAIN LOOP — earn, ease the number, render
+   ===================================================================== */
+let lastT = performance.now();
+let saveAcc = 0;
+function loop(t){
+  const dt = Math.min(0.1, (t - lastT)/1000);
+  lastT = t;
+
+  earn(state, cps(state) * dt);
+
+  // eased ticker
+  shown += (state.pastries - shown) * Math.min(1, CONFIG.TICKER_SPEED * dt);
+  if (Math.abs(state.pastries - shown) < 0.5) shown = state.pastries;
+  el.count.textContent = fmt(shown) + ' 🥐';
+
+  // milestone pulse at each power of 10
+  const mag = Math.floor(Math.log10(Math.max(1, state.lifetime)));
+  if (mag > lastMilestone){
+    lastMilestone = mag;
+    el.count.classList.remove('milestone'); void el.count.offsetWidth;
+    el.count.classList.add('milestone');
+  }
+
+  renderShop();
+
+  saveAcc += dt*1000;
+  if (saveAcc > CONFIG.SAVE_EVERY_MS){ saveAcc = 0; save(); }
+
+  requestAnimationFrame(loop);
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+function boot(){
+  const hadSave = load();
+  buildShop();
+
+  if (hadSave){
+    const away = offlineEarnings(state, Date.now());
+    if (away >= 1){
+      earn(state, away);
+      showToast('While you were away, your helpers baked ' + fmt(away) + ' 🥐');
+    }
+    el.startBtn.textContent = 'Continue — ' + fmt(state.pastries) + ' 🥐';
+  }
+
+  shown = state.pastries;
+  lastMilestone = Math.floor(Math.log10(Math.max(1, state.lifetime)));
+  renderHeader();
+  renderShop();
+  makeSteam();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('visibilitychange', ()=>{ if (document.hidden) save(); });
+window.addEventListener('beforeunload', save);
+
+/* test hooks */
+window.__test = { state, CONFIG, cps, tapValue, costOf, buy, earn, offlineEarnings, fmt, save, load, wipe, bake, boot };
+
+boot();
+</script>
+</body>
+</html>

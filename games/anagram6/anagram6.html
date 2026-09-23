@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B14">
+<title>Anagram Six — STeamWorkS</title>
+<!--
+════════════════════════════════════════════════════════════════════════
+  STeamWorkS · Anagram Six · v1.0.0 · single self-contained file
+════════════════════════════════════════════════════════════════════════
+  MOS INTEGRATION
+  ───────────────
+    <iframe src="anagram6.html?embed=1&prefix=PLAYER_ID"
+            style="width:100%;height:100%;border:0" allow="autoplay"></iframe>
+
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.source === 'stws-puzzle') {
+        // e.data = {source:'stws-puzzle', game:'anagram6', event, ...payload}
+        // events: ready · newPuzzle · start · win · gameover
+        // win/gameover payloads carry the run's stats (moves, time, score…)
+      }
+    });
+
+  URL params:
+    ?embed=1       hide footer chrome
+    ?prefix=<id>   namespace localStorage per player  (stws-anagram6-v1:<id>)
+    ?mute=1        start muted
+    ?seed=<any>    deterministic puzzles (same seed = same sequence)
+    ?daily=1       seed from today's date — everyone gets the same puzzle
+    ?diff=<id>     start on a specific difficulty (where the game has them)
+
+  Same-page API: STWGame.newGame() · STWGame.on(evt,cb) · STWGame.config
+════════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{
+  --night:#0B0B14; --panel:#15152A; --panel-2:#1A1F38;
+  --milk:#F2EFFF; --faded:#8B87A8; --line:rgba(242,239,255,.08);
+  --acc:#C792EA;
+  --round:18px;
+  --font:"SF Pro Rounded",ui-rounded,"Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--night);color:var(--milk);font-family:var(--font);overflow:hidden;
+  -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;
+  user-select:none;-webkit-user-select:none;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(55% 38% at 25% -5%, color-mix(in srgb,var(--acc) 9%,transparent), transparent 60%);
+}
+#app{
+  position:relative;height:100dvh;max-width:520px;margin:0 auto;
+  display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#top{display:flex;align-items:center;gap:12px;padding:14px 16px 10px}
+#top .ico{font-size:30px;line-height:1;filter:drop-shadow(0 4px 14px color-mix(in srgb,var(--acc) 55%,transparent))}
+#top h1{font-size:19px;font-weight:900;letter-spacing:.02em;line-height:1.1}
+#top .sub{font-size:10px;font-weight:800;letter-spacing:.3em;color:var(--faded);text-transform:uppercase;margin-top:2px}
+#top .grow{flex:1}
+.iconbtn{
+  width:40px;height:40px;border-radius:13px;border:1px solid var(--line);
+  background:var(--panel);color:var(--milk);font-size:16px;font-family:var(--font);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  transition:transform .12s ease;
+}
+.iconbtn:active{transform:scale(.92)}
+.iconbtn:focus-visible{outline:2px solid var(--milk);outline-offset:2px}
+#status{display:flex;gap:8px;justify-content:center;padding:2px 16px 8px;flex-wrap:wrap}
+.chip{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:6px 13px;text-align:center;min-width:66px;
+}
+.chip .l{font-size:9px;font-weight:800;letter-spacing:.22em;color:var(--faded);text-transform:uppercase}
+.chip .v{font-size:17px;font-weight:900;color:var(--acc);font-variant-numeric:tabular-nums;margin-top:1px}
+#toolrow{display:flex;gap:8px;justify-content:center;padding:0 16px 8px}
+#toolrow:empty{display:none}
+.pill{
+  border:1px solid var(--line);background:var(--panel);color:var(--faded);
+  font-family:var(--font);font-size:12px;font-weight:800;letter-spacing:.06em;
+  padding:8px 16px;border-radius:999px;cursor:pointer;transition:transform .12s ease;
+}
+.pill:active{transform:scale(.94)}
+.pill.on{background:var(--acc);color:#10101C;border-color:transparent}
+#stage{flex:1;position:relative;min-height:0;margin:0 10px}
+#board{position:absolute;inset:0;touch-action:none}
+#ovl{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(11,11,20,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  border-radius:var(--round);z-index:5;
+}
+#ovl[hidden]{display:none}
+.ov-in{text-align:center;padding:26px 28px;max-width:330px;animation:rise .3s ease}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1}}
+.ov-ico{
+  width:86px;height:86px;margin:0 auto 14px;border-radius:26px;
+  background:var(--panel-2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:42px;
+  box-shadow:0 10px 40px -8px var(--acc);
+}
+.ov-in h2{font-size:25px;font-weight:900;letter-spacing:.02em}
+.ov-in .tip{margin-top:10px;font-size:14px;line-height:1.55;color:var(--faded);font-weight:600}
+.ov-in .chips{display:flex;gap:8px;justify-content:center;margin-top:16px}
+.cta{margin-top:22px;font-size:12px;font-weight:900;letter-spacing:.3em;color:var(--milk)}
+.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.btn{
+  margin-top:16px;display:inline-block;padding:12px 22px;border-radius:14px;
+  background:var(--acc);border:0;color:#10101C;
+  font-family:var(--font);font-size:13px;font-weight:900;letter-spacing:.06em;cursor:pointer;
+  transition:transform .12s ease;
+}
+.btn.ghost{background:var(--panel-2);border:1px solid var(--line);color:var(--milk)}
+.btn:active{transform:scale(.94)}
+.btn:focus-visible{outline:2px solid var(--milk);outline-offset:2px}
+#foot{
+  padding:10px 16px calc(12px + env(safe-area-inset-bottom));
+  font-size:10.5px;color:var(--faded);text-align:center;font-weight:600;letter-spacing:.05em;
+}
+body.embed #foot{display:none}
+@media (prefers-reduced-motion:reduce){.pulse,.ov-in{animation:none}}
+@media (min-width:560px){#app{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+.wana{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94%,420px);display:flex;flex-direction:column;gap:14px}
+.afound{
+  min-height:86px;max-height:150px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--round);padding:12px;
+}
+.aw{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:9px;
+  padding:4px 9px;font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--acc);
+}
+.ahint{font-size:12px;color:var(--faded);font-weight:600;padding:4px}
+.aslots{display:flex;gap:7px;justify-content:center;min-height:52px}
+.aslot{
+  width:46px;height:52px;border-radius:11px;border:2px dashed rgba(242,239,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:900;color:var(--milk);
+}
+.aslot.has{border-style:solid;border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.ashake{animation:ashk .3s ease}
+@keyframes ashk{25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+.arack{display:flex;gap:8px;justify-content:center}
+.atile{
+  width:52px;height:58px;border-radius:13px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--milk);font-family:var(--font);
+  font-size:25px;font-weight:900;cursor:pointer;transition:transform .1s ease,opacity .15s ease;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);
+}
+.atile:active{transform:scale(.9)}
+.atile:disabled{opacity:.22;transform:scale(.94)}
+.abtns{display:flex;gap:8px;justify-content:center}
+.akey{
+  padding:12px 18px;border-radius:13px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--milk);font-family:var(--font);
+  font-size:14px;font-weight:900;cursor:pointer;transition:transform .1s ease;
+}
+.akey:active{transform:scale(.93)}
+.akey.go{background:var(--acc);color:#10101C;border-color:transparent;flex:1;max-width:150px}
+.akey.wide{flex:1;max-width:130px;color:var(--faded)}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <span class="ico">🔤</span>
+    <div><h1>Anagram Six</h1><div class="sub">STeamWorkS</div></div>
+    <div class="grow"></div>
+    <button class="iconbtn" id="btnUndo" aria-label="Undo" hidden>↩</button>
+    <button class="iconbtn" id="btnNew" aria-label="New puzzle">↻</button>
+    <button class="iconbtn" id="btnSnd" aria-label="Toggle sound">🔊</button>
+  </header>
+  <div id="status"></div>
+  <div id="toolrow"></div>
+  <div id="stage">
+    <div id="board"></div>
+    <div id="ovl" hidden></div>
+  </div>
+  <footer id="foot">Single file · saves on this device · v1.0.0</footer>
+</div>
+<script>
+(() => {
+'use strict';
+
+/* ══ shell: helpers ════════════════════════════════════ */
+const GAME_ID = 'anagram6', GAME_TITLE = 'Anagram Six', GAME_ICON = '🔤', ACCENT = '#C792EA';
+const GAME_TIP = 'Six letters, dozens of words hiding inside. Tap letters to spell, then Enter. Reach the goal to solve the day.';
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const $ = s => document.querySelector(s);
+const FONT = '"SF Pro Rounded",ui-rounded,"Nunito","Segoe UI",system-ui,sans-serif';
+
+/* ══ shell: config + seeded rng ════════════════════════ */
+const QS = new URLSearchParams(location.search);
+const CFG = {
+  embed: QS.get('embed') === '1',
+  mute: QS.get('mute') === '1',
+  prefix: QS.get('prefix') || '',
+  seed: QS.get('seed') || '',
+  daily: QS.get('daily') === '1',
+  diff: QS.get('diff') || ''
+};
+if (CFG.daily && !CFG.seed) {
+  const d = new Date();
+  CFG.seed = '' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+}
+if (CFG.embed) document.body.classList.add('embed');
+
+function strHash(s) {
+  let h = 1779033703;
+  for (let i = 0; i < s.length; i++) { h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return h >>> 0;
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let seedBase = CFG.seed ? strHash(CFG.seed) : null;
+let gameN = 0;
+let rng = Math.random;
+function freshRng() { gameN++; rng = seedBase !== null ? mulberry32(seedBase + gameN * 7919) : Math.random; }
+function setSeed(s) { seedBase = (s !== null && s !== undefined && s !== '') ? strHash('' + s) : null; gameN = 0; }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+const RF = (a = 1, b) => b === undefined ? rng() * a : a + rng() * (b - a);
+const RI = (a, b) => Math.floor(RF(a, b + 1));
+const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+
+/* ══ shell: storage ════════════════════════════════════ */
+const STORE_KEY = 'stws-' + GAME_ID + '-v1' + (CFG.prefix ? ':' + CFG.prefix : '');
+const DATA = (() => {
+  try { return Object.assign({ sound: true, seen: false, best: {}, diff: '', save: null }, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); }
+  catch (e) { return { sound: true, seen: false, best: {}, diff: '', save: null }; }
+})();
+if (CFG.mute) DATA.sound = false;
+const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); } catch (e) {} };
+
+/* ══ shell: audio synth ════════════════════════════════ */
+const AU = {
+  ctx: null,
+  ensure() {
+    if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(f, d, type = 'sine', g = 0.15, slide = 0, at = 0) {
+    if (!DATA.sound || !this.ctx) return;
+    const t = this.ctx.currentTime + at;
+    const o = this.ctx.createOscillator(), ga = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+    ga.gain.setValueAtTime(g, t);
+    ga.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(ga).connect(this.ctx.destination);
+    o.start(t); o.stop(t + d + 0.02);
+  },
+  noise(d = 0.15, g = 0.18, fq = 1000) {
+    if (!DATA.sound || !this.ctx) return;
+    const t = this.ctx.currentTime, n = Math.floor(this.ctx.sampleRate * d);
+    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = fq;
+    const ga = this.ctx.createGain(); ga.gain.value = g;
+    src.connect(f).connect(ga).connect(this.ctx.destination);
+    src.start(t);
+  },
+  play(name, p = 1) {
+    switch (name) {
+      case 'ui':    this.tone(520, 0.07, 'triangle', 0.10); break;
+      case 'tap':   this.tone(300, 0.05, 'square', 0.06); break;
+      case 'tick':  this.tone(230, 0.04, 'square', 0.05); break;
+      case 'slide': this.noise(0.07, 0.08, 1400); break;
+      case 'ok':    this.tone(540 * p, 0.09, 'triangle', 0.14); this.tone(810 * p, 0.11, 'triangle', 0.10, 0, 0.05); break;
+      case 'good':  this.tone(660, 0.10, 'triangle', 0.14); this.tone(990, 0.14, 'triangle', 0.11, 0, 0.07); break;
+      case 'pour':  this.tone(300, 0.16, 'sine', 0.12, 160); this.noise(0.10, 0.06, 900); break;
+      case 'pop':   this.noise(0.10, 0.20, 1600); this.tone(200 * p, 0.07, 'square', 0.10); break;
+      case 'bad':   this.tone(220, 0.16, 'sawtooth', 0.10, -80); break;
+      case 'fail':  this.tone(300, 0.38, 'sawtooth', 0.13, -210); this.noise(0.2, 0.10, 500); break;
+      case 'level': [440, 550, 660, 880].forEach((f, i) => this.tone(f, 0.10, 'triangle', 0.12, 0, i * 0.07)); break;
+      case 'win':   [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.13, 'triangle', 0.13, 0, i * 0.085)); break;
+    }
+  }
+};
+const snd = (n, p) => AU.play(n, p);
+
+/* ══ shell: events (postMessage for MOS) ═══════════════ */
+const listeners = {};
+function on(ev, cb) { (listeners[ev] = listeners[ev] || []).push(cb); }
+function emit(ev, payload = {}) {
+  (listeners[ev] || []).forEach(cb => { try { cb(payload); } catch (e) {} });
+  if (window.parent !== window) {
+    try { window.parent.postMessage(Object.assign({ source: 'stws-puzzle', game: GAME_ID, event: ev }, payload), '*'); } catch (e) {}
+  }
+}
+
+/* ══ shell: status chips + toolbar pills ═══════════════ */
+const boardEl = $('#board'), ovl = $('#ovl'), statusEl = $('#status'), toolEl = $('#toolrow');
+function setChips(pairs) {
+  statusEl.innerHTML = pairs.map(p =>
+    '<div class="chip"><div class="l">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
+}
+function setPills(list, cur, cb) {
+  toolEl.innerHTML = '';
+  for (const d of list) {
+    const b = document.createElement('button');
+    b.className = 'pill' + (d.id === cur ? ' on' : '');
+    b.textContent = d.label;
+    b.addEventListener('click', () => { snd('ui'); cb(d.id); });
+    toolEl.appendChild(b);
+  }
+}
+
+/* ══ shell: overlays ═══════════════════════════════════ */
+let ovlAction = null;
+function overlay(html, tapAction) {
+  ovl.innerHTML = html; ovl.hidden = false; ovlAction = tapAction || null;
+}
+function hideOverlay() { ovl.hidden = true; ovlAction = null; }
+function chipsHtml(pairs) {
+  return '<div class="chips">' + pairs.map(p =>
+    '<div class="chip"><div class="l">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('') + '</div>';
+}
+function winOverlay(pairs, payload) {
+  snd('win');
+  emit('win', payload || {});
+  overlay(
+    '<div class="ov-in">' +
+      '<div class="ov-ico">' + GAME_ICON + '</div>' +
+      '<h2>Solved!</h2>' +
+      chipsHtml(pairs) +
+      '<div><button class="btn" id="ovNew">New puzzle</button></div>' +
+    '</div>');
+}
+function overOverlay(title, pairs, payload) {
+  snd('fail');
+  emit('gameover', payload || {});
+  overlay(
+    '<div class="ov-in">' +
+      '<div class="ov-ico">' + GAME_ICON + '</div>' +
+      '<h2>' + title + '</h2>' +
+      chipsHtml(pairs) +
+      '<div><button class="btn" id="ovNew">Play again</button></div>' +
+    '</div>');
+}
+function helpOverlay() {
+  overlay(
+    '<div class="ov-in">' +
+      '<div class="ov-ico">' + GAME_ICON + '</div>' +
+      '<h2>' + GAME_TITLE + '</h2>' +
+      '<p class="tip">' + GAME_TIP + '</p>' +
+      '<div class="cta pulse">TAP TO PLAY</div>' +
+    '</div>', 'close');
+  DATA.seen = true; save();
+}
+ovl.addEventListener('click', e => {
+  if (e.target.closest('#ovNew')) { AU.ensure(); snd('ui'); hideOverlay(); game.newGame(); return; }
+  if (e.target.closest('.btn')) return;
+  if (ovlAction === 'close') { AU.ensure(); hideOverlay(); }
+});
+
+/* ══ shell: timer ══════════════════════════════════════ */
+const T = {
+  t0: 0, acc: 0, run: false,
+  reset() { this.t0 = 0; this.acc = 0; this.run = false; },
+  start() { if (!this.run) { this.run = true; this.t0 = Date.now(); } },
+  stop() { if (this.run) { this.acc += Date.now() - this.t0; this.run = false; } },
+  sec() { return Math.floor((this.acc + (this.run ? Date.now() - this.t0 : 0)) / 1000); }
+};
+const fmtT = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+setInterval(() => { if (game.tick) game.tick(); }, 500);
+
+/* ══ shell: canvas helper ══════════════════════════════ */
+let CW = 0, CH = 0;
+function initCanvas() {
+  const cvs = document.createElement('canvas');
+  cvs.style.cssText = 'position:absolute;inset:0;display:block;touch-action:none';
+  boardEl.appendChild(cvs);
+  const g = cvs.getContext('2d');
+  function fit() {
+    const r = boardEl.getBoundingClientRect();
+    CW = Math.max(1, Math.round(r.width)); CH = Math.max(1, Math.round(r.height));
+    const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    cvs.width = CW * dpr; cvs.height = CH * dpr;
+    cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (game.onResize) game.onResize();
+  }
+  fit();
+  window.addEventListener('resize', fit);
+  const pos = e => { const r = cvs.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  cvs.addEventListener('contextmenu', e => e.preventDefault());
+  return { cvs, g, pos, fit };
+}
+function startLoop() {
+  let last = performance.now();
+  (function raf(now) {
+    requestAnimationFrame(raf);
+    const dt = Math.min(0.033, (now - (last || now)) / 1000); last = now;
+    if (game.frame) game.frame(dt);
+  })(performance.now());
+}
+
+/* ══ shell: top buttons ════════════════════════════════ */
+function syncSnd() { $('#btnSnd').textContent = DATA.sound ? '🔊' : '🔇'; }
+$('#btnSnd').addEventListener('click', () => { DATA.sound = !DATA.sound; save(); syncSnd(); AU.ensure(); snd('ui'); });
+$('#btnNew').addEventListener('click', () => { AU.ensure(); snd('ui'); hideOverlay(); game.newGame(); });
+$('#btnUndo').addEventListener('click', () => { AU.ensure(); if (game.undo) game.undo(); });
+window.addEventListener('pointerdown', () => AU.ensure(), { once: true, capture: true });
+
+/* ══ game ══════════════════════════════════════════════ */
+/* generated by prep-anagram.js */
+const A6 = [["aahing","aah aga again agha agin aha ahi ahing aia aiga ain ainga ana anga ani anigh gain gan ghi gin hag hain han hang hangi hin hing ing nag naga nah ngai nigh"],["aboded","abed abo abode add ado adobe bad bade bead bed bedad boa bod bode boded dab dad dado dae dead deb doab dob dod doe eddo oba obe oda odd ode odea"],["accuse","ace aces aesc aue case cause ceas ceca cue cues cusec eas eau eaus ecu ecus sac sae sau sauce sea sec sue use"],["adhere","ahed ard are ared arede dae dah dare dear deare dee deer dere dree ear eard eared edh ehed era ere ered had hade hae haed hard hare hared head hear heard heare heder heed her herd here rad rade rah rahed read red rede ree reed reh rhea"],["aerobe","abo abore aero arb are bar bare bear beare bee beer bere boa boar bor bora bore boree bra brae bree bro ear era ere oar oba obe ora orb ore reb ree reo rob robe roe"],["agilas","aal aals aas aga agas agila ags aia aias aiga aigas ail ails ais ala alas alga algas alias als gal gala galas gals gas gila gilas gis glia glias lag lags las lias lig ligs lis saag sag saga sai saiga sail sal sial sigla slag"],["aiding","agin aid ain and ani dag dan dang dig din ding gad gadi gaid gain gan gid gin igad india ing inia nag ngai nid nidi"],["aldols","ado ados ads aldol all allod alls alod alods als also dal dals das dol doll dolls dols dos dso lad lads las load loads lod lods los oda odal odals odas ods old olds olla ollas sad sado sal sall salol sod soda sol sola sold"],["allude","ale all alu aue auld dae dal dale dalle deal del dell dual due duel dule dull eau eld ell lad lade ladle laud lea lead leal led leu leud lud lude udal ule"],["ambary","aba abram abray aby ama ambry arb arba arm army ary baa bam bar barm barmy bay bra bray maa maar mar mara mary may maya ram ray raya rya yaar yaba yam yar"],["amylum","alu alum amu amyl ayu lam lammy lay lum luma lummy lyam lym mal malm malmy mam maul may mum myal umm umma yam yum"],["anneal","aal ala alae alan alane ale ana anan ane ann anna annal ean elan lana lane lea lean naan nae nala nan nana nane neal"],["apexes","ape apes apex apse asp axe axes eas ease exes pas pase pax paxes pea peas pease pees pes sae sap sax saxe sea see seep spa spae"],["arbour","abo arb arbor bar barro baur boa boar bor bora bra bro brr bru bur bura burr burro oar oba ora orb orra our roar rob rub urao urb"],["armory","arm armor army ary mar maror marry mary may mayo mayor moa mor mora moray morra moy moya oar oary ora orra ram ray roam roar roary rom roma rory rya yam yar yarr yom"],["askant","aas aka akas ana anas ans ansa ant anta antas ants ask ats kaas kana kanas kans kant kants kas kat kata katas kats nas nat nats san sank sant sat ska skat stank tak taka takas taks tan tana tanas tank tanka tanks tans tas task tsk"],["atokal","aal aka ala alko alt alto atok kaal kat kata katal koa koala kola lat lot lota oak oat oka okta taal tak taka tala talak talk tao tola"],["aumbry","aby ambry amu arb arm army arum ary ayu bam bar barm barmy baur bay bra bray bru bur bura bury buy mar mary mauby may mura ram ray rub ruby rum rumba rya umbra umra urb yam yar yum"],["avowal","aal ala alow ava aval avo avow awa awl awol lav lava law low ova oval owl vaw vol vola vow"],["axions","ain ains ais ani anis ans axion axis axon axons ins ion ions ios isna iso naoi naos nas nis nix nos nox ois ons sai sain san sax sin six son sox xis"],["baccas","aas aba abac abacs abas abs acca accas baa baas bac bacca bacs bas caa caas cab caba cabas cabs caca cacas casa sab sac scab"],["bajras","aas aba abas abs ajar arb arba arbas arbs ars asar baa baas bajra bar bars bas bra bras jab jabs jar jars raj raja rajas ras sab sabra sar"],["bandit","abid adit aid ain ait and ani ant anti bad bait ban band bani bant bat bid bin bind bint bit dab daint dan dant dib din dint dit dita idant ita nab nat nib nid nit tab tabi tabid tad tai tain tan tian tid tin tina tind"],["barony","abo aby any arb ary ban bar barn barny baron bay boa boar bon bona bony bor bora born borna boy boyar bra bran bray bro nab nary nay nor noy oar oary oba ony ora orb orby ran ray rayon roan rob rya yar yarn yob yon"],["batman","aba ama amban ana ant anta atma atman baa bam ban bant bat maa man mana manat manta mat mna naam nab nam nat tab tam tan tana"],["beaker","ake akee arb are ark bake baker bar bare bark beak bear beare bee beer bere berk bra brae brak brake break bree ear eek eke era ere erk kab kae kbar kea keb kebar kerb krab rake rakee reak reb ree reek reke"],["befall","able alb albe ale alef alf all bael bal bale ball bel bell blae elf ell fab fable fae fall feal fell fella flab flea lab label lea leaf leal"],["behold","bed bel bhel bled bod bode bodle boh bold bole deb del delo dhol dhole dob doe doh dol dole edh eld held helo hob hod hoe hoed hold hole holed led lob lobe lobed lod lode obe ode ohed old olde ole"],["bemock","beck bock bok boke cob coke comb combe come eco emo keb kemb kembo kob meck mob mobe moc mock moe moke obe oke"],["beside","bed bede bedes beds bee beedi bees bes bid bide bides bids bis bise deb debe debes debs dee dees dei desi dib dibs die dieb diebs dies dis eds eide ide idee idees ides ids sed see seed sei sib side"],["beworm","berm bor bore borm bow bower bowr brew bro brome brow embow emo erm meow mew mob mobe moe moer mor more mow mower obe omber ombre omer orb ore owe ower owre reb rem reo rew rob robe roe rom row rowme web wem wemb wero woe womb wore worm"],["bigamy","aby aim ami bag bam bay big biga bima gab gaby gam gamb gamy gay gib gym iamb mag magi may mib mig yag yagi yam"],["biotin","bin binit bint bio biont bit bito boi bon bot inti into ion nib nit not obi obiit obit oint tin ton"],["blashy","ably abs aby abys ahs alb albs als ash ashy ays bah bal bals bas bash bay bays blah blahs blash blay blays bys has hay hays hyla hylas lab labs lah lahs las lash lay lays sab sal say sha shaly shay shy slab slay sly yah yahs"],["blotch","bloc blot boh bolt bot botch both clot cloth cob col colt cot coth hob hoc holt hot lob loch lot loth och tho toc"],["bocces","bes bocce bos cob cobs cos cose cosec ecco eco ecos obe obes obs oes ose sec secco seco sob soc"],["bolson","bolo bolos bon boo bool bools boon boons boos bos boson lob lobo lobos lobs loo loon loons loos los nobs nolo nolos noo noob noobs nos obo obol obols obos obs ono onos ons oon oons oos slob snob snool sob sol solo solon son sool soon"],["booing","big bin bing bingo bio biog bog boi boing bon bong bongo boo boon boong gib gin gio gob gobi gobo gon goo goon ing ingo ion nib nog noo noob obi obo ono oon"],["borsht","boh bohs bor bors bort borts bos bosh bot both bots bro bros broth hob hobs hors horst hos host hot hots obs ohs orb orbs ors ort orts rho rhos rob robs rost rot rots short shot sob soh sorb sort sot soth stob tho thro throb tor tors tosh"],["bougie","beg bego big bio biog bog bogie boi bouge bug ego euoi geo gib gibe gie gio gob gobi goe gub gue obe obi"],["braais","aas aba abas abri abris abs aia aias air airs ais arb arba arbas arbs aria arias aris ars asar baa baas bar bars bas bias bis bra braai bras bris isba rabi rabis rai raia raias rais ras ria rias rib riba ribas ribs sab sabir sabra sai sair sar sari sib sir sri"],["bredes","bed bede bedes beds bee beer beers bees bere beres bes bred brede breds bree breed brees deb debe debes debs dee deer deers dees dere deres dree drees eds ere ered eres ers reb rebs red rede redes reds ree reed reeds rees res sed seder see seed seer ser sere sered"],["brillo","bill bio birl biro boi boil boll bor brill brio bro broil ill lib lilo lob lobi loir lor obi oil orb rib rill rob roil roll"],["broses","bes bor bore bores bors bos boss bro bros brose eros ers ess obe obes obs oes orb orbs ore ores ors ose oses reb rebs reo reos res rob robe robes robs roe roes rose roses ser sers sob sober sobs sorb sorbs sore sores sos"],["buckra","arb arc ark auk bac back bar bark bauk baur bra brack brak bru buck bur bura burk burka cab car carb cark cauk crab cru cub cur curb kab kbar krab rack raku rub ruc ruck urb"],["bummer","berm bru brume bur emu erm mem meu mum mure reb rem rub rube rue rum rume umber umbre umm urb ure"],["burble","bel bleb blub blue bluer blur blurb bru brule bub bulb bur burb burl ebb leu lube lur lure reb rub rube rubel ruble rue rule ule urb ure"],["burton","bon bor born bort bot boun bourn bout bro bru brunt brut bun bunt bur burn burnt but nor not nout nub nur nut orb ort our ourn out rob ront rot rout rub run runt rut ton tor torn toun tour tron tub tun turbo turn unto urb urn"],["bylaws","ably abs aby abys alb albs als awl awls ays bal bals bas bawl bawls bay bays blaw blaws blay blays bylaw bys lab labs las law laws lay lays sab sal saw say slab slaw slay sly swab swaly sway swayl swy wab wabs waly was way ways yaw yawl yawls yaws"],["caddis","acid acids add adds ads aid aids ais asci asdic cad cadi cadis cads caid caids cid cids cis dad dads dais das did dis disa disc ids sac sad sadi sai saic said scad sic sida"],["callop","alco all alp apo call calo calp cap capo clap clop coal col cola coll cop copal lac lap loca local lop oca olla opal pac paco pal pall poa pol poll"],["cankle","ace acne ake ale alec aleck ance ancle ane ankle cake calk can cane cel clan clank clean ean elan elk kae kale kane kea ken lac lace lack lake lance lane lank lea leak lean lek nae neal neck nek"],["carcel","ace acer acre ale alec arc are arle car care carl carle ceca cecal cel clear ear earl era lac lace lacer laer lar lare lea lear race rale real rec recal"],["cashaw","aah aahs aas ach aha ahs ash awa awash caa caas casa cash caw caws cha chas chaw chaws has haw haws sac saw sawah scaw schwa sha shaw shwa waac waacs was wash wha"],["cauves","ace aces aesc aue ave aves case cause cave caves ceas cue cues eas eau eaus ecu ecus sac sae sau sauce sav save sea sec suave sue use uva uvae uvas uvea uveas vac vacs vae vaes vas vase vau vaus"],["censed","cede cedes cee cees cens cense dee deen deens dees den dene denes dens dense eds een end ends ene enes ens esne ned neds nee need needs scend scene sec sed see seed seen sen send sene sned snee sneed"],["cestus","cess cue cues cuss cut cute cutes cuts ecu ecus ess est ests scuse scut scute scuts sec secs sect sects set sets sue sues suet suets sus tec tecs tes use uses ute utes uts"],["chappy","ach achy app cap caph cay cha chap chay hap happy hay hyp pac pacy pah pap pay pya yah yap yapp"],["chenix","che chi chin chine cine ech hen hex hic hie hin ice ich inch nice niche nie nix nixe xenic"],["childs","chi chid child chis cid cids cis dich dis disc dish hic hid hild his ich ichs ids ish lich lid lids lis sic sich sidh sild slid"],["choker","cero che cher choke chore coke cor core cork ech echo eco erk heck her hero hoc hock hoe hoke kero khor kor kore och oche ocher ochre ocker oke okeh orc ore rec reck reh reo rho roc roch rock roe rok roke"],["chromo","choom coho coo coom cor corm hoc hom hoo hoor mho moc moch mohr moo mooch moor mor och ohm oho ooh oom oor orc rho roc roch rom roo room"],["civets","cesti cis cist cit cite cites cits cive cives civet est etic evict ice ices its sec sect sei set sic sice sit site stie stive tec tecs tes tic tice tices tics tie ties tis vest vet vets vice vices vie vies vis vise vite"],["cleugh","cel che chug cleg clue cue ech ecu eugh gel glue gue gul gulch gule hue hug huge hule lech leg leu leuch leugh luce lug luge ugh ule"],["clouts","clot clots clou clous clout col cols colt colts cos cost cot cots cult cults cut cuts locus los lost lot lots lotus lou lous lout louts ous oust out outs scot scout scul scut slot soc sol sot sou souct soul sout toc tocs tolu tolus uts"],["coddle","cel clod cod code coded coed col cold cole coled deco del delo doc dod doe dol dolce dole doled eco ecod eddo eld led lod lode odd ode old olde ole"],["coigns","cig cigs cion cions cis cog cogs coign coin coins con coni cons cos gin gins gio gios gis gon gons gos icon icons incog ing ingo ings ins ion ions ios iso nis nog nogs nos ois ons scion scog sic sign sin sing snig snog soc sog son song sonic"],["combes","bes besom bos cob cobs comb combe combs come comes coms cos cose eco ecos emo emos ems mebos mes mob mobe mobes mobs moc mocs moe moes mos mose obe obes obs oes oms ose sec seco sob soc som some"],["condos","cod codon cods con cond condo cons coo coos cos doc doco docos docs don dons doo doon doos dos dso nod nods noo nos ods odso ono onos ons oon oons oos snod snood soc sod son soon"],["coolie","ceil cel ciel coil col cole coo cool eco ice lei lice lie loci loco loo looie oil ole oleic oleo olio"],["cordon","cod codon con cond condo coo cor cord corn corno croon doc doco don donor doo doon door doorn dor nod noo nor odor ono oon oor orc ord ordo roc rod rondo roo rood roon"],["cosily","cis cloy cloys cly coil coils col cols coly cos cosy coy coys icy ios iso lis loci los loy loys oil oils oily ois oys sic silo sly soc soil soily sol soli soy syli"],["cousin","cion cions cis coin coins con coni cons conus cos icon icons incus ins ion ions ios iso nis nos nous nus ois oncus ons onus ous scion sic sin soc son sonic sou sui sun suni unci unco uncos uni unis uns"],["cozied","cedi cid cide cod code coed coz coze cozed cozie deco dei dice die doc doe doze dzo eco ecod ice iced ide ode odic zed zoic"],["creeks","cee cees cere ceres cree creek crees eek eke ekes ere eres erk erks ers esker rec reck recks recs ree reek reeks rees reke rekes res scree sec see seek seer ser sere serk skee skeer sker"],["crises","cess cire cires cis cress cries cris crise eric erics ers ess ice icer icers ices ire ires rec recs rei reis res rice rices rise rises sec secs sei seir seirs seis ser seric sers sic sice sices sics sies sir sire sires sirs sis sri sris"],["crunks","cru crunk crus cur curn curns curs cusk knur knurs nur nurs nus ruc ruck rucks rucs run runs rusk scur snuck suk sun sunk sur uns urn urns"],["cunner","cru crue cue cur cure curn ecru ecu enurn ern nun nur rec ren ruc rue run rune unce ure urn"],["curule","cel clue cru crue cruel cue cur cure curl ecru ecu leu luce lucre lur lure rec ruc rue rule ulcer ule ulu ure"],["cygnet","cent cyte eng gen gent genty get gey gyte neg net nye tec teg ten tye tyg tyne yen yet"],["daikon","ado aid ain akin and ani daiko dak dan danio dank dika din dino don dona ikan ikon ink ion kadi kai kaid kain kaon kid kin kina kind kinda kino koa koan koi kon kond naik naoi nid nod nodi oak oda oik oink oka"],["dargah","aah aargh aga agar agha aha ard argh dag dah darg darga drag gad gar garda grad haar had hag hard rad rag raga rah"],["dayglo","ado agly ago alod dag dago dal day dog dogy dol doy gad gal gaol gay glad glady goa goad goal god godly gold goldy goy gyal lad lady lag lay load lod log logy loy oda odal odyl old oldy yad yag yald ygo yod yoga yold"],["decent","cede cee cent cete ctene dee deen deet den dene denet dent een end ene eten ned nee need net nete tec ted tee teed teen teend ten tend tene"],["defogs","def defo defog deg degs doe does dof dog doge doges dogs dos dose dso eds efs ego egos fed feds feg fegs feod feods fes foe foes fog fogs ged geds geo geos god gods goe goes gos ode odes ods oes ose sed seg sego sod sog"],["delver","dee deer deev del dele delve dere derv dev devel dree eel eld elder elver ere ered erev eve ever led lee leed leer lere lered lev leve lever red rede ree reed reel rev revel vee veer veld vele verd"],["desand","add adds ads and ands ane anes ans dad dads dae daes dan dans das dead deads dean deans den dens ean eans eas eds end ends ens nads nae nas ned neds sad sade sae san sand sane saned sea sean sed sedan sen sena send snead sned"],["dharna","aah adhan aha ana and ard arna dah dan darn haar had han hand hard harn nada nah nard rad rah ran rana rand"],["digamy","aid aim ami amid dag dam day dig dim diya gad gadi gaid gam gamy gay gid gym igad mad mag magi maid may mid midgy mig yad yag yagi yam yid"],["dipsas","ads aid aids ais apsis asp aspis asps dais dap daps das dip dips dis disa disas diss ids pad padi padis pads paid pais pas pass pia pias pis psi psis sad sadi sadis sads sai said saids sais sap sapid saps sida sidas sip sips sis spa spas"],["divine","dei den deni dev die din dine div dive divi end ide indie ivied ned nevi nid nide nidi nie nied vein vend vid vide vie vied vin vine vined"],["dolled","del dell delo dod doe dol dole doled doll eddo eld ell led lod lode odd ode old olde ole"],["doozer","dero doe doer doo door dor dore doze dozer dzo ode odor oor ooze oozed ord ordo ore orzo red redo reo rez rod rode rodeo roe roed roo rood zed zero zoo"],["doughs","dog dogs doh dohs dos dosh dough dso dug dugs duh duo duos dush god gods gos gosh gus gush hod hods hog hogs hos hug hugs huso ods ohs oud ouds ous shod shog sod sog soh sou sough sud sug sugh sugo udo udos uds ugh ughs ugs"],["drawer","ard are ared arew awe awed dae dare darer darre daw dear deaw dew dewar draw drear drew ear eard era err rad rade rare rared raw rawer read rear red rew wad wade wader wae war ward ware wared warre wear wed"],["drongo","dog don dong donor doo doon door doorn dor droog god gon goo good goon goor gor nod nog noo nor odor ono oon oor ord ordo rod rondo rong roo rood roon"],["duckie","cedi cid cide cud cue cued cuke deck dei dice die dike duce duci duck due dui duke ecu eik euk ice iced ick ide ked kid kue uke"],["dunked","den dud dude due dued duke duked dun dune dunk end euk ked ken kue kune ned nek neuk nuke nuked uke unde unked"],["dwarfs","ads ard ards arf arfs ars das daw daws draw draws dwarf fad fads far fard fards fars fas faw faws fra fras rad rads ras raw raws sad sar sard saw swad sward swarf wad wads war ward wards wars was"],["eatery","aery are aret arete art arty ary ate aye ayre ear eat eater eery era ere eta eye eyer eyra eyre rat rate ray reate ree ret rete rya rye tae tar tare tay tea tear teary tee teer tray tree trey try trye tye tyee tyer tyre yae yar yare yate yea year yet"],["eftest","efs eft efts est fee fees feet fes fest fet fete fetes fets fett fetts see set sett stet tee tees tef tefs tes test teste tet tete tetes tets"],["elpees","eel eels elpee els else epee epees lee leep leeps lees leese lep leps les peel peels pees pel pele peles pels pes see seel seep sel sele slee sleep speel"],["emerse","eme emeer emes ems ere eres erm ers mee meer meers mees mere meres merse mes mese ree rees rem rems res resee see seem seer seme semee ser sere smee"],["encode","cede cee cod code coden coed con cond cone coned deco dee deen den dene doc doe doen don done donee eco ecod een end ene eon ned nee need nod node ode once one"],["ennogs","ego egos eng engs ennog ens eon eons gen gens geo geos goe goes gon gone gons gos neg negs neon neons noes nog nogs non none nones nong nongs nos nose oes one ones ons ose seg segno sego sen snog sog son sone song sonne"],["enwomb","ben bon bone bow bowne ebon embow emo enow eon men meno meow mew mob mobe moe mon mow mown neb new nom nome now obe omen one owe own web wem wemb wen woe womb women won"],["eroded","dee deed deer dere dered dero dod doe doer dor dore doree dree dreed eddo ere ered erode odd odder ode ord ore red redd rede reded redo ree reed reo rod rode roded roe roed"],["ethion","eon eth hen hent het hie hin hint hit hoe hoi hon hone hot hote hoten into ion net nie nit nite noh not note nth oint one onie tein ten the thein then thin thine thio tho thon tie tin tine toe ton tone"],["evilly","ell evil ill illy ivy lei lev levy ley lie lily live lye veil veily vell vie vile vill vlei vly yell yill"],["exonym","emo eon exo exon men meno moe mon money mony moy myxo nom nome nox noy nye omen one ony onyx oxen oxy oye yen yex yom yon"],["faceup","ace ape aue auf cafe cap cape cauf caup cep cue cup eau ecu face fae fap feu pac pace pea pec puce"],["famish","ahi ahis ahs aim aims ais ami amis ash fah fahs fas fash fish hafis ham hams has him hims his ifs ish ism mas mash miha mihas mis sai saim sam sha sham shim sif sim sima sma"],["faring","agin agrin ain air airn ani arf fagin fain fair fan fang far fiar fig fin fir firn fra frag frig gain gair gan gar gari garni gif gin girn gnar grain gran grin infra ing nag naif ngai rag ragi rai rain ran rang rangi rani ria rif rig rin ring"],["favors","afro afros arf arfs ars arvo arvos avo avos far faro faros fars fas favor for fora fra fras fro fros oaf oafs oar oars ora orf orfs ors osar ova ras rav ravs sar sav savor soar sofa sofar sora sov var vars vas voar voars vor vors"],["feline","eel een eine elf elfin ene fee feel feen fen feni fie fil file fin fine flee lee lei lie lief lien life lin line nee nef neif nie nief nife nil"],["fettle","eel eft elf elt ettle fee feel feet felt fet fete fett flee fleet lee leet left lefte let tee teel tef tel tele telt tet tete"],["filled","def defi dei deif deil del delf deli dell die diel dif dill eild eld elf ell fed felid fell fid fie field fil file filed fill fille fled flied ide idle ill led lei lid lie lied lief life"],["fissle","efs elf elfs els ess feis fes fess fie fil file files fils flies ifs isle isles lei leis les less lie lief liefs lies life lifes lis sei seif seifs seil seils seis sel self selfs sels sies sif sile siles sis"],["flaxes","ale alef alefs ales alf alfs als axe axel axels axes axle axles eas efs elf elfs els fae false falx fas fax faxes feal feals fes flax flea fleas flex las lase lax laxes lea leaf leafs leas les lex sae safe sal sale sax saxe sea seal sel self slae"],["flongs","flog flogs flong fog fogs fon fons golf golfs gon gons gos log logs long longs los nog nogs nos ons slog snog sog sol son song"],["flyman","alf amyl any fan fay flam flamy flan flay fly lam lay lyam lym mal man manly many may mna myal myna nam nay yam"],["folles","efs elf elfs ell ells els fell fells fes floe floes foe foes les los lose losel oes ole oles ose sel self sell sloe sol sole"],["forhow","foh for fro frow hoo hoof hoor how howf oho oof ooh oor orf rho roo roof row who whoof wof woo woof"],["fousty","fou fous foy foys fust fusty oft ous oust out outs oys soft softy sot sou sout soy sty tofu tofus tousy toy toys ufo ufos uts you yous yuft yufts yus"],["fremds","def derm derms eds efs emf emfs ems erf erm ers fed feds fem fems fer ferm ferms fes fremd med meds mes red reds ref refs rem rems res sed ser serf"],["froths","foh for fort forth forts fro fros frosh frost froth hors horst hos host hot hots oft ohs orf orfs ors ort orts rho rhos rost rot rots short shot soft soh sort sot soth tho thro tor tors tosh"],["fumble","bel blue blume bumf elf elm emf emu fem feu flu flub flue flume fub fuel fum fume leu lube lum mel meu mule ule umbel umble"],["fusing","fig figs fin fins fug fugs fun fung fungi fungs funs gif gin gins gis gnu gnus gun guns gus ifs ing ings ins nis nus sif sign sin sing snig snug sug sui suing sun sung suni ugs uni unis uns using"],["gaffes","aff age ages ags eas eff effs efs fae fas feg fegs fes gae gaes gaff gaffe gaffs gas sae safe sag sage sea seg"],["gamgee","age agee ame egg egma eme gae gag gage gam game gee gem mae mag mage magg mee meg mega"],["garter","age ager are areg aret arret art ate ear eat era erg err eta gae gar gare garre gart gat gate gater gear geat ger gert get geta grat grate great rag rage rager rare rat rate rater rear reg regar ret retag tae tag tar tare targe tarre tea tear teg terga terra"],["gaydar","adry aga agar ard ary dag darg darga day drag dray dry gad gar garda gay grad gray rad rag raga ray raya rya yaar yad yag yar yard"],["geneva","age agee agen agene ane ave ean eave een eevn ene eng eve even gae gaen gan gane ganev gave gean gee gen gena gene nae naeve nag nave nee neg neve vae vag van vane vang vee veena veg vega vegan vena venae venge"],["giaour","agio ago air gair gar gari gau gaur gio giro goa gor gora gori goura guar guiro gur oar ora orgia our rag ragi ragu rai ria rig rug ruga urao"],["ginnel","eng gel gen gie gien gin ginn glei glen ing ingle inn leg lei leng lie lien lig ligne lin line linen ling linn neg nie nil nine"],["glebae","abele able age agee aglee alb albe albee ale alee bael bag bagel bal bale bee beg bel belga blae blag blee eagle eale eel egal gab gable gae gal gale geal gee gel gleba glebe glee lab lag lea lee leg"],["glozed","deg del delo doe dog doge dol dole doze dzo ego eld ged gel geld geo gled glode gloze god goe goel gold gole led leg lez lod lode lodge log loge ode ogle ogled old olde ole zed zel zol"],["godown","dog don dong doo doon dow down gnow god gon goo good goon gowd gown nod nog noo now ono oon own wog won woo wood woon"],["goonda","ado ago agon agood and dag dago dan dang dog don dona dong donga doo doon doona gad gan goa goad god gon gonad goo good goon nag nod nog noo oda ono oon"],["gourds","dog dogs dor dors dos dour drug drugs dso dug dugs duo duos duro duros god gods gor gos gourd gur gurs gus ods ord ords ors oud ouds our ours ous rod rods rud ruds rug rugs sod sog sord sou sour sud sudor sug sugo sur surd udo udos uds ugs urd urds"],["grayer","aery age ager are areg ary aye aygre ayre ear era erg err eyra gae gar gare garre gay gayer gear ger gey gray grey gyre rag rage rager rare ray rear reg regar rya rye yae yag yager yar yare yarer yarr yea year"],["griple","erg gel ger gie gip girl glei grip gripe ire leg lei leir lep lerp lie lier lig liger lip lipe lire peg pel per peri peril pie pier pig pile piler pir pirl plie plier pre prig reg rei rep riel rig rile rip ripe"],["gruing","gig gin ging girn gnu grig grin gun gung gur gurn igg ing nur rig rigg rin ring rug ruin ruing run rung uni unrig urn"],["guimps","gimp gimps gip gips gis gism guimp gum gump gumps gums gup gups gus imp imps ism mig migs mips mis mug mugs mus pig pigs pis piu pium piums psi pug pugs pus sim simp sip smug spim spug sug sui sum sump sup ugs ump umps ums ups"],["gurges","egg eggs erg ergs ers ger gers grue grues gue gues gur gurge gurs gus reg regs res rue rues rug rugs ruse seg ser sue suer sug sur sure surge ugs ure ures urge urges use user"],["gypsum","gum gump gumps gums gup gups gus guy guys gym gymp gymps gyms gyp gyps mug mugs mus pug pugs pumy pus puy puys smug spug spumy spy sug sum sump sumy sup ugs ump umps umpy ums ups upsy yug yugs yum yump yumps yup yups yus"],["hained","ahed ahi ahind aid aide ain aine and ane ani dae dah daine dan dean dei den deni diane die din dine ean edh eina end had hade hae haed haen hain han hand head heid hen hend hid hide hie hied hin hind ide idea nae nah ned nid nide nie nied"],["hangul","aglu alu gal gan gau gaun gnu guan gul gula gun hag han hang haul hug hula hun hung lag lah lang laugh lug luna lung nag nah ugh uhlan ulan ulna"],["hatful","aft alf alt alu auf fah fat fault faut flat flu haft half halt hat hauf haul hault haut hula hut lah lat lath latu lauf tau tufa uta"],["health","ale alt ate eat eath elt eta eth ethal hae haet hah hale halt hat hate hath heal heat heath heh het heth lah lat late lath lathe lea leat let tae tael tale tea teal tel tela thae thale the"],["heling","ehing elhi eng gel gen ghi gie gien gin glei glen heil hen hie hin hing hinge ing ingle leg lei leng lie lien lig ligne lin line ling neg neigh nie nigh nil"],["heriot","eth heir her hero het hie hire hit hoe hoi hori hot hote ire ither ore ort other reh rei reo ret rho riot rit rite roe rot rote roti tehr the their thio thir tho thro throe tie tier tire tiro toe tor tore tori trie trio"],["hiemal","ahem ahi ail aim ale alme almeh ame ami amie elhi elm email hae haem hail hale halm ham hame heal heil helm hem hemal hie hila him ilea lah lam lame lea leam lei lie lima lime mae mail maile mal male mali meal meh mel mela miha mil mile"],["hitter","eth heir her het hie hire hit ire ither reh rei ret rit rite ritt tehr tet teth tetri the their thir tie tier tire tite titer tithe titre tret trie trite"],["hoisin","hin hins hioi hiois his hisn hoi hon hons hos ins ion ions ios ish iso nis nish nisi noh nos nosh ohs ois ons shin sin sinh soh son"],["honkie","eik eikon enoki eon hen hie hike hin hoe hoi hoik hoke hoki hon hone honk ikon ink ion ken keno khi kin kine kino kohen koi koine kon nek nie noh oik oink oke okeh one onie"],["hormic","chi chimo chirm chiro choir coir cor corm crim hic him hoc hoi hom hori ich ichor mho mic mich mico micro mir miro moc moch mohr moi mor och ohm ohmic orc rho rich rim roc roch rom"],["howker","erk ewk her hero hew hoe hoke how howe howk howre kero khor kor kore kow oke okeh ore owe ower owre reh reo rew rho roe rok roke row wero who woe wok woke wore work wroke"],["humpen","emu hem hemp hen hep hue hum hump hun hup meh men menu meu mun nep neum peh pen puh pun ump umph"],["hylegs","ehs els gel gels gey gley gleys hes hey heys hye hyes hyle hyleg hyles leg legs les ley leys lye lyes lyse seg sel sey she shy sley sly sye yeh yes"],["igapos","agio agios ago ags ais apo apos apso asp gap gapo gapos gaps gas gasp gio gios gip gips gis goa goas gos igapo ios iso ois ops pais pas pia pias pig pigs pis piso poa poas poi pois pos psi psoai sag sago sai sap sip soap sog sop spa spag"],["impawn","aim ain ami amin amp ani awn imp main man mani map maw mawn mina mna nam nap naw nim nip nipa pain pam pan panim paw pia pian pima pin pina wai wain wan wap wimp win"],["incurs","cis cris cru crus cur curn curns curs cursi incur incus ins nis nur nurs nus rin rins ruc rucs ruin ruins run runic runs scur sic sin sir sri sui sun suni sur unci uni unis uns uric urn urns"],["inhere","een eine ene ere ern erne heir hen her here hern hie hin hire hiree ire nee nie ree reen reh rei rein ren rhine rin rine"],["intend","dei den deni dent die diet din dine dint dit dite edit end ide ident inn inned ned net nid nide nie nied nine nit nite ted tein teind ten tend tid tide tie tied tin tind tine tined"],["ireful","elf erf fer feu fie fier fil file filer fir fire flier flir flu flue fuel fur furl ire iure lei leir leu lie lief lier lieu life lifer lire lur lure ref rei reif riel rif rife rifle rile rue rule ule ure"],["jacksy","ask ays caky cask casky cay cays jack jacks jacky jak jaks jasy jay jays kas kay kays sac sack say ska sky yack yacks yak yaks"],["jarina","aia ain air airn ajar ana ani aria arna jai jar jin naira rai raia rain raj raja ran rana rani ria rin"],["jetlag","age aglet ale alt ate eat egal elt eta gae gal gale gat gate geal geat gel gelt get geta jag jeat jet lag lat late lea leat leg let tae tael tag taj tale tea teal teg tel tela"],["joists","ios iso isos its joist joss jot jots ois sijo sijos sis sist sit sits sos sot sots tis toss"],["judger","deg degu dreg drug due dug dure erg ged ger gju grue grued gude gue gur jeu jud judge jug jure red reg rud rude rue rued rug urd urde ure urge urged"],["jymold","dol dom domy doy jol joy lod loy lym mod mol mold moldy moly moy moyl odyl old oldy olm yod yold yom"],["kanjis","ain ains ais akin ani anis ans ask ikan ikans ink inks ins isna jai jak jaks jin jink jinks jins kai kain kains kais kanji kans kas kin kina kinas kins kis kisan naik naiks nas nis sai sain saki san sank sik sika sin sink ska ski skin"],["kayaks","aas aka akas akkas ask ays kaas kak kaka kakas kaks kas kay kayak kays kyak kyaks say ska sky yak yakka yaks"],["kenned","dee deek deen deke den dene eek een eke eked end ene ked keen ken knee kneed ned nee need nek nene"],["khaphs","ahs ash ask asp hah hahs hap haps has hash hask hasp kaph kaphs kas khaph pah pahs pas pash sap sha shah shh ska spa"],["kimmer","eik emir erk erm ire irk keir kier kir mem meri merk mike mim mime mimer mir mire mirk rei reik rem riem rim rime"],["kitted","dei die diet dike dit dite ditt edit eik ide ked ket kid kit kite kited ted tet tid tide tie tied tik tike tite"],["kobold","blood blook bod bok boko bold bolo boo book bool dob dol doo doob dook dool kob kobo kolo lob lobo lod loo look obo obol old"],["kreese","eek eke ekes ere eres erk erks ers esker ree reek reeks rees reke rekes res resee see seek seer ser sere serk skee skeer sker"],["labdas","aal aals aas aba abas abs ads ala alas alb alba albas albs als baa baal baals baas bad bads bal balas bald balds bals balsa bas basal blad blads daal daals dab dabs dal dals das lab labda labs lad lads las sab sabal sad sal salad slab"],["laighs","ags ahi ahis ahs ail ails ais als ash gal gals gas gash ghi ghis gila gilas gis glia glias hag hags hail hails has hila his ish lag lags lah lahs laigh las lash lias lig ligs lis sag sai sail sal sha sial sigh sigla slag"],["larded","add adder addle adred alder ale ard are ared aredd arle arled dad dae dal dale daled dare dared dead deal dear dedal del drad dread ear eard earl eld era lad lade laded lader laer lar lard lare lea lead lear led rad rade rale read readd real red redd"],["lavabo","aal aba abo ala alb alba ava aval avo baa baal bal boa bola lab lav lava lob oba ova oval vol vola"],["leaved","ale alee ave avel dae dal dale deal deave dee deev del dele delve dev deva devel eale eave eaved eel eld evade eve lad lade lav lave laved lea lead leave led lee leed lev leva leve vade vae vale veal veale vee vela veld vele"],["leiger","eel eger ere erg gee gel ger gere gerle gie girl glee glei gree ire lee leer leg leger lei leir lere lie liege lier lig liger lire ree reel reg regie rei relie riel rig rile"],["lettre","eel elt ere ettle lee leer leet lere let ree reel relet ret rete tee teel teer tel tele telt tet tete tree tret"],["liefly","elf ell fell felly fey fie fil file fill fille filly fley fly fyle ill illy lei ley lie lief life lily lye yell yill"],["limped","dei deil del deli die diel dim dime dimp dip eild eld elm ide idem idle imp imped impel led lei lep lepid lid lie lied lime limed limp lip lipe med mel meld mid mil mild mile ped pel pie pied pile piled pled plie plied plim"],["lippen","lei lep lie lien lin line lip lipe nep nie nil nip pein pel pen peni pep pie pile pin pine pip pipe plie"],["lochan","ach alco ancho calo can cha chal chao chola chon clan clon coal col cola con halo halon han hao hoa hoc hon lac lah lanch loach loan loca loch lohan nach nacho nah noah noh oca och"],["loofah","alf aloo aloof fah foal foh fool half halo hao hoa hoo hoof lah loaf loo loof loofa oaf oho oof ooh"],["losers","els eorl eorls eros ers ess les less loess lor lore lores los lose loser loses loss oes ole oles ore ores orle orles ors ose oses reo reos res roe roes role roles rose roses sel sels ser sers sloe sloes sol sole soler soles sols sore sorel sores sos"],["lubing","big bin bing blin bling bug bun bung gib gin glib gnu gub gul gun iglu ing lib lig lin ling lug lung lungi nib nil nub uni"],["lunies","els elsin ens ileus ins isle lei leis lenis lens les leu lie lien liens lies lieu lieus lin line lines lins lis lues lune lunes nelis nie nies nil nils nis nus sei seil sel sen sien sile silen sin sine slue sue sui sun suni ule ules uni unis uns use"],["lyrism","ism limy lis lym lyms mil mils mir mirly mirs miry mis rim rims rimy sim sir slim slimy sly smir sri syli"],["magics","agism ags aim aims ais ami amis asci cag cags cam camis cams cig cigs cis gam gamic gams gas gis gism ism mac macs mag magi magic mags mas mic mica micas mics mig migs mis sac sag sai saic saim sam scag scam sic sigma sim sima sma"],["malibu","ail aim alb album alu alum ami amu aumil bail bal balm balu bam bima blam iamb lab lam lamb lib lima limb limba lum luma mail mal mali maul miaul mib mil muil"],["manioc","aim ain ami amin amino amnic amnio ani cain cam camo can ciao cion coin coma con coni conia icon ion mac macon main man mani manic mano mic mica mico mina mino mna moa moai moan moc moi mon mona nam naoi nim nom noma nomic oca"],["marris","aim aims air airs ais ami amir amirs amis aris arm arms arris ars ism mair mairs mar marri mars mas mir mirs mis rai rais ram rami ramis rams ras ria rias rim rima rims sai saim sair sam sar sari sim sima simar sir sirra sma smir smirr sri"],["maungy","amu any ayu gam gamy gan gau gaum gaumy gaun gay gnu guan gum gun guy gym mag man mang mangy many maun may mna mug mun mung munga myna nag nam namu nay yag yam yamun yang yuan yug yuga yum"],["mediad","add aid aide aided aim aimed ame ami amid amide amie dad dae dam dame dead dei deid did die died dim dime ide idea idem mad made madid mae maid mead med media mid"],["member","bee beer bere berm berme bree breem breme ember eme emmer ere erm mee meer mem meme mere reb ree rem"],["merome","eme emmer emo ere erm mee meer mem meme memo mere moe moer mom mome mor more omer ore ree rem reo roe rom"],["mganga","aga agma ama ana anga gag gaga gam gama gan gang maa mag magg man mana mang manga mna naam nag naga nam"],["mihrab","abri abrim ahi aim air ami amir arb arm bah bam bar barm bhai bima bimah bra brim hair ham harim harm him iamb ihram imbar mair mar mbira mib miha mir rabi rah rai ram rami ria rib riba rim rima"],["minute","emit emu etui item mein meint men ment menu met meu mien mine mint mite mun muni munt mut mute muti net neum nie nim nit nite nut tein ten tie time tin tine tui tum tun tune uni unit unite unmet untie ute"],["mixups","imp imps ism mips mis mix mixup mus mux pis piu pium piums pix psi pus sim simp sip six spim sui sum sump sup ump umps ums ups xis"],["molded","del delo demo dod doe dol dole doled dom dome domed eddo eld elm emo led lod lode lome lomed med mel meld mod mode model moe mol mold mole odd ode old olde ole olm"],["moolvi","limo loo loom mil milo moi moil mol moo mooi mool mooli oil olio olm omov oom ovoli vim viol vol"],["morula","alu alum amour amu arm arum lam lar larum loam loma lor lou louma lour lum luma lur mal mar marl maul moa mol mola molar mor mora moral mou mura mural murl oar olm ora oral ouma our ram roam rom roma romal roul roum rum rumal umra urao"],["mouton","mon mono moo moon moot mot motu mou mount mun munt muon mut muton nom noo not notum nout nut ono onto oom oon oont oot out tom tomo ton too toom toon toun tum tun unto"],["mugged","deg degu degum due dug egg emu ged gem geum gude gue gum med meg meu mud mudge mug mugg ugged"],["murren","emu erm ern err men menu meu mun mure murr murre neum nur nurr rem ren rerun rue ruer rum rume rumen run rune ure urn"],["mutely","elm elmy elt emu let leu ley lum lute lye lym lyme lyte mel melt melty met meu mule muley mut mute tel tule tum tye uey ule ute yelm yelt yet ylem yule yum"],["mythus","hum hums hut huts mus mush mushy must musth musty mut muts myth myths shtum shut shy stum sty sum sumy thus thy tum tums tush ums uts yum yus"],["napped","and ane ape aped app dae dan dap dean den ean end nae nap nape naped nappe neap ned nep pad pan pand pane paned pap pape pea pean ped pen pend pep"],["nebeck","beck becke bee been ben bene cee eek een eke ene keb keen ken knee neb nebek neck nee nek"],["netter","een ene enter ere ern erne eten nee net nete nett ree reen ren rent rente ret rete tee teen teer ten tene tenet tent tern terne tet tete tree treen tret"],["nieces","cee cees cens cense cine cines cis een eine ene enes ens esne ice ices ins nee nice nie niece nies nis scene sec see seen sei seine sen sene sic sice sien sin since sine snee"],["nitryl","inly lin lint linty liny lit nil nirl nirly nit nitry rin rit til tin tiny tirl trin try tyin yin"],["nonpar","ann anno anon apo apron nan nap non nona nor oar ora pan par poa prao pro proa ran rap roan"],["novels","els enol enols ens eon eons evo evos leno lenos lens les lev levo lone los lose losen love loves noel noels noes nole noles nos nose novel oes ole oles one ones ons ose ovel ovels oven ovens sel sen sloe slove sol sole solve son sone sov voe voes vol vole voles vols"],["nutjob","bon bot boun bout bun bunt but job jot jotun jun junto jut not nout nub nut out ton toun tub tun unto"],["obtuse","bes besot best bet bets boet boets bos bot bote botes bots bouse bout bouts bus bust but bute buteo butes buts est obe obes obs oes ose ous oust out outs set sob sot sou sout stob stub sub sue suet tes toe toes tose touse tub tube tubes tubs use ute utes uts"],["offing","fig figo fin fino fog foin fon gif gin gio goff gon gonif iff info ing ingo ion niff nog off"],["ollavs","all alls als also avo avos las lav lavs los olla ollas ollav ova oval ovals sal sall salol salvo sav sol sola sov vas vol vola vols"],["oolith","hilt hit hoi holt hoo hoot hot lit lith litho loo loot lot loth loti loto oho oil olio ooh oot thio thiol tho tholi til toho toil too tool"],["orchid","chi chid chiro choir chord cid cod coir cor cord dich doc doh dor doric hic hid hoc hod hoi hori ich ichor och odic orc ord rho rich rid roc roch rod"],["osmics","cis coms cos coss ios ism isms iso isos mic mico micos mics mis miso misos miss moc mocs moi mos moss ois oms osmic sic sics sim sims sis soc socs som soms sos"],["outlaw","alow alt alto alu auto awl awol lat latu law lot lota lou lout low lowt oat out owl owt tao tau taw tola tolu tow twa twal two uta wat waul wot"],["ovular","alu arvo avo lar lav lor lou lour lur luv oar ora oral orval our ova oval rav roul ulva urao urva uva valor var vau voar vol vola volar vor vrou"],["pachak","aah ach aha aka caa cap capa caph cha chap hack haka hap kacha kapa kaph pac paca pacha pack pah"],["paleae","aal ala alae alap ale alee alp ape eale eel lap lea leap lee leep lep paal pal pale palea pea peal peel pel pela pele plea"],["papaws","aas app apps asp awa pap papa papas papaw paps pas paw pawa pawas paws sap saw spa spaw swap wap waps was wasp"],["parrot","apo aport apt art atop oar oat opt ora orra ort par parr part pat poa port porta pot prao prat pro proa rap rapt rat rato roar rort rot rota tao tap tar taro tarp top tor tora torr trap trop"],["pavise","ais ape apes apse asp ave aves avise eas pais paise pas pase pav pave paves pavis pavs pea peas pes pia pias pie pies pis pise psi sae sai sap sav save sea sei sepia sip sipe spa spae spie spiv vae vaes vas vase vespa via viae vias vie vies vis visa vise"],["pedler","dee deep deer del dele dere dree eel eld elder ere ered led lee leed leep leer lep leper lere lered lerp ped peed peel peer pel pele per pere pled pre pree preed red rede ree reed reel rep repel"],["pennal","ale alp ane ann ape ean elan lane lap lea lean leap lep nae nan nane nap nape neal neap nep pal pale pan pane panel panne pea peal pean pel pela pen penal penna plan plane plea plena"],["perogi","ego erg ergo geo ger gie gio gip giro goe goer goier gor gore gori gorp grip gripe ire ogre ope ore peg per peri pie pier pig pir pirog poi pore porge pre prig pro prog reg rego rei reo rep repo rig rip ripe roe rope"],["phenyl","help hen hep hey hye hyen hyle hyp hype lep ley lye lyne nep nye peh pel pen phyle ply pye pyne yeh yelp yen yep"],["pianic","acini ain ani cain can cap capi inia nap nip nipa pac pain pan panic pia pian piani pic pica pin pina"],["pileum","elm emu ileum imp impel lei lep leu lie lieu lime limp lip lipe lum lump mel meu mil mile muil mule pel pie pile pilum piu pium plie plim plu plue plum plume pul pule puli pumie ule ump umpie"],["pinons","inn inns ins ion ions ios iso nip nis non noni nonis nos ois ons ops opsin pin pinon pins pion pions pis piso poi pois pons pos psi psion sin sip snip son sop spin"],["pitten","ettin inept nep nepit net nett nie nip nit nite pein pen peni pent pet petit petti pie piet pin pine pint pit tein ten tent tet tie tin tine tint tip tipt tite"],["plisky","ilk ilks kilp kilps kip kips kis lip lips lis lisk lisp pily pis pisky ply psi sik silk silky sip ski skip sky slip sly spik spiky spy syli yip yips"],["poboys","boo boos bop bops bos boy boyo boyos boys bys obo obos obs oop oops oos oosy ops oys poboy poos pos posy sob soop sop soy spy sybo yob yobs yoop yoops"],["polled","del dell delo doe dol dole doll dop dope eld ell led lep lod lode lop lope loped ode old olde ole olpe ope oped ped pel pell pled plod pod pol pole poled poll"],["poohed","doe doh doo dop dope edh ephod hep hod hoe hoed hoo hood hoop hop hope hoped ode ohed oho ooh oohed oop ooped ope oped ped peh pho pod poh pooh"],["posada","aas ado ados ads apo apod apods apos apso asp dap daps das dop dopa dopas dops dos dso oda odas ods ops pad pads pas poa poas pod pods pos sad sado sap soap sod soda sop spa spado spod"],["poulpe","lep leu lop lope lou loup loupe ole olpe ope oup pel pep pepo plop plu plue poep pol pole pop pope poule poulp poupe pul pule pulp pup ule upo"],["precut","cep cert crept cru crue cruet cue cup cur cure curet curt cut cute cuter ecru ecu eruct erupt pec per pert pet pre puce pucer puer pur pure put rec recut rep ret ruc rue rut tec truce true tup upter ure urp ute"],["prieve","ere erev eve ever ire peer per pere peri perv perve pie pier pir pre pree preve ree rei reive rep rev revie rieve rip ripe rive vee veep veer vie vier viper vire"],["proofs","fop fops for fro fros oof oofs oop oops oor oos ops orf orfs ors poor poos pos pro prof profs proo proof pros proso roo roof roofs roop roops roos soop sop sopor spoof spoor"],["psyche","cep ceps che ech ehs espy hep heps hes hesp hey heys hye hyes hyp hype hypes hyps pec pech pechs pecs peh pehs pes psych pye pyes scye sec sech sey she shy spec spy syce sye sype syph yech yechs yeh yep yeps yes"],["pulkha","alp alu auk haku hap hapu haul hula hulk hup kaph klap kula lah lakh lap pah pal paul plu puh puha puka pul pula pulk pulka"],["punted","den dent due duet dun dune dunt dup dupe end ned nep net nut ped pen pend pendu pent pet pud pun punt put ted ten tend tendu tun tund tune tuned tup unde upend ute"],["putoff","fop fou off oft opt oup out pfft pot pouf pouff pout puff put toff tofu top tuff tup ufo upo"],["quaked","ake aked aue auk dae dak due duka duke eau euk kade kae kaed kea ked kue qua quad quake uke"],["quirks","irk irks kir kirs kis kris kuri kuris qis quirk risk rusk sik sir ski sri sui suk suq sur"],["radger","age aged ager ard are ared areg dae dag dare darer darg darre dear deg drag drear dreg ear eard egad era erg err gad gade gae gaed gar gare garre gear ged ger grad grade rad rade radge rag ragde rage raged rager rare rared read rear red reg regar"],["ramify","aim air airy ami amir arf arm army ary fair fairy far farm fay fiar fir firm fra fraim fray fry mair mar mary may mir miry rai ram rami ray ria rif rim rima rimy rya yam yar"],["rarely","aery ale are arle ary aryl aye ayre ear earl early era err eyra laer lar lare lay layer lea lear leary ley lye lyra lyre rale rare ray rayle real rear relay rely rya ryal rye yae yale yar yare yarer yarr yea year"],["razeed","adz adze ard are ared arede dae dare daze dazer dear deare dee deer dere dree ear eard eared era ere ered rad rade raze razed razee read red rede ree reed rez zea zed zee zerda"],["rebuke","bee beer bere berk bree bru buke bur burk burke eek eke ere erk euk keb kerb kue reb ree reek reke rub rube rue uke urb ure"],["redden","dee deed deen deer den dene dere dered dern dree dreed een end ended ender ene ere ered ern erne erned ned nee need nerd red redd rede reded ree reed reen ren rend"],["refers","efs ere eres erf err errs ers fee feer feers fees fer fere ferer feres fes free freer frees frere ree reef reefs rees ref refer refs res see seer sefer ser sere serer serf serr serre"],["reguli","erg gel ger gie girl glei glue gluer grue gruel gue guile gul gule gur gurl iglu ire iure leg lei leir leu lie lier lieu lig liger lire lug luge luger lur lure lurgi reg rei riel rig rile rue rug rule ule ure urge"],["remede","dee deem deer deere deme dere derm dree eme emeer ere ered erm med mee meed meer merde mere mered red rede ree reed reede rem"],["replum","elm emu erm lemur lep lerp leu lum lump lur lure mel merl meu mule mure murl pel per perm plu plue plum plume pre prem puer pul pule puler pur pure purl rem rep rue rule rum rume rump ule ump ure urp"],["reshoe","ehs ere eres eros erose ers her here heres hero heros hers herse hes hoe hoers hoes hors horse hos hose hoser oes ohs ore ores ors ose ree rees reh rehs reo reos res resh rho rhos roe roes rose see seer ser sere she sheer shere shoe shoer shore soh sore soree"],["retuse","ere eres ers erst est ester ree rees reest res reset rest ret rete rets reuse rue rues ruse rust rut ruts see seer ser sere set steer stere sture sue suer suet sur sure tee teer teers tees teres terse tes tree trees tres true trues ure ures use user ute utes uts"],["rhaphe","ape aper are ear epha ephah era hae hah hap hare harp heap hear heh hep hepar her pah par pare pea pear peh per phare pre rah rap raphe reap reh rep rhea"],["rickey","cire cry eik eric erick erk ice icer ick icker icky icy ire irk keir key kier kir kye kyrie rec reck rei reik rice ricey rick ricy rye ryke yerk yike yirk"],["riojas","air airs ais aris ars ios iso jai jar jars jiao jiaos jor jors oar oars ois ora ors osar rai rais raj ras ria rias rioja roji rojis sai sair sar sari sijo sir soar soja sora sori sri"],["roists","ios iso isos its ois ors ort orts riot riots rit rits roist rosit rost rosti rosts rot roti rotis rots sir sirs sis sist sit sits sori sort sorts sos sot sots sri sris stir stirs tiro tiros tis tor tori tors torsi toss trio trios trois"],["ropier","err ire ope ore per peri pie pier pir poi pore porer pre prier prior pro prore rei reo rep repo repro rip ripe riper roe rope roper rore rorie"],["rought","gor got goth gout grot grout gur gut hog hot hour hout hug hurt hut ort ought our out rho rot rough rout routh rug rut ruth tho thou thro thru thug tog tor tough tour trog trug trugo tug ugh"],["rucola","alco alu arc arco calo car carl carol caul claro clou clour coal col cola cor coral cour cru cur curl lac lar loca lor lou lour lur oar oca ora oral orc orca our roc roul ruc urao"],["rupiah","ahi air hair hap hapu harp hip hui huia hup pah pair par phi pia pir piu prahu prau pruh puh puha puir pur puri rah rahui rai rap ria rip rupia urp"],["sadhus","ads ahs ash dah dahs das dash duh dush had hads has hass haud hauds huss sad sadhu sads sash sau sha shad shads sud suds sus uds"],["saltly","all alls ally als alt alts ats ays las last lat lats lay lays sal sall sally salt salty sat say slat slaty slay sly stall stay sty tall talls tally tas tay tays"],["sannie","ain aine ains ais ane anes ani anis anise ann anns ans ean eans eas eina ens inane inn inns ins isna isnae nae nain nan nane nans nas nie nies nine nines nis sae sai sain saine san sane sea sean sei sen sena senna sien sin sine"],["saughy","ags ahs ash ashy ays ayu ayus gas gash gau gaus gay gays gus gush gushy guy guys hag hags has hay hays hug hugs hugy sag sagy sau saugh say sha shay shy sug sugh ugh ughs ugs yag yags yah yahs yug yuga yugas yugs yus"],["scamps","amp amps asp asps cam camp camps cams cap caps mac macs map maps mas mass pac pacs pam pams pas pass sac sacs sam samp samps sams sap saps scam scamp scams sma spa spam spams spas spasm"],["schlep","cel cels cep ceps che chelp ech ehs els help helps hep heps hes hesp lech lep leps les pec pech pechs pecs peh pehs pel pels pes plesh sec sech sel she shlep spec"],["scours","cor cors cos coss cour cours cross cru crus cur curs cuss cusso orc orcs ors our ours ous roc rocs ruc rucs scour scur scurs soc socs sorus sos sou sour sours sous sur sus"],["scrowl","clow clows col cols cor cors cos cow cowl cowls cows crow crows lor los low lows orc orcs ors owl owls roc rocs row rows scow scowl scrow slow soc sol sow sowl wos"],["seazed","ads adz adze adzes aedes dae daes das daze dazes dee dees eas ease eased eds sad sade sae saz sea seaze sed see seed sez zas zea zeas zed zeds zee zees"],["seisms","ems ess ism isms mes mess mis mise mises miss sei seis seism semi semis sess sies sim sims sis sises siss"],["sensis","ens ess ins ness nie nies nis nisse sei seis sen sens sensi sess sien siens sies sin sine sines sins sis sises siss snies"],["setose","eses ess esse est ests oes ose oses see sees sese set sets sos sot sots tee tees tes toe toes tose toses toss"],["shades","ads ahed ahs ash ashed ashes dae daes dah dahs das dash deash eas edh edhs eds ehs ess had hade hades hads hae haed haes has hass head heads hes sad sade sades sadhe sads sae sash sea seas sed sesh sha shad shade shads she shea sheas shed sheds shes"],["shawms","ahs ash ham hams has hass haw hawm hawms haws mas mash mass maw maws mwah sam sams sash saw saws sha sham shams shaw shawm shaws shwa shwas sma smash swam swash was wash wha wham whams"],["shiers","ehs eish ers ess heir heirs her hers hes hie hies hire hires his hiss ire ires ish ishes reh rehs rei reis res resh rhies rise rises sehri sei seir seirs seis ser sers sesh she shes shier shies shir shire shirs shri shris sies sir sire sires sirs sis sri sris"],["shocks","cos cosh coss hoc hock hocks hos hoss kos koss och ohs shock skosh soc sock socks socs soh sohs sos"],["shreek","eek ehs eke ekes ere eres erk erks ers esker her here heres hers herse hes kesh ree reek reeks rees reh rehs reke rekes res resh see seek seer ser sere serk she sheer shere skee skeer sker"],["siccar","air airs ais arc arcs aris ars asci car cars circa circs cis craic cria crias cris rai rais ras ria rias sac sai saic sair sar sari scar sic sir sri"],["signee","een egis eigne eine ene enes eng engs ens esne gee gees gen gene genes genie gens gie gien gies gin gins gis ing ings ins nee neg negs nie nies nis see seen seg segni sei seine sen sene sengi siege sien sign sin sine sing singe snee snig"],["siping","gin gins gip gips gis ing ings ins nip nis nisi pig pigs piing pin ping pings pins pis psi sign sin sing sip snig snip spin"],["skails","ail ails ais als ask asks ilk ilka ilks kai kail kails kais kali kalis kas kis kiss laik laiks las lass lassi lias lis lisk lisks sai sail sails sais saki sakis sal sals sial sials sik sika sikas silk silks sis sisal ska skail skas ski skis"],["skitch","chi chik chiks chis chit chits cis cist cit cits hic hick hicks his hist hit hits ich ichs ick ish itch its khi khis kis kish kist kit kith kiths kits shtik sic sich sicht sick sik sit sith ski skit stich stick thick this tic tich tick ticks tics tik tiks tis tsk"],["slakes","ake akes ale ales als ask asks eas elk elks els ess kae kaes kale kales kas kea keas lake lakes las lase lases lass lea leak leaks leas lek leks les less sae sake sakes sal sale sales sals salse sea seal seals seas sel sels ska skas slae slaes slake"],["slipes","els ess isle isles lei leis lep leps les less lie lies lip lipe lips lis lisp lisps pel pels pes pie pies pile piles pis pise pises plie plies psi psis sei seil seils seis sel sels seps sies sile siles sip sipe sipes sips sis slip slipe slips speil spie spiel spies spile"],["smacks","ask asks cam cams cask casks kam kas mac mack macks macs mak maks mas mask masks mass sac sack sacks sacs sam sams scam scams ska skas sma smack"],["smokos","kos koss moko mokos moo mook mooks moos mos mosk mosks moss mosso oms oom ooms oos smoko som soms sook sooks soom sooms sos"],["snifts","fin fins fist fists fit fits ifs ins its nis nit nits sif sift sifts sin sins sis sist sit sits snift snit snits tin tins tis"],["soccer","cero ceros cor core cores cors corse cos cose cosec croc crocs ecco eco ecos eros ers oes orc orcs ore ores ors ose rec recco recs reo reos res roc rocs roe roes rose score sec secco seco ser soc sore"],["solums","los loss lou lous lum lums mol mols mos moss mou mouls mous mus muso musos muss olm olms oms ous slum slums sol sols solum solus som soms sos sou soul souls soum soums sous sum sumo sumos sums sus ums"],["sorner","ens eon eons ern erns eros err errs ers noes nor nos nose noser oes one oner oners ones ons ore ores ors ose ren rens reo reos res roe roes rone rones rore rores rose sen senor ser seron serr snore son sone sore sorer sorn"],["spaces","ace aces aesc ape apes apse apses asp asps cap cape capes caps case cases ceas cep ceps cess eas ess pac pace paces pacs pas pase pases pass passe pea peas pec pecs pes sac sacs sae sap saps scape sea seas sec secs seps spa space spae spaes spas spec specs"],["spelts","els elt elts ess est ests lep leps lept les less lest lests let lets pel pels pelt pelts pes pest pests pet pets psst pst sel sels seps sept septs set sets slept spelt spet spets step steps tel tels tes"],["spleen","eel eels een els else ene enes ens esne lee leep leeps lees lenes lens lense lep leps les nee neep neeps nep neps peel peels peen peens pees pel pele peles pels pen pene penes pens pes see seel seen seep sel sele sen sene slee sleep snee speel"],["sprees","ere eres ers erses eses ess esse peer peers pees per pere peres perse pes pre pree prees prese press ree rees rep reps res reses see seep seeps seer seers sees seps ser sere seres sers sese speer spree"],["squama","aas ama amas amu amus aqua aquas aua auas maa maas mas masa masu mus qua sam sama sau sma sum suq ums"],["starns","ans ant ants ars art arts ats nas nat nats ran rant rants ras rast rat rats san sans sant sants sar sars sat snar snars star starn stars tan tans tar tarn tarns tars tas tass trans trass tsar tsars"],["stents","ens ess est ests ness nest nests net nets nett netts sen sens sent sents set sets sett setts sten stens stent stet stets ten tens tent tents tes test tests tet tets"],["stomas","assot atom atoms ats mas mass mast masts mat mats moa moas moat moats mos moss most mosts mot mots oast oasts oat oats oms ossa sam sams sat sma som soma somas soms sos sot sots stoa stoas stoma tam tams tao taos tas tass tom toms tosa tosas toss"],["street","ere eres ers erst est ester ree rees reest res reset rest ret rete rets see seer ser sere set sett steer stere stet tee teer teers tees teres terse terts tes test teste tet tete tetes tets tree trees tres trest tret trets"],["sturdy","drusy dry drys durst dust dusty duty rud ruds rust rusty rut ruts stud study sty sud sur surd try turds uds urd urds urdy uts yurt yurts yus"],["sucres","cess cress cru crue crues crus cruse cue cues cur cure cures curs curse cuss ecru ecrus ecu ecus ers ess rec recs res ruc rucs rue rues ruse ruses russe scur scurs scuse sec secs ser sers sucre sue suer suers sues sur sure sures sus ure ures use user users uses"],["sunbow","bon bonus bos bosun boun bouns bow bows bun buns bus nobs nos nous now nows nub nubs nus obs ons onus ous own owns snob snow snub sob son sou sow sown sub sun swob swoun uns won wons wos wus"],["suttee","est see set sett stet sue suet tee tees tes test teste tet tete tetes tets tut tutee tuts use ute utes uts"],["swerve","ere eres erev erevs ers eve ever eves ewe ewer ewers ewes ree rees res resew rev revs rew rews see seer ser sere serve sever sew sewer swee sweer vee veer veers vees vers verse wee weer wees were"],["sylvia","ail ails ais als ays ivy las lav lavs lay lays lias lis sai sail sal sav say sial silva slay sly syli sylva vail vails vali valis vas via vial vials vias vis visa vly"],["tacket","ace act ake ate att cake cat cate eat eta etat kae kat kea ket keta tace tacet tack tact tae tak take tat tate tea teak teat tec tecta tet"],["tamanu","ama amaut amu ana ant anta atma atman atua aua aunt maa man mana manat manta mat maun maut mna mun munt mut naam nam namu nat nut tam tan tana tau tuan tum tun tuna uta"],["tarpan","ana ant anta antar antra apart apt arna arpa art atap nap napa nat paan pan pant par para part pat prana prat ran rana rant rap rapt rat rata ratan tan tana tap tapa tar tara tarn tarp trap"],["tawpie","ait ape apt ate awe eat eta ewt ita pat pate paw pea peat pet pew pewit pia pie piet pieta pit pita tae tai tap tape taw tawie tea tepa tew tie tip twa twae twp wae wai wait waite wap wat wate wept wet weta wipe wit wite"],["tedier","dee deer deet dei dere deter die diet dire dirt dit dite dree edit eide eider ere ered ide idee ire ired red rede ree reed rei ret rete retie rid ride rit rite ted tee teed teer tid tide tie tied tier tire tired tree treed tride trie tried"],["tended","dee deed deen deet den dene denet dent een end ended ene eten ned nee need net nete ted tee teed teen teend ten tend tene"],["testae","ate ates ats att eas ease east eat eats est eta etas etat etats sae sat sate sea seat see set seta setae sett stat state stet tae taes tas taste tat tate tates tats tea teas tease teat teats tee tees tes test testa teste tet tete tetes tets"],["thesps","ehs ess est ests eth eths hep heps hept hes hesp hesps hest hests het hets peh pehs pes pest pests pet pets pht psst pst seps sept septs sesh set sets she shes shet shets spet spets step steps tes the thesp"],["threep","ere eth ethe ether hep hept her here het hete peer peh per pere pert pet peter petre pheer pht pre pree ree reh rep ret rete tee teer tehr the thee there three tree"],["ticced","cedi cid cide cit cite cited dei dice dict die diet dit dite edict edit etic ice iced ide tec ted tic tice ticed tid tide tie tied"],["tincal","act actin ail ain ait alit alt ani anil ant anti antic cain can cant cat cit cital clan clat clint ictal ita lac laic lain lant lat lati lin linac lint lit nail nat nil nit tai tail tain talc tali tan tian tic tical til tin tina"],["titman","aim ain ait ami amin ani ant anti att ita main man mani mat matin matt mina mint mitt mna nam nat nim nit tai tain taint tait tam tamin tan tanti tat tian tin tina tint titan"],["toluid","diol dit doilt doit dol dolt dot dout dui duit duo idol lid lido lit litu lod loid lot loti lou loud lout lud ludo luit oil old olid oud ould out tid til tod toil told tolu tui udo"],["tooter","oor oot ore ort otter otto reo ret roe roo root rot rote roto rotte tet toe too toot tor tore toro torot tort torte tot tote toter tret trot"],["tother","eth her hero het hoe hot hote ore ort other otter reh reo ret rho roe rot rote rotte tehr tet teth the tho thro throe toe tor tore tort torte tot tote toter tret trot troth"],["toymen","emo eon eyot men meno ment mento met meynt moe mon money monte monty mony mot mote moten motey moy net nom nome not note noy nye omen one ony oye ten toe toey tom tome ton tone toney tony toy tye tyne yen yet yom yon yont"],["triers","err errs ers erst est ire ires its rei reis reist res resit rest ret rets rise riser rit rite rites rits sei seir ser serr set sir sire sit site sri stie stir stire tes tie tier tiers ties tire tires tirr tirrs tis tres trie trier tries"],["truant","ant arnut art att aunt nat nur nut ran rant rat ratu raun run runt rut tan tar tarn tart tat tatu tau taunt taut trant trat tuan tuart tun tuna turn tut urn uta"],["tufter","eft erf fer fet fett feu fret fur ref reft ret rue rut tef terf tet tref tret true tuft turf tut ure ute utter"],["turkey","erk euk ket key kue kye kyte kyu ret rue rut rye ryke trek trey true try trye tryke turk tuyer tye tyer tyke tyre uey uke ure ute yerk yet yeuk yuk yuke yurt"],["tweely","eel eely elt ewe ewt eye lee leet let lew ley lye lyte tee teel tel tele tew tewel twee tweel tye tyee wee weel weet welt wet wetly wey wye wyle wyte yelt yet yew"],["tystie","est its sei seity set sett sey sit site stet stey stie sty stye styte sye tes test testy tet tets tie ties tis tite tye tyes tyte yes yest yet yeti yetis yett yetts yite yites"],["umiacs","aim aims ais ami amis amu amus asci cam camis cams camus caum caums cis ism mac macs mas masu mic mica micas mics mis mus musca music sac sai saic saim sam sau scam scum sic sim sima sma sui sum sumac umiac ums"],["uncled","cel clue clued cud cue cued del den duce due duel dule dun dunce dune ecu eld end led lend leu leud luce lud lude lune ned ule unce uncle unde unled"],["ungild","dig din ding dug dui duing dun dung gid gild gin glid gnu guid guild gul gun iglu ing lid lig lin lind ling lud lug lung lungi nid nil uni unlid"],["unless","els ens ess lens les less leu lues lune lunes ness nus sel sels sen sens slue slues sluse sue sues sun suns sus ule ules uns use uses"],["unrein","ennui enurn ern inn inner inrun inure inurn ire iure nie nine nun nur rei rein ren renin rin rine rue ruin run rune uni ure urine urn"],["untins","inn inns ins inust its nis nit nits nun nuns nus nut nuts sin sit snit stun sui suint suit sun suni sunn tin tins tis tui tuis tun tuns uni unis unit units uns untin utis uts"],["updart","apt ard art dap dart daur daut drap drat duar dup dura pad par pard part pat patu prad prat prau pruta pud pur purda put rad rap rapt rat ratu rud rut tad tap tapu tar tarp tau trad trap tup upta urd urp uta"],["upmake","ake ame amp amu ape aue auk eau emu euk kae kam kame kea kemp kep kue mae mak make map meu pam pea peak puka puke puma uke ump"],["uranic","ain air airn ani arc auric cain cairn can car carn cran cria cru cur curia curn incur nairu narc naric nur rai rain ran rani raun ria rin ruc ruin run runic unai unci uncia uni uric urn"],["usures","ers ess res rue rues ruse ruses russe ser sers sue suer suers sues sur sure sures sus susu ure ures urus use user users uses usure"],["vamose","ame ames amove ave aves avo avos eas emo emos ems evo evos mae maes mas mase mes mesa moa moas moe moes mos mose move moves oaves oes oms ose ova sae sam same sav save sea seam sma soave som soma some sov vae vaes vas vase voe voema voes"],["vealed","ale alee ave avel dae dal dale deal deave dee deev del dele delve dev deva devel eale eave eaved eel eld evade eve lad lade lav lave laved lea lead leave led lee leed lev leva leve vade vae vale veal veale vee vela veld vele"],["venose","een eevn eevns ene enes ens eon eons esne eve even evens eves evo evoe evos nee neve neves noes nos nose oes one ones ons ose oven ovens see seen sen sene seven snee son sone sov vee vees voe voes"],["vervel","eel elver ere erev eve ever lee leer lere lev leve lever ree reel rev revel vee veer vele verve"],["vihara","aah aha ahi aia air aria ava haar hair rah rai raia rav ria riva vair var vara varia via"],["vittle","elt evil lei let lev lie lit lite live teil tel telt tet tie til tile tilt tite title veil vet vie vile vite vlei"],["volvae","ale aloe ave avel avo evo laevo lav lave lea lev leva levo loave love ole olea ova oval ovel vae vale valve vav veal vela voe vol vola volae vole volva volve"],["wackes","ace aces aesc ake akes ask askew awe awes awk awks cake cakes case cask caw cawks caws ceas eas ewk ewks kae kaes kas kaw kaws kea keas sac sack sae sake saw scaw sea sec sew ska skaw skew swack wack wacke wacks wae waes wake wakes was wase weak weka wekas"],["wallet","ale alew all alt ate awe awl eat ell elt eta ewt lat late law lea leal leat let lew tae tael tale tall taw tea teal tel tela tell tew twa twae twal wae wale wall wat wate weal well welt wet weta"],["warner","ane anew are arew awe awn awner ean ear earn era ern err nae nare narre naw near new ran rare raw rawer rawn rean rear ren reran rew rewan wae wan wane war ware warn warre wean wear wen wena wren"],["weaker","ake akee are arew ark awe awee awk ear eek eke era ere erk ewe ewer ewk kae kaw kea krewe rake rakee raw reak ree reek reke rew wae wake waker war ware wark weak wear wee week weer weka were wreak"],["weirdy","dei dew dewy dey die dire drew drey dry dye dyer ide ire ired red rei rew rid ride rye wed weid weir weird wey wide wider wire wired wiry wried wry wye yerd yew yid yird"],["whaups","ahs ash asp hap haps hapu hapus has hasp haw haws hup hups pah pahs pas pash paw paws pshaw puh puha puhas pus push sap sau saw sha shaw shwa spa spaw sup swap upas ups wap waps was wash wasp wha whap whaps whaup whup whups wus"],["whoops","hoo hoop hoops hop hops hos how hows howso oho ohs ooh oohs oop oops oos ops pho phos poh pooh poohs poos pos posh posho pow pows shoo shop show soh soho soop sop soph sow sowp swoop swop who whoop whop whops whoso woo woops woos woosh wop wops wos"],["wimped","dei dew die dim dime dimp dip ide idem imp imped med mew mid ped pew pie pied wed weid wem wide wimp wipe wiped"],["witchy","chi chit cit city hic hit ich icy itch itchy thy tic tich tichy whit whity why wich wit witch with withy wych"],["woolds","dol dolos dols doo dool dools doos dos dow dowl dowls dows dso lod lods loo loos los low lows ods odso old olds oos owl owls slow sod sol sold soldo solo sool sow sowl wold wolds woo wood woods wool woold wools woos wos"],["wrasts","ars art arts ats ras rast rat rats raw raws sar sars sat saw saws star stars staw staws straw swart swat swats tar tars tas tass taw taws trass tsar tsars twa twas war wars warst wart warts was wast wasts wat wats wrast"],["xyster","ers erst est res rest resty ret rets rex rye ryes ser set sext sey stey sty stye styre sye tes tex tres trey treys try trye tye tyer tyers tyes tyre tyres xyst yes yest yet yex"],["yauped","ape aped aue aye ayu dae dap day dey due dup dupe dye eau eupad pad pay payed pea ped pud puy pya pye uey yad yae yap yaud yaup yea yead yep yup"],["yirred","dei derry dey die dire direr drey drier dry dryer dye dyer err eyrir ide ire ired red redry rei reird rid ride rider rye yerd yid yird yirr"],["yulans","als alu alus ans any ays ayu ayus las lay lays luna lunas luny nas nay nays nus nyas nys sal san sau saul say slay sly sny sun syn ulan ulans ulna ulnas unlay uns unsay yuan yuans yulan yus"],["zelant","ale alt ane ant ante ate ean eat elan elt eta etna lane lant lat late laten laze lea lean leant leat lent let lez nae nat naze neal neat net tae tael tale tan tane tea teal tel tela ten zante zea zeal zel zeta"]];
+
+/* Anagram Six — one 6-letter word, find the words hiding inside (data: A6) */
+let base = '', subs = new Set(), found = [], goal = 10, aWord = [], aSolved = false, mode = 'daily';
+let tileEls = [], slotsEl, foundEl, baseIdx = 0;
+
+function counts(w) { const c = {}; for (const ch of w) c[ch] = (c[ch] || 0) + 1; return c; }
+
+function pick() {
+  baseIdx = Math.floor(RF() * A6.length);
+  const [b, s] = A6[baseIdx];
+  base = b.toUpperCase();
+  subs = new Set(s.split(' ').map(w => w.toUpperCase()));
+  goal = Math.min(12, Math.max(6, Math.round(subs.size * 0.3)));
+}
+function build() {
+  boardEl.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className = 'wana';
+
+  foundEl = document.createElement('div'); foundEl.className = 'afound';
+  wrap.appendChild(foundEl);
+
+  slotsEl = document.createElement('div'); slotsEl.className = 'aslots';
+  wrap.appendChild(slotsEl);
+
+  const rack = document.createElement('div'); rack.className = 'arack';
+  tileEls = [];
+  const letters = shuffle(base.split(''));
+  letters.forEach((ch, i) => {
+    const b = document.createElement('button');
+    b.className = 'atile'; b.textContent = ch; b.dataset.ch = ch;
+    b.addEventListener('click', () => { if (!b.disabled && !aSolved) { b.disabled = true; aWord.push({ ch, tile: b }); snd('tick', 1 + aWord.length * 0.06); paint(); } });
+    rack.appendChild(b);
+    tileEls.push(b);
+  });
+  wrap.appendChild(rack);
+
+  const row = document.createElement('div'); row.className = 'abtns';
+  const mk = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'akey ' + cls; b.textContent = label; b.addEventListener('click', fn); row.appendChild(b); return b; };
+  mk('⌫', '', () => backspace());
+  mk('Shuffle', 'wide', () => {
+    snd('slide');
+    const free = tileEls.filter(t => !t.disabled).map(t => t.dataset.ch);
+    shuffle(free);
+    let k = 0;
+    tileEls.forEach(t => { if (!t.disabled) { t.textContent = free[k]; t.dataset.ch = free[k]; k++; } });
+  });
+  mk('Enter', 'go', () => submit());
+  wrap.appendChild(row);
+  boardEl.appendChild(wrap);
+  paint();
+}
+function backspace() {
+  const last = aWord.pop();
+  if (last) { last.tile.disabled = false; snd('tap'); paint(); }
+}
+function clearWord() { while (aWord.length) { aWord.pop().tile.disabled = false; } paint(); }
+function submit() {
+  if (aSolved) return;
+  const w = aWord.map(x => x.ch).join('');
+  if (w.length < 3) { snd('bad'); shake(); return; }
+  if (found.includes(w)) { snd('tick', 0.8); clearWord(); return; }
+  if (!subs.has(w)) { snd('bad'); shake(); return; }
+  T.start();
+  found.push(w);
+  found.sort((a, b) => a.length - b.length || a.localeCompare(b));
+  snd('good', 1 + found.length * 0.03);
+  clearWord();
+  refresh(); paint();
+  if (found.length >= goal) {
+    aSolved = true; T.stop();
+    const t = T.sec();
+    DATA.best.solved = (DATA.best.solved || 0) + 1;
+    if (!DATA.best.t || t < DATA.best.t) DATA.best.t = t;
+    save();
+    setTimeout(() => winOverlay(
+      [['FOUND', found.length], ['OF', subs.size], ['TIME', fmtT(t)]],
+      { base: base.toLowerCase(), found: found.length, total: subs.size, timeSec: t, mode }), 350);
+  }
+}
+function shake() {
+  slotsEl.classList.remove('ashake'); void slotsEl.offsetWidth; slotsEl.classList.add('ashake');
+}
+function paint() {
+  slotsEl.innerHTML = '';
+  const n = Math.max(3, aWord.length);
+  for (let i = 0; i < Math.min(6, Math.max(n, aWord.length + 1)); i++) {
+    const d = document.createElement('div');
+    d.className = 'aslot' + (aWord[i] ? ' has' : '');
+    d.textContent = aWord[i] ? aWord[i].ch : '';
+    slotsEl.appendChild(d);
+  }
+  foundEl.innerHTML = found.map(w => '<span class="aw">' + w + '</span>').join('') ||
+    '<span class="ahint">words you find appear here</span>';
+}
+function refresh() {
+  setChips([['FOUND', found.length + '/' + goal], ['HIDDEN', subs.size], ['TIME', fmtT(T.sec())], [mode === 'daily' ? 'MODE' : 'MODE', mode === 'daily' ? 'DAILY' : 'RANDOM']]);
+}
+function applyMode() {
+  setSeed(mode === 'daily' ? todayStr() : null);
+}
+
+const game = {
+  init() {
+    if (CFG.seed) mode = 'seed';
+    else applyMode();
+    setPills([{ id: 'daily', label: 'Today\u2019s word' }, { id: 'rand', label: 'Random' }], mode === 'daily' ? 'daily' : 'rand', id => {
+      mode = id === 'daily' ? 'daily' : 'rand';
+      applyMode();
+      setPills([{ id: 'daily', label: 'Today\u2019s word' }, { id: 'rand', label: 'Random' }], id, () => {});
+      game.newGame();
+    });
+    window.addEventListener('keydown', e => {
+      if (aSolved || !ovl.hidden) return;
+      const k = e.key.toUpperCase();
+      if (/^[A-Z]$/.test(k)) { const t = tileEls.find(t => !t.disabled && t.dataset.ch === k); if (t) t.click(); }
+      if (e.key === 'Backspace') backspace();
+      if (e.key === 'Enter') submit();
+    });
+    this.newGame(true);
+  },
+  newGame(silent) {
+    freshRng();
+    found = []; aWord = []; aSolved = false;
+    T.reset();
+    pick();
+    build();
+    refresh();
+    if (!silent) emit('newPuzzle', { mode, letters: base.toLowerCase() });
+  },
+  tick() { if (!aSolved) refresh(); },
+  debug() {
+    const bc = counts(base);
+    const allFit = [...subs].every(w => { const c = counts(w); return Object.keys(c).every(k => bc[k] && c[k] <= bc[k]); });
+    return { base, subCount: subs.size, goal, allFit, found: found.slice() };
+  }
+};
+
+
+/* ══ public API + boot ═════════════════════════════════ */
+window.STWGame = {
+  id: GAME_ID, version: '1.0.0', config: CFG,
+  newGame: () => { hideOverlay(); game.newGame(); },
+  on,
+  getBest: () => JSON.parse(JSON.stringify(DATA.best)),
+  mute: v => { DATA.sound = !v; save(); syncSnd(); },
+  _debug: () => (game.debug ? game.debug() : null)
+};
+game.init();
+syncSnd();
+if (!DATA.seen) helpOverlay();
+emit('ready', {});
+})();
+</script>
+</body>
+</html>

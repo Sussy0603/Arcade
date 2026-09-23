@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFF6E5">
+<title>Arcade</title>
+<script src="theme-boot.js"></script>
+<style>
+/* ---------------- Theme tokens ----------------
+   Every colour lives here twice: once for daylight, once for night. The
+   components below only ever reference the tokens, so the toggle is a
+   single attribute flip with no re-render. Unlike the rest of MOS, the
+   arcade has no accounts to hang a preference on (see the checklist app's
+   profile.dark) — so the choice lives in localStorage instead. */
+:root{
+  color-scheme:light;
+  --sky-a:#FFF6E5; --sky-b:#E4F3FF;
+  --paper:#FFFFFF;
+  --ink:#2A2140; --ink-soft:#6B6188;
+  --line:#2A2140;
+  --shadow:#2A2140;
+  --title-shadow:3px 4px 0 #FFD9E8, 6px 8px 0 rgba(42,33,64,.10);
+  --emoji-shadow:0 3px 0 rgba(42,33,64,.18);
+  --gloss:rgba(255,255,255,.35);
+  --blob-a:#FFD9E8; --blob-b:#D6F3E0; --blob-c:#FFEFC2;
+  --blob-opacity:.5;
+  --tint-0:#FFD9E8; --tint-1:#D6F3E0; --tint-2:#FFEFC2; --tint-3:#D9E9FF;
+  --tint-4:#EADCFF; --tint-5:#FFE0CC; --tint-6:#CFF3F0; --tint-7:#F6DFFF;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --sky-a:#241C40; --sky-b:#131A2E;
+    --paper:#2A2348;
+    --ink:#F6F1FF; --ink-soft:#ABA0CF;
+    --line:#EFE6FF;
+    --shadow:#0B0818;
+    --title-shadow:3px 4px 0 #7A3F62, 6px 8px 0 rgba(0,0,0,.35);
+    --emoji-shadow:0 3px 0 rgba(0,0,0,.45);
+    --gloss:rgba(255,255,255,.08);
+    --blob-a:#4A2740; --blob-b:#22473A; --blob-c:#4A3A1C;
+    --blob-opacity:.65;
+    --tint-0:#5B2E4A; --tint-1:#24503C; --tint-2:#5A4620; --tint-3:#23405F;
+    --tint-4:#3E2E63; --tint-5:#5C3A28; --tint-6:#1E4A4C; --tint-7:#4E2B58;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --sky-a:#241C40; --sky-b:#131A2E;
+  --paper:#2A2348;
+  --ink:#F6F1FF; --ink-soft:#ABA0CF;
+  --line:#EFE6FF;
+  --shadow:#0B0818;
+  --title-shadow:3px 4px 0 #7A3F62, 6px 8px 0 rgba(0,0,0,.35);
+  --emoji-shadow:0 3px 0 rgba(0,0,0,.45);
+  --gloss:rgba(255,255,255,.08);
+  --blob-a:#4A2740; --blob-b:#22473A; --blob-c:#4A3A1C;
+  --blob-opacity:.65;
+  --tint-0:#5B2E4A; --tint-1:#24503C; --tint-2:#5A4620; --tint-3:#23405F;
+  --tint-4:#3E2E63; --tint-5:#5C3A28; --tint-6:#1E4A4C; --tint-7:#4E2B58;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;min-height:100%;}
+body{
+  font-family:"Nunito","Quicksand",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:linear-gradient(170deg,var(--sky-a) 0%,var(--sky-b) 100%);
+  background-attachment:fixed;
+  color:var(--ink);
+  min-height:100vh;
+  padding:7vmin 5vmin 12vmin;
+  position:relative;overflow-x:hidden;
+}
+/* Soft floating shapes in the background — pure decoration. */
+.blob{position:fixed;border-radius:50%;filter:blur(2px);opacity:var(--blob-opacity);pointer-events:none;z-index:0;}
+.blob.a{width:280px;height:280px;background:var(--blob-a);top:-70px;left:-60px;}
+.blob.b{width:220px;height:220px;background:var(--blob-b);bottom:8%;right:-70px;}
+.blob.c{width:150px;height:150px;background:var(--blob-c);top:38%;left:4%;}
+header,footer,#content{position:relative;z-index:1;}
+
+/* ---------------- Theme toggle ---------------- */
+.theme-btn{
+  position:fixed;top:16px;right:16px;z-index:5;
+  font:inherit;font-size:13px;font-weight:900;letter-spacing:.04em;
+  color:var(--ink);background:var(--paper);
+  border:3px solid var(--line);border-radius:999px;
+  padding:8px 15px;cursor:pointer;
+  box-shadow:3px 3px 0 var(--shadow);
+  display:flex;align-items:center;gap:7px;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.theme-btn:hover{transform:translate(-1px,-2px);box-shadow:5px 5px 0 var(--shadow);}
+.theme-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
+.theme-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+
+/* The search box, in the same chunky language as everything else on the
+   cabinet. It sits above the sort pills because the two answer different
+   questions in the order people ask them: "do you have X?" first, "how do I
+   browse?" second. The clear button lives inside the pill so wiping a search
+   is one tap on the thing you are already looking at. */
+.search-bar{
+  position:relative;z-index:1;
+  max-width:340px;margin:0 auto 14px;
+}
+#searchBox{
+  width:100%;
+  font:inherit;font-size:15px;font-weight:800;letter-spacing:.02em;
+  color:var(--ink);background:var(--paper);
+  border:3px solid var(--line);border-radius:999px;
+  padding:10px 44px 10px 18px;
+  box-shadow:3px 3px 0 var(--shadow);
+}
+#searchBox::placeholder{color:var(--ink-soft);font-weight:700;}
+#searchBox:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+/* The browser's own clear ✕ doubles ours on WebKit; ours is the styled one. */
+#searchBox::-webkit-search-cancel-button{display:none;}
+#searchClear{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  width:30px;height:30px;border-radius:999px;
+  font:inherit;font-size:13px;font-weight:900;
+  color:var(--paper);background:var(--ink);
+  border:0;cursor:pointer;
+}
+#searchClear:focus-visible{outline:3px solid var(--line);outline-offset:2px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* Sort pills, same chunky language as the theme button so they read as part
+   of the cabinet rather than a form dropped onto it. The active pill inverts
+   to ink-on-paper's opposite — pressed-in, like the button that is currently
+   down on a real machine. */
+.sort-bar{
+  position:relative;z-index:1;
+  display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
+  margin:0 0 5vmin;
+}
+.sort-btn,.cat-btn{
+  font:inherit;font-size:13px;font-weight:900;letter-spacing:.04em;
+  color:var(--ink);background:var(--paper);
+  border:3px solid var(--line);border-radius:999px;
+  padding:8px 15px;cursor:pointer;
+  box-shadow:3px 3px 0 var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.sort-btn:hover,.cat-btn:hover{transform:translate(-1px,-2px);box-shadow:5px 5px 0 var(--shadow);}
+.sort-btn:active,.cat-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);}
+.sort-btn:focus-visible,.cat-btn:focus-visible{outline:3px solid var(--line);outline-offset:3px;}
+.sort-btn[aria-pressed="true"],.cat-btn[aria-pressed="true"]{
+  background:var(--ink);color:var(--paper);
+  transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
+}
+/* The pills' wrapper contributes grouping and nothing else: display:contents
+   takes the span out of the layout entirely, so its three buttons remain
+   direct flex children of .sort-bar and the row wraps on a narrow phone
+   exactly as it did before the group existed. */
+.sort-group{display:contents;}
+/* Surprise me is an action, not a state, so it never takes the pressed
+   treatment the pills use to show which order is on. It is tinted instead —
+   the same pink the cards already use, so it reads as part of the set while
+   still being the odd one out. Disabled until the listing has arrived: a
+   dice button with nothing to draw from is worse than no dice button. */
+.lucky-btn{background:var(--tint-0);}
+.lucky-btn:disabled{opacity:.45;cursor:default;}
+.lucky-btn:disabled:hover{transform:none;box-shadow:3px 3px 0 var(--shadow);}
+@media (prefers-reduced-motion: reduce){ .sort-btn,.cat-btn{transition:none;} }
+
+/* ---------------- Category chips ----------------
+   A row of the same pills, one per category the listing actually contains,
+   sitting directly above the grid they act on. Deliberately a step quieter
+   than the sort bar — smaller type, tighter padding, a thinner shadow —
+   because there are seven of them and three sort pills, and seven controls
+   shouting as loudly as three would make the sort bar disappear into them.
+
+   The row is built from the data by arcade.js and is hidden until it is, so
+   a listing that carries no categories at all leaves no empty strip behind.
+   The margin lives on the bar rather than on the sort bar above it for the
+   same reason: when the chips are absent the gap goes with them. */
+.cat-bar{
+  position:relative;z-index:1;
+  display:flex;justify-content:center;gap:8px;flex-wrap:wrap;
+  max-width:780px;margin:-3vmin auto 5vmin;
+}
+.cat-btn{
+  font-size:12px;padding:6px 13px;
+  box-shadow:2px 3px 0 var(--shadow);
+}
+.cat-btn:hover{box-shadow:4px 5px 0 var(--shadow);}
+.cat-btn:active,.cat-btn[aria-pressed="true"]{box-shadow:1px 1px 0 var(--shadow);}
+/* "All" is the way back out, so it is tinted like Surprise me rather than
+   left to look like a seventh category. */
+.cat-btn.cat-all{background:var(--tint-3);}
+.cat-btn.cat-all[aria-pressed="true"]{background:var(--ink);}
+
+/* The whole filter: one class, one property. ~83 cards are already in the
+   document and stay there — a chip press flips this class on the ones that
+   do not match and nothing is parsed, built or fetched. */
+.card.cat-hidden{display:none;}
+
+header{text-align:center;margin-bottom:6vmin;}
+h1{
+  margin:0 0 14px;
+  font-size:clamp(40px,9vmin,82px);font-weight:900;letter-spacing:-.02em;
+  color:var(--ink);
+  text-shadow:var(--title-shadow);
+}
+header p{
+  margin:0;font-size:clamp(15px,2.3vmin,19px);font-weight:700;color:var(--ink-soft);
+}
+/* Sits a step below the main subtitle: same colour family, smaller and
+   lighter, so it reads as a note about the games rather than a second
+   headline. */
+header p.note{
+  margin:10px auto 0;max-width:44ch;
+  font-size:clamp(13px,1.8vmin,15px);font-weight:600;opacity:.85;
+}
+.badge{
+  display:inline-block;margin-bottom:16px;
+  background:var(--paper);border:3px solid var(--line);border-radius:999px;
+  padding:7px 18px;font-size:12.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
+  box-shadow:3px 3px 0 var(--shadow);
+  transform:rotate(-2deg);
+}
+
+.grid{
+  max-width:1120px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:30px 26px;
+}
+.card{
+  background:var(--paper);
+  border:3px solid var(--line);
+  border-radius:24px;
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  text-decoration:none;color:inherit;
+  box-shadow:6px 7px 0 var(--shadow);
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease;
+}
+.card:hover,.card:focus-visible{
+  transform:translate(-3px,-5px) rotate(-1deg);
+  box-shadow:10px 12px 0 var(--shadow);
+  outline:none;
+}
+.card:focus-visible{outline:3px solid var(--line);outline-offset:4px;}
+.card:active{transform:translate(3px,4px);box-shadow:2px 2px 0 var(--shadow);}
+
+/* The card's shop window. It holds two things stacked: a tinted panel
+   with an emoji, and — once it loads — a screenshot of the actual game
+   painted over the top. The tint is never removed, so a game with no
+   screenshot yet (or one that fails to load) simply keeps the emoji. */
+.top{
+  aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;
+  border-bottom:3px solid var(--line);
+  position:relative;overflow:hidden;
+}
+.top::after{ /* soft highlight arc */
+  content:'';position:absolute;left:-20%;right:-20%;top:-60%;height:120%;
+  background:var(--gloss);border-radius:50%;
+}
+.top.t0{background:var(--tint-0);} .top.t1{background:var(--tint-1);}
+.top.t2{background:var(--tint-2);} .top.t3{background:var(--tint-3);}
+.top.t4{background:var(--tint-4);} .top.t5{background:var(--tint-5);}
+.top.t6{background:var(--tint-6);} .top.t7{background:var(--tint-7);}
+
+.emoji{font-size:52px;line-height:1;position:relative;z-index:1;
+  filter:drop-shadow(var(--emoji-shadow));
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);}
+.card:hover .emoji{transform:scale(1.14) rotate(-7deg);}
+
+/* Faded in only once the file has actually decoded, so a slow shot never
+   shows as a half-painted or broken image on top of the tint. */
+.shot{
+  position:absolute;inset:0;z-index:2;
+  width:100%;height:100%;object-fit:cover;display:block;
+  opacity:0;
+  transition:opacity .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.shot.ready{opacity:1;}
+.card:hover .shot{transform:scale(1.05);}
+
+.body{padding:18px 18px 0;display:flex;flex-direction:column;gap:8px;flex:1;}
+.card h3{margin:0;font-size:20px;font-weight:900;letter-spacing:-.01em;}
+.card p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-soft);font-weight:600;flex:1;}
+.pill{
+  align-self:flex-start;
+  font-size:10.5px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;
+  padding:4px 11px;border-radius:999px;
+  border:2px solid var(--line);background:var(--paper);
+}
+.play-row{padding:16px 18px 18px;}
+.play-btn{
+  display:block;text-align:center;
+  /* The one colour that never flips: dark text on arcade yellow reads the
+     same day or night, and inverting it would kill the button's contrast. */
+  background:#FFD23D;color:#2A2140;
+  border:3px solid var(--line);border-radius:999px;
+  padding:10px 16px;font-size:14.5px;font-weight:900;letter-spacing:.03em;
+  box-shadow:0 4px 0 var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+.card:hover .play-btn{background:#FFE27A;}
+.card:active .play-btn{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow);}
+
+/* ---------------- Today's pick ----------------
+   One game, shown big above everything else. It is the same object as a
+   card — same paper, same ink border, same tint panel, same yellow button —
+   turned on its side and scaled up, so it reads as one of the games rather
+   than as an advert sitting on top of them. It reuses .top/.emoji/.shot
+   wholesale and only overrides what has to differ, which is why a screenshot
+   that fails to load falls back to the tinted emoji here exactly as it does
+   on a card, with no second copy of that logic. */
+.featured{
+  position:relative;z-index:1;
+  max-width:1120px;margin:0 auto 5vmin;
+}
+.feat-card{
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+  min-height:clamp(230px,32vmin,330px);
+  background:var(--paper);
+  /* A shade thicker and softer-cornered than a card, which is the whole
+     difference in weight — the tile is bigger, not louder. */
+  border:4px solid var(--line);border-radius:30px;
+  overflow:hidden;
+  text-decoration:none;color:inherit;
+  box-shadow:9px 10px 0 var(--shadow);
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease;
+}
+.feat-card:hover,.feat-card:focus-visible{
+  transform:translate(-3px,-5px);
+  box-shadow:13px 15px 0 var(--shadow);
+  outline:none;
+}
+.feat-card:focus-visible{outline:3px solid var(--line);outline-offset:5px;}
+.feat-card:active{transform:translate(4px,5px);box-shadow:3px 3px 0 var(--shadow);}
+/* The panel stretches to the row instead of holding 16/10, so the picture
+   fills its whole half however tall the text beside it turns out to be. */
+.feat-card .top{aspect-ratio:auto;height:100%;border-bottom:0;border-right:4px solid var(--line);}
+.feat-card .emoji{font-size:clamp(56px,11vmin,92px);}
+.feat-card:hover .emoji{transform:scale(1.1) rotate(-6deg);}
+.feat-card:hover .shot{transform:scale(1.04);}
+
+.feat-body{
+  padding:clamp(20px,3.4vmin,32px);
+  display:flex;flex-direction:column;align-items:flex-start;gap:10px;justify-content:center;
+}
+.feat-badge{
+  background:#FFD23D;color:#2A2140;
+  border:3px solid var(--line);border-radius:999px;
+  padding:6px 16px;font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
+  box-shadow:3px 3px 0 var(--shadow);
+  transform:rotate(-2deg);
+}
+.feat-body h2{
+  margin:0;font-size:clamp(25px,4.4vmin,40px);font-weight:900;letter-spacing:-.02em;line-height:1.1;
+}
+.feat-body p{margin:0;font-size:clamp(13.5px,1.9vmin,15.5px);line-height:1.5;color:var(--ink-soft);font-weight:600;}
+.feat-play{
+  margin-top:4px;
+  background:#FFD23D;color:#2A2140;
+  border:3px solid var(--line);border-radius:999px;
+  padding:11px 26px;font-size:15.5px;font-weight:900;letter-spacing:.03em;
+  box-shadow:0 4px 0 var(--shadow);
+  transition:transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+.feat-card:hover .feat-play{background:#FFE27A;}
+.feat-card:active .feat-play{transform:translateY(3px);box-shadow:0 1px 0 var(--shadow);}
+/* Says out loud that the tile moves on, so nobody reads it as a permanent
+   favourite or wonders why the page looks different tomorrow. */
+.feat-note{font-size:11.5px;font-weight:800;letter-spacing:.03em;color:var(--ink-soft);opacity:.8;}
+
+/* Below this the two halves cannot both be worth a column: the picture goes
+   on top and the text under it, which is a card again, just a wide one. */
+@media (max-width:720px){
+  .feat-card{grid-template-columns:1fr;min-height:0;}
+  .feat-card .top{aspect-ratio:16/10;height:auto;border-right:0;border-bottom:4px solid var(--line);}
+}
+
+.empty, .error{
+  max-width:520px;margin:12vh auto 0;text-align:center;color:var(--ink-soft);font-weight:700;
+  background:var(--paper);border:3px solid var(--line);border-radius:24px;
+  padding:34px 28px;box-shadow:6px 7px 0 var(--shadow);
+}
+.empty .big, .error .big{font-size:56px;margin-bottom:12px;}
+/* The category filter's own empty state. Same panel, but it sits under a
+   grid that is still on the page — the cards are hidden, not gone — so it
+   wants the spacing of the next thing down, not the 12vh drop that suits a
+   message standing alone on an otherwise blank page. Here rather than up
+   with the chips because it has to come after the rule it narrows. */
+.cat-empty{margin:0 auto 4vmin;}
+.loading{text-align:center;color:var(--ink-soft);margin-top:12vh;font-weight:800;letter-spacing:.05em;}
+footer{
+  text-align:center;margin-top:9vmin;font-size:12.5px;font-weight:800;color:var(--ink-soft);opacity:.75;
+}
+/* Reduced motion, driven purely by the OS setting. `*` alone was leaving
+   ::before/::after untouched (the universal selector does not match them),
+   and covered transitions but not animation or smooth scrolling. Games
+   themselves are iframed from their own origin and set their own policy —
+   this governs the Arcade shell only. */
+@media (prefers-reduced-motion:reduce){
+  *, *::before, *::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  html{scroll-behavior:auto !important;}
+}
+</style>
+</head>
+<body>
+
+<span class="blob a"></span><span class="blob b"></span><span class="blob c"></span>
+
+<button id="themeBtn" class="theme-btn" type="button"><span id="themeIcon">🌙</span><span id="themeLabel">Dark</span></button>
+
+<header>
+  <span class="badge">🎈 Free to play</span>
+  <h1>Arcade</h1>
+  <p>Jump straight in — no account needed.</p>
+  <p class="note">These are developmental-stage games, made by MOS employees.</p>
+</header>
+
+<!-- Today's pick. Above the search box on purpose: it is the shop window,
+     and the search and sort controls belong next to the grid they act on.
+     Filled in by arcade.js once the listing arrives, and empty until then so
+     the page never reserves space for a tile that may not come. -->
+<section id="featured" class="featured" aria-label="Today's pick" hidden></section>
+
+<div class="search-bar">
+  <input id="searchBox" type="search" placeholder="Search games…" autocomplete="off"
+         aria-label="Search games by name" enterkeyhint="search">
+  <button id="searchClear" type="button" aria-label="Clear the search" hidden>✕</button>
+</div>
+<p id="searchCount" class="sr-only" aria-live="polite"></p>
+
+<!-- Three sort pills and one button that is not a sort at all. The pills
+     are wrapped in their own group so a screen reader still announces them
+     as the set of orderings, while Surprise me sits outside it: it does not
+     rearrange this page, it leaves it. The wrapper is display:contents, so
+     the row lays out and wraps exactly as it did when all four were
+     siblings. -->
+<div class="sort-bar">
+  <span class="sort-group" role="group" aria-label="Sort the games">
+    <button class="sort-btn" id="sortAz" type="button" aria-pressed="true">A–Z</button>
+    <button class="sort-btn" id="sortNew" type="button" aria-pressed="false">✨ New</button>
+    <button class="sort-btn" id="sortShuffle" type="button" aria-pressed="false">🔀 Shuffle</button>
+  </span>
+  <button class="sort-btn lucky-btn" id="luckyBtn" type="button" disabled
+          title="Opens a random game in a new tab">🎲 Surprise me</button>
+</div>
+
+<!-- Category chips. Empty and hidden in the markup on purpose: the row is
+     one button per category the listing turns out to contain, so it cannot
+     be written here without pinning the categories into two files that would
+     then drift. arcade.js fills it once the listing arrives. -->
+<div class="cat-bar" id="catBar" role="group" aria-label="Filter games by category" hidden></div>
+
+<div id="content" class="loading">Loading…</div>
+
+<!-- Outside #content, whose innerHTML is replaced on every sort and search.
+     aria-live so the message is announced when a chip empties the grid, not
+     only seen. -->
+<div id="catEmpty" class="empty cat-empty" role="status" aria-live="polite" hidden>
+  <div class="big">🫙</div><p id="catEmptyText">No games here yet.</p>
+</div>
+
+<footer>Part of MOS 💛</footer>
+
+<script src="arcade.js"></script>
+</body>
+</html>

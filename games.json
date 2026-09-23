@@ -1,0 +1,674 @@
+[
+  {
+    "id": "anagram6",
+    "name": "Anagram6",
+    "description": "",
+    "url": "games/anagram6/anagram6.html",
+    "category": "Word",
+    "addedAt": 1786628687341.1946
+  },
+  {
+    "id": "antics",
+    "name": "Antics",
+    "description": "",
+    "url": "games/antics/index.html",
+    "category": "Chill",
+    "addedAt": 1785678760479.9937
+  },
+  {
+    "id": "backgammon",
+    "name": "Backgammon",
+    "description": "",
+    "url": "games/backgammon/backgammon.html",
+    "category": "Puzzle",
+    "addedAt": 1787084250000
+  },
+  {
+    "id": "bakery",
+    "name": "Bakery",
+    "description": "",
+    "url": "games/bakery/bakery.html",
+    "category": "Chill",
+    "addedAt": 1786466907456.1672
+  },
+  {
+    "id": "bakeyclicker",
+    "name": "BakeyClicker",
+    "description": "",
+    "url": "games/bakeyclicker/petite-patisserie.html",
+    "category": "Chill",
+    "addedAt": 1787434944102.2563
+  },
+  {
+    "id": "balloon-pop",
+    "name": "Balloon Pop",
+    "description": "",
+    "url": "games/balloon-pop/index.html",
+    "category": "Kids",
+    "addedAt": 1786537015132.1228
+  },
+  {
+    "id": "battleship",
+    "name": "Battleship",
+    "description": "",
+    "url": "games/battleship/battleship.html",
+    "category": "Puzzle",
+    "addedAt": 1787057127298.1897
+  },
+  {
+    "id": "beachcomber",
+    "name": "Beachcomber",
+    "description": "",
+    "url": "games/beachcomber/index.html",
+    "category": "Chill",
+    "addedAt": 1786464760830.0156
+  },
+  {
+    "id": "bird-feeder",
+    "name": "Bird Feeder",
+    "description": "",
+    "url": "games/bird-feeder/index.html",
+    "category": "Chill",
+    "addedAt": 1786470644362.9622
+  },
+  {
+    "id": "blockjam",
+    "name": "BlockJam",
+    "description": "",
+    "url": "games/blockjam/index.html",
+    "category": "Puzzle",
+    "addedAt": 1783903826000
+  },
+  {
+    "id": "campfire",
+    "name": "Campfire",
+    "description": "",
+    "url": "games/campfire/index.html",
+    "category": "Chill",
+    "addedAt": 1786465673140.6277
+  },
+  {
+    "id": "clock-school",
+    "name": "Clock School",
+    "description": "",
+    "url": "games/clock-school/clocklearn.html",
+    "category": "Kids",
+    "addedAt": 1786748114000
+  },
+  {
+    "id": "clover-cove",
+    "name": "Clover Cove",
+    "description": "",
+    "url": "games/clover-cove/clover-cove.html",
+    "category": "Chill",
+    "addedAt": 1785550542568.7932
+  },
+  {
+    "id": "color-gate",
+    "name": "Color Gate",
+    "description": "",
+    "url": "games/color-gate/index.html",
+    "category": "Action",
+    "addedAt": 1786537015132.1228
+  },
+  {
+    "id": "colors-shapes",
+    "name": "Colors & Shapes",
+    "description": "",
+    "url": "games/colors-shapes/colorshapes.html",
+    "category": "Kids",
+    "addedAt": 1786748114000
+  },
+  {
+    "id": "connect4",
+    "name": "Connect4",
+    "description": "",
+    "url": "games/connect4/connect4.html",
+    "category": "Puzzle",
+    "addedAt": 1787057250521.3228
+  },
+  {
+    "id": "constellation-connect",
+    "name": "Constellation Connect",
+    "description": "",
+    "url": "games/constellation-connect/index.html",
+    "category": "Chill",
+    "addedAt": 1786466510486.2622
+  },
+  {
+    "id": "cozy-sudoku",
+    "name": "Cozy Sudoku",
+    "description": "",
+    "url": "games/cozy-sudoku/sudoku.html",
+    "category": "Puzzle",
+    "addedAt": 1784571623802.636
+  },
+  {
+    "id": "cubelle",
+    "name": "Cubelle",
+    "description": "",
+    "url": "games/cubelle/cubelle.html",
+    "category": "Puzzle",
+    "addedAt": 1785764412517.1929
+  },
+  {
+    "id": "dots",
+    "name": "Dots",
+    "description": "",
+    "url": "games/dots/dots.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500843.1162
+  },
+  {
+    "id": "dotsboxes",
+    "name": "Dotsboxes",
+    "description": "",
+    "url": "games/dotsboxes/dotsboxes.html",
+    "category": "Puzzle",
+    "addedAt": 1787057250561.0212
+  },
+  {
+    "id": "doublet",
+    "name": "Doublet",
+    "description": "",
+    "url": "games/doublet/doublet.html",
+    "category": "Puzzle",
+    "addedAt": 1785677675063.676
+  },
+  {
+    "id": "driftsand",
+    "name": "Driftsand",
+    "description": "",
+    "url": "games/driftsand/index.html",
+    "category": "Chill",
+    "addedAt": 1785679106323.2686
+  },
+  {
+    "id": "emojiriddle",
+    "name": "Emojiriddle",
+    "description": "",
+    "url": "games/emojiriddle/emojiriddle.html",
+    "category": "Word",
+    "addedAt": 1786628687432.5232
+  },
+  {
+    "id": "firefly-jar",
+    "name": "Firefly Jar",
+    "description": "",
+    "url": "games/firefly-jar/index.html",
+    "category": "Chill",
+    "addedAt": 1786463999744.5842
+  },
+  {
+    "id": "fishies",
+    "name": "Fishies",
+    "description": "",
+    "url": "games/fishies/Fishies.html",
+    "category": "Chill",
+    "addedAt": 1786888723736.548
+  },
+  {
+    "id": "flappy-fish",
+    "name": "Flappy Fish",
+    "description": "",
+    "url": "games/flappy-fish/index.html",
+    "category": "Action",
+    "addedAt": 1786537015148.2236
+  },
+  {
+    "id": "flower-merge",
+    "name": "Flower Merge",
+    "description": "",
+    "url": "games/flower-merge/index.html",
+    "category": "Chill",
+    "addedAt": 1786466057008.1401
+  },
+  {
+    "id": "g2048",
+    "name": "G2048",
+    "description": "",
+    "url": "games/g2048/g2048.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500738.1465
+  },
+  {
+    "id": "gomoku",
+    "name": "Gomoku",
+    "description": "",
+    "url": "games/gomoku/gomoku.html",
+    "category": "Puzzle",
+    "addedAt": 1787055746321.2363
+  },
+  {
+    "id": "gridlock",
+    "name": "GridLock",
+    "description": "",
+    "url": "games/gridlock/index.html",
+    "category": "Puzzle",
+    "addedAt": 1784571244526.9287
+  },
+  {
+    "id": "hexfit",
+    "name": "Hexfit",
+    "description": "",
+    "url": "games/hexfit/hexfit.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500858.6262
+  },
+  {
+    "id": "higherlower",
+    "name": "Higherlower",
+    "description": "",
+    "url": "games/higherlower/higherlower.html",
+    "category": "Arcade",
+    "addedAt": 1786628687418.5186
+  },
+  {
+    "id": "kakurasu",
+    "name": "Kakurasu",
+    "description": "",
+    "url": "games/kakurasu/kakurasu.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500949.4058
+  },
+  {
+    "id": "kaleidoscope-painter",
+    "name": "Kaleidoscope Painter",
+    "description": "",
+    "url": "games/kaleidoscope-painter/index.html",
+    "category": "Chill",
+    "addedAt": 1786468931942.114
+  },
+  {
+    "id": "lantern-festival",
+    "name": "Lantern Festival",
+    "description": "",
+    "url": "games/lantern-festival/lantern-festival.html",
+    "category": "Chill",
+    "addedAt": 1786464932453.3252
+  },
+  {
+    "id": "lazer",
+    "name": "Lazer",
+    "description": "",
+    "url": "games/lazer/index.html",
+    "category": "Puzzle",
+    "addedAt": 1784571541701.514
+  },
+  {
+    "id": "letter-safari-word-builder",
+    "name": "Letter Safari & Word Builder",
+    "description": "",
+    "url": "games/letter-safari-word-builder/letter-safari-word-builder.html",
+    "category": "Word",
+    "addedAt": 1785615526672.157
+  },
+  {
+    "id": "lightsout",
+    "name": "Lightsout",
+    "description": "",
+    "url": "games/lightsout/lightsout.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500779.771
+  },
+  {
+    "id": "mancala",
+    "name": "Mancala",
+    "description": "",
+    "url": "games/mancala/mancala.html",
+    "category": "Puzzle",
+    "addedAt": 1787057250544.4668
+  },
+  {
+    "id": "marble-run",
+    "name": "Marble Run",
+    "description": "",
+    "url": "games/marble-run/index.html",
+    "category": "Kids",
+    "addedAt": 1786466336643.9321
+  },
+  {
+    "id": "mathbrush",
+    "name": "Mathbrush",
+    "description": "",
+    "url": "games/mathbrush/mathrush.html",
+    "category": "Puzzle",
+    "addedAt": 1786628687376.0425
+  },
+  {
+    "id": "maze",
+    "name": "Maze",
+    "description": "",
+    "url": "games/maze/maze.html",
+    "category": "Puzzle",
+    "addedAt": 1786628687404.9973
+  },
+  {
+    "id": "memory-match",
+    "name": "Memory Match",
+    "description": "",
+    "url": "games/memory-match/memorymatch.html",
+    "category": "Kids",
+    "addedAt": 1786748114000
+  },
+  {
+    "id": "minesweeper",
+    "name": "Minesweeper",
+    "description": "",
+    "url": "games/minesweeper/Minesweeper.html",
+    "category": "Puzzle",
+    "addedAt": 1785764567015.1526
+  },
+  {
+    "id": "morris",
+    "name": "Morris",
+    "description": "",
+    "url": "games/morris/morris.html",
+    "category": "Puzzle",
+    "addedAt": 1787055751547.4631
+  },
+  {
+    "id": "mossling",
+    "name": "Mossling",
+    "description": "",
+    "url": "games/mossling/index.html",
+    "category": "Chill",
+    "addedAt": 1785678742280.9722
+  },
+  {
+    "id": "neuron",
+    "name": "Neuron",
+    "description": "",
+    "url": "games/neuron/neuron.html",
+    "category": "Puzzle",
+    "addedAt": 1785759686380.7173
+  },
+  {
+    "id": "numberland-farm",
+    "name": "Numberland Farm",
+    "description": "",
+    "url": "games/numberland-farm/index.html",
+    "category": "Kids",
+    "addedAt": 1784925661432.1035
+  },
+  {
+    "id": "numbrush",
+    "name": "Numbrush",
+    "description": "",
+    "url": "games/numbrush/numbrush.html",
+    "category": "Chill",
+    "addedAt": 1785765088290.8076
+  },
+  {
+    "id": "numchain",
+    "name": "Numchain",
+    "description": "",
+    "url": "games/numchain/numchain.html",
+    "category": "Puzzle",
+    "addedAt": 1786628687325.594
+  },
+  {
+    "id": "oddone",
+    "name": "Oddone",
+    "description": "",
+    "url": "games/oddone/oddone.html",
+    "category": "Puzzle",
+    "addedAt": 1786628687361.0437
+  },
+  {
+    "id": "orbit-jump",
+    "name": "Orbit Jump",
+    "description": "",
+    "url": "games/orbit-jump/index.html",
+    "category": "Action",
+    "addedAt": 1786537015132.1228
+  },
+  {
+    "id": "paint-by-number",
+    "name": "Paint by Number",
+    "description": "",
+    "url": "games/paint-by-number/index.html",
+    "category": "Chill",
+    "addedAt": 1786471931342.1555
+  },
+  {
+    "id": "pin-drop",
+    "name": "Pin Drop",
+    "description": "",
+    "url": "games/pin-drop/index.html",
+    "category": "Action",
+    "addedAt": 1786537015149.2305
+  },
+  {
+    "id": "pipes",
+    "name": "Pipes",
+    "description": "",
+    "url": "games/pipes/pipes.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500796.9011
+  },
+  {
+    "id": "pixel-garden",
+    "name": "Pixel Garden",
+    "description": "",
+    "url": "games/pixel-garden/index.html",
+    "category": "Chill",
+    "addedAt": 1786465160416.6638
+  },
+  {
+    "id": "pixling",
+    "name": "Pixling",
+    "description": "",
+    "url": "games/pixling/index.html",
+    "category": "Chill",
+    "addedAt": 1785679102225.3965
+  },
+  {
+    "id": "pong-solo",
+    "name": "Pong Solo",
+    "description": "",
+    "url": "games/pong-solo/index.html",
+    "category": "Arcade",
+    "addedAt": 1786537015150.2295
+  },
+  {
+    "id": "post-office",
+    "name": "Post Office",
+    "description": "",
+    "url": "games/post-office/post-office.html",
+    "category": "Chill",
+    "addedAt": 1786466746398.9446
+  },
+  {
+    "id": "potion-mixing",
+    "name": "Potion Mixing",
+    "description": "",
+    "url": "games/potion-mixing/potion-mixing.html",
+    "category": "Chill",
+    "addedAt": 1786466730001.5332
+  },
+  {
+    "id": "procedural-jigsaw",
+    "name": "Procedural Jigsaw",
+    "description": "",
+    "url": "games/procedural-jigsaw/index.html",
+    "category": "Puzzle",
+    "addedAt": 1786466287462.6057
+  },
+  {
+    "id": "purrista",
+    "name": "Purrista",
+    "description": "",
+    "url": "games/purrista/Purrista.html",
+    "category": "Chill",
+    "addedAt": 1786467363759.736
+  },
+  {
+    "id": "quilt-block-designer",
+    "name": "Quilt Block Designer",
+    "description": "",
+    "url": "games/quilt-block-designer/index.html",
+    "category": "Chill",
+    "addedAt": 1786464310902.8174
+  },
+  {
+    "id": "reading-rally",
+    "name": "Reading Rally",
+    "description": "",
+    "url": "games/reading-rally/index.html",
+    "category": "Kids",
+    "addedAt": 1784664032083.789
+  },
+  {
+    "id": "reflex-grid",
+    "name": "Reflex Grid",
+    "description": "",
+    "url": "games/reflex-grid/index.html",
+    "category": "Action",
+    "addedAt": 1786537015151.2275
+  },
+  {
+    "id": "rookery",
+    "name": "Rookery",
+    "description": "",
+    "url": "games/rookery/Rookery_1.html",
+    "category": "Puzzle",
+    "addedAt": 1784569497648.91
+  },
+  {
+    "id": "sequence",
+    "name": "Sequence",
+    "description": "",
+    "url": "games/sequence/sequence.html",
+    "category": "Puzzle",
+    "addedAt": 1786628687389.8862
+  },
+  {
+    "id": "sidespin",
+    "name": "Sidespin",
+    "description": "",
+    "url": "games/sidespin/sidespin.html",
+    "category": "Arcade",
+    "addedAt": 1785596796113.2805
+  },
+  {
+    "id": "simon-says",
+    "name": "Simon Says",
+    "description": "",
+    "url": "games/simon-says/simon.html",
+    "category": "Arcade",
+    "addedAt": 1786748114000
+  },
+  {
+    "id": "slide15",
+    "name": "Slide15",
+    "description": "",
+    "url": "games/slide15/slide15.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500761.7715
+  },
+  {
+    "id": "solitaire",
+    "name": "Solitaire",
+    "description": "",
+    "url": "games/solitaire/solitaire.html",
+    "category": "Puzzle",
+    "addedAt": 1787084250000
+  },
+  {
+    "id": "soundscape-mixer",
+    "name": "Soundscape Mixer",
+    "description": "",
+    "url": "games/soundscape-mixer/index.html",
+    "category": "Chill",
+    "addedAt": 1786464235410.1462
+  },
+  {
+    "id": "stack-slice",
+    "name": "Stack Slice",
+    "description": "",
+    "url": "games/stack-slice/index.html",
+    "category": "Arcade",
+    "addedAt": 1786537015132.1228
+  },
+  {
+    "id": "stained-glass-maker",
+    "name": "Stained Glass Maker",
+    "description": "",
+    "url": "games/stained-glass-maker/index.html",
+    "category": "Chill",
+    "addedAt": 1786464296398.818
+  },
+  {
+    "id": "sudoku6",
+    "name": "Sudoku6",
+    "description": "",
+    "url": "games/sudoku6/sudoku6.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500933.1
+  },
+  {
+    "id": "tea-shop",
+    "name": "Tea Shop",
+    "description": "",
+    "url": "games/tea-shop/tea-shop.html",
+    "category": "Chill",
+    "addedAt": 1786466436978.086
+  },
+  {
+    "id": "tidy-up",
+    "name": "Tidy Up",
+    "description": "",
+    "url": "games/tidy-up/index.html",
+    "category": "Chill",
+    "addedAt": 1786466093746.9558
+  },
+  {
+    "id": "tile-town",
+    "name": "Tile Town",
+    "description": "",
+    "url": "games/tile-town/index.html",
+    "category": "Chill",
+    "addedAt": 1786472756212.2522
+  },
+  {
+    "id": "typing-sprint",
+    "name": "Typing Sprint",
+    "description": "",
+    "url": "games/typing-sprint/typing-sprint.html",
+    "category": "Word",
+    "addedAt": 1785615534242.6748
+  },
+  {
+    "id": "unblock",
+    "name": "Unblock",
+    "description": "",
+    "url": "games/unblock/unblock.html",
+    "category": "Puzzle",
+    "addedAt": 1786496500828.1099
+  },
+  {
+    "id": "watersort",
+    "name": "Watersort",
+    "description": "",
+    "url": "games/watersort/watersort.html",
+    "category": "Puzzle",
+    "addedAt": 1787403200386.1592
+  },
+  {
+    "id": "word-grove",
+    "name": "Word Grove",
+    "description": "",
+    "url": "games/word-grove/word-grove.html",
+    "category": "Word",
+    "addedAt": 1785677433679.9626
+  },
+  {
+    "id": "yahtzee",
+    "name": "Yahtzee",
+    "description": "",
+    "url": "games/yahtzee/yahtzee.html",
+    "category": "Arcade",
+    "addedAt": 1787084250000
+  }
+]

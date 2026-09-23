@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1A1512">
+<title>Quilt Block Designer</title>
+<style>
+:root{
+  --bg:#1A1512; --bg2:#241C17; --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.11);
+  --text:#F2E9E0; --muted:#A99686; --accent:#D9A566;
+  --radius:16px;
+  --font-display:'Avenir Next','Segoe UI',system-ui,sans-serif;
+  --font-body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:var(--font-body);color:var(--text);
+  background:linear-gradient(165deg,var(--bg2),var(--bg));
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+#app{height:100dvh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.brand{font-family:var(--font-display);font-weight:800;font-size:18px}
+.brand span{display:block;font-family:var(--font-body);font-weight:400;font-size:10.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.spacer{flex:1}
+.iconbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:16px;background:var(--panel);border:1px solid var(--line);transition:transform .15s,background .2s}
+.iconbtn:hover{background:rgba(255,255,255,.13)}
+.iconbtn:active{transform:scale(.9)}
+
+.stage{flex:1;display:grid;place-items:center;padding:8px;min-height:0}
+.frame{
+  position:relative;aspect-ratio:1;width:100%;
+  max-width:min(100%,calc(100dvh - 250px));max-height:100%;
+  padding:12px;border-radius:var(--radius);
+  background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(0,0,0,.18));
+  box-shadow:0 18px 46px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.07);
+}
+canvas{width:100%;height:100%;display:block;border-radius:6px;touch-action:none;cursor:pointer}
+
+.controls{padding:8px 16px calc(14px + env(safe-area-inset-bottom));display:grid;gap:10px;max-width:640px;width:100%;margin:0 auto}
+
+/* Ten palettes rarely fit, so the strip scrolls. The mask fades the last
+   one out at the edge, which is the only cue that there is more to the
+   right — a hard cut just looks like the list ends there. */
+.palettes{display:flex;gap:7px;overflow-x:auto;padding:3px 1px;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 26px),transparent 100%)}
+.palettes::-webkit-scrollbar{display:none}
+.pal{
+  flex:0 0 auto;display:flex;flex-direction:column;gap:3px;align-items:center;
+  padding:5px 6px 6px;border-radius:11px;border:2px solid transparent;transition:border-color .2s,background .2s;
+}
+.pal.on{border-color:var(--accent);background:rgba(255,255,255,.07)}
+.pal .strip{display:flex;border-radius:4px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.pal .strip i{width:11px;height:22px;display:block}
+.pal .nm{font-size:9.5px;color:var(--muted);letter-spacing:.3px;white-space:nowrap}
+.pal.on .nm{color:var(--text)}
+
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center}
+.btn{padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;background:var(--panel);border:1px solid var(--line);transition:background .2s,transform .15s}
+.btn:hover{background:rgba(255,255,255,.13)}
+.btn:active{transform:scale(.95)}
+.btn.on{background:var(--accent);color:#221709;border-color:transparent;font-weight:700}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#C2803D);color:#221709;border-color:transparent;font-weight:700}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{padding:9px 14px;font-size:13px;font-weight:600;transition:background .2s}
+.seg button.on{background:var(--accent);color:#221709}
+
+.toast{
+  position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-12px);
+  background:rgba(30,23,18,.97);border:1px solid var(--line);padding:11px 20px;border-radius:999px;
+  font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-height:740px){ .frame{max-width:min(100%,calc(100dvh - 228px))} .brand span{display:none} }
+@media (prefers-reduced-motion:reduce){ .btn,.iconbtn,.pal{transition:none} }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">Quilt Block<span>Designer</span></div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnUndo" aria-label="Undo" title="Undo">&#8630;</button>
+    <button class="iconbtn" id="btnShuffle" aria-label="Randomise" title="Randomise">&#127922;</button>
+  </div>
+
+  <div class="stage">
+    <div class="frame"><canvas id="quilt"></canvas></div>
+  </div>
+
+  <div class="controls">
+    <div class="palettes" id="palettes"></div>
+    <div class="row">
+      <div class="seg" id="sizes"></div>
+      <button class="btn" id="btnSym">Symmetry: 4-fold</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnRecolor">Recolour</button>
+      <button class="btn" id="btnReset">Reset</button>
+      <button class="btn primary" id="btnSave">Save PNG</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Quilt Block Designer
+
+   Half-square triangles: every cell is a square cut once corner to
+   corner, one half in each of two fabrics. Four rotations per cell is
+   the entire vocabulary, and it is enough to make every classic block
+   there is — pinwheel, flying geese, broken dishes, the lot.
+
+   The palettes are MOS's own themes. There are ten of them, not
+   thirteen: each one contributes six fabrics, taken from the surfaces
+   and accent it already defines, so a quilt in "Hiver" is cut from the
+   same cloth as the app in Hiver.
+   ===================================================================== */
+
+var STORE = 'quilt.design.v1';
+
+// Derived from THEMES in mos-app/js/01-core.js — light bg/surface/border,
+// the accent, then the two dark surfaces. Light to dark, so a random
+// two-fabric pick usually lands on a usable contrast.
+var PALETTES = [
+  { name:'Basic',     cols:['#3B1E22','#4A262B','#63343B','#C9922E','#211316','#160C0E'] },
+  { name:'Été',       cols:['#FFFBF0','#FFFFFF','#F5E6C8','#FF8B66','#362D14','#2B2410'] },
+  { name:'Printemps', cols:['#FAF7FC','#FFFFFF','#E9DEF0','#A88FD8','#2F2836','#241E2B'] },
+  { name:'Automne',   cols:['#FBF4EC','#FFFFFF','#E8D5BC','#B5541F','#35271A','#2A1E14'] },
+  { name:'Hiver',     cols:['#F3F5F7','#FFFFFF','#DDE3E8','#2E4FE0','#182028','#10161C'] },
+  { name:'Burgundy',  cols:['#F7ECEA','#FFFFFF','#E7CFC9','#7A1F2B','#3B171D','#2A0F14'] },
+  { name:'Black',     cols:['#F2F2F2','#FFFFFF','#D8D8D8','#C21F3A','#141414','#000000'] },
+  { name:'Brown',     cols:['#F8F1E9','#FFFFFF','#E6D3BC','#8A5A2B','#302418','#241A10'] },
+  { name:'Yellow',    cols:['#FFFBEA','#FFFFFF','#F5E6A8','#E8B923','#3A320F','#2B2508'] },
+  { name:'Ocean',     cols:['#EFF7F9','#FFFFFF','#CDE7ED','#1E7FA6','#0F2A33','#071B22'] }
+];
+var SIZES = [4, 6, 8, 12];
+
+var cv = document.getElementById('quilt');
+var g = cv.getContext('2d');
+var N = 6, palIdx = 4, symmetry = true;
+var cells = [];               // { rot, a, b } per cell, row-major
+var undoStack = [];
+var DPR = 1, PX = 0;          // PX = canvas size in CSS px
+
+/* ---------- model ---------- */
+function makeCells(n, randomise){
+  var out = [];
+  var p = PALETTES[palIdx].cols;
+  for (var i = 0; i < n * n; i++) {
+    out.push(randomise
+      ? { rot:(Math.random() * 4) | 0, a:pickLight(p), b:pickDark(p) }
+      : { rot:0, a:1, b:3 });
+  }
+  return out;
+}
+// Two fabrics that will actually read against each other. Picking both at
+// random from six tones produces near-invisible blocks about a third of
+// the time, which looks like a bug rather than a design.
+function pickLight(p){ return (Math.random() * 3) | 0; }            // 0..2 light
+function pickDark(p){ return 3 + ((Math.random() * 3) | 0); }        // 3..5 dark/accent
+
+function idx(r, c){ return r * N + c; }
+
+// Mirroring a half-square triangle is a permutation of its rotation, not
+// a rotation of it: flipping left-to-right swaps 0<->1 and 2<->3.
+function hflip(rot){ return [1, 0, 3, 2][rot]; }
+function vflip(rot){ return [3, 2, 1, 0][rot]; }
+
+function tapCell(r, c){
+  push();
+  var cell = cells[idx(r, c)];
+  cell.rot = (cell.rot + 1) % 4;
+  if (symmetry) {
+    var r2 = N - 1 - r, c2 = N - 1 - c;
+    if (c2 !== c) { var h = cells[idx(r, c2)]; h.rot = hflip(cell.rot); h.a = cell.a; h.b = cell.b; }
+    if (r2 !== r) { var v = cells[idx(r2, c)]; v.rot = vflip(cell.rot); v.a = cell.a; v.b = cell.b; }
+    if (r2 !== r && c2 !== c) { var d = cells[idx(r2, c2)]; d.rot = vflip(hflip(cell.rot)); d.a = cell.a; d.b = cell.b; }
+  }
+  draw();
+  save();
+}
+
+/* ---------- drawing ---------- */
+function resize(){
+  var rect = cv.getBoundingClientRect();
+  PX = Math.max(1, Math.round(Math.min(rect.width, rect.height)));
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(PX * DPR); cv.height = Math.round(PX * DPR);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  draw();
+}
+window.addEventListener('resize', function(){ setTimeout(resize, 60); }, { passive:true });
+
+function paintTriangle(ctx, x, y, s, rot, fill){
+  // Corners of the cell, then the three that make this rotation's half.
+  var pts = [
+    [[0,0],[1,0],[0,1]],
+    [[1,0],[1,1],[0,0]],
+    [[1,1],[0,1],[1,0]],
+    [[0,1],[0,0],[1,1]]
+  ][rot];
+  ctx.beginPath();
+  ctx.moveTo(x + pts[0][0] * s, y + pts[0][1] * s);
+  ctx.lineTo(x + pts[1][0] * s, y + pts[1][1] * s);
+  ctx.lineTo(x + pts[2][0] * s, y + pts[2][1] * s);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+function render(ctx, size){
+  var p = PALETTES[palIdx].cols;
+  var s = size / N;
+  ctx.clearRect(0, 0, size, size);
+  for (var r = 0; r < N; r++) {
+    for (var c = 0; c < N; c++) {
+      var cell = cells[idx(r, c)];
+      var x = c * s, y = r * s;
+      // Background fabric first, then the triangle over it. The +1 on the
+      // background covers the hairline seams antialiasing leaves between
+      // neighbouring cells.
+      ctx.fillStyle = p[cell.a];
+      ctx.fillRect(x, y, s + 1, s + 1);
+      paintTriangle(ctx, x, y, s, cell.rot, p[cell.b]);
+    }
+  }
+  // Stitching: a faint grid, drawn last so it sits on top of both fabrics.
+  ctx.strokeStyle = 'rgba(0,0,0,.16)';
+  ctx.lineWidth = Math.max(.5, size / 900);
+  for (var i = 1; i < N; i++) {
+    ctx.beginPath(); ctx.moveTo(i * s, 0); ctx.lineTo(i * s, size); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * s); ctx.lineTo(size, i * s); ctx.stroke();
+  }
+}
+function draw(){ render(g, PX); }
+
+/* ---------- undo / persistence ---------- */
+function push(){
+  undoStack.push(JSON.stringify({ n:N, p:palIdx, cells:cells }));
+  if (undoStack.length > 30) undoStack.shift();
+}
+function undo(){
+  var s = undoStack.pop();
+  if (!s) { toast('Nothing to undo'); return; }
+  var st = JSON.parse(s);
+  N = st.n; palIdx = st.p; cells = st.cells;
+  syncControls(); draw(); save();
+}
+function save(){
+  try { localStorage.setItem(STORE, JSON.stringify({ n:N, p:palIdx, sym:symmetry, cells:cells })); } catch (e) {}
+}
+function load(){
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (s && s.cells && s.cells.length === s.n * s.n) {
+      N = s.n; palIdx = s.p; symmetry = !!s.sym; cells = s.cells;
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+/* ---------- input ---------- */
+cv.addEventListener('pointerdown', function(e){
+  var rect = cv.getBoundingClientRect();
+  var c = Math.floor((e.clientX - rect.left) / rect.width * N);
+  var r = Math.floor((e.clientY - rect.top) / rect.height * N);
+  if (r < 0 || c < 0 || r >= N || c >= N) return;
+  tapCell(r, c);
+  e.preventDefault();
+});
+
+/* ---------- controls ---------- */
+var palEl = document.getElementById('palettes');
+PALETTES.forEach(function(p, i){
+  var b = document.createElement('button');
+  b.className = 'pal' + (i === palIdx ? ' on' : '');
+  b.setAttribute('aria-label', 'Palette ' + p.name);
+  b.innerHTML = '<span class="strip">' + p.cols.map(function(c){
+    return '<i style="background:' + c + '"></i>';
+  }).join('') + '</span><span class="nm">' + p.name + '</span>';
+  b.addEventListener('click', function(){
+    push(); palIdx = i;
+    palEl.querySelectorAll('.pal').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    draw(); save();
+  });
+  palEl.appendChild(b);
+});
+
+var sizesEl = document.getElementById('sizes');
+SIZES.forEach(function(n){
+  var b = document.createElement('button');
+  b.textContent = n + '×' + n;
+  b.className = n === N ? 'on' : '';
+  b.addEventListener('click', function(){
+    push(); N = n; cells = makeCells(N, true);
+    syncControls(); draw(); save();
+  });
+  sizesEl.appendChild(b);
+});
+
+var btnSym = document.getElementById('btnSym');
+btnSym.addEventListener('click', function(){
+  symmetry = !symmetry;
+  btnSym.textContent = 'Symmetry: ' + (symmetry ? '4-fold' : 'off');
+  btnSym.classList.toggle('on', symmetry);
+  save();
+});
+
+document.getElementById('btnRecolor').addEventListener('click', function(){
+  push();
+  var p = PALETTES[palIdx].cols;
+  for (var i = 0; i < cells.length; i++) { cells[i].a = pickLight(p); cells[i].b = pickDark(p); }
+  if (symmetry) enforceSymmetry();
+  draw(); save();
+});
+document.getElementById('btnShuffle').addEventListener('click', function(){
+  push(); cells = makeCells(N, true);
+  if (symmetry) enforceSymmetry();
+  draw(); save();
+});
+document.getElementById('btnReset').addEventListener('click', function(){
+  push(); cells = makeCells(N, false); draw(); save(); toast('Reset');
+});
+document.getElementById('btnUndo').addEventListener('click', undo);
+
+// Fold the top-left quadrant out over the other three.
+function enforceSymmetry(){
+  for (var r = 0; r < Math.ceil(N / 2); r++) {
+    for (var c = 0; c < Math.ceil(N / 2); c++) {
+      var src = cells[idx(r, c)];
+      var r2 = N - 1 - r, c2 = N - 1 - c;
+      if (c2 !== c) { var h = cells[idx(r, c2)]; h.rot = hflip(src.rot); h.a = src.a; h.b = src.b; }
+      if (r2 !== r) { var v = cells[idx(r2, c)]; v.rot = vflip(src.rot); v.a = src.a; v.b = src.b; }
+      if (r2 !== r && c2 !== c) { var d = cells[idx(r2, c2)]; d.rot = vflip(hflip(src.rot)); d.a = src.a; d.b = src.b; }
+    }
+  }
+}
+
+function syncControls(){
+  sizesEl.querySelectorAll('button').forEach(function(b, i){
+    b.classList.toggle('on', SIZES[i] === N);
+  });
+  palEl.querySelectorAll('.pal').forEach(function(b, i){
+    b.classList.toggle('on', i === palIdx);
+  });
+  btnSym.textContent = 'Symmetry: ' + (symmetry ? '4-fold' : 'off');
+  btnSym.classList.toggle('on', symmetry);
+}
+
+/* ---------- export ----------
+   Rendered fresh at 1600px rather than upscaling the on-screen canvas —
+   these are flat colours and straight edges, so a re-render is sharp at
+   any size and an upscale would not be. */
+document.getElementById('btnSave').addEventListener('click', function(){
+  var out = document.createElement('canvas');
+  out.width = out.height = 1600;
+  var o = out.getContext('2d');
+  var keepDPR = PX;
+  render(o, 1600);
+  out.toBlob(function(blob){
+    if (!blob) { toast('Could not export'); return; }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'quilt-' + PALETTES[palIdx].name.toLowerCase() + '-' + N + 'x' + N + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    toast('Saved as PNG');
+  }, 'image/png');
+});
+
+var toastEl = document.getElementById('toast'), toastT = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ toastEl.classList.remove('show'); }, 1600);
+}
+
+if (!load()) { cells = makeCells(N, true); enforceSymmetry(); }
+syncControls();
+resize();
+setTimeout(resize, 120);
+})();
+</script>
+</body>
+</html>

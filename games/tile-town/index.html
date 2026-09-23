@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Tile Town</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#EFEADD; --surface:#FFFDF8; --ink:#2B2622; --muted:#8A8078;
+  --accent:#6B8F71; --accent2:#C97B5A; --line:rgba(43,38,34,.12);
+  --good:#5B8C5A; --bad:#C4574B;
+  --radius:18px; --shadow:0 10px 30px -12px rgba(0,0,0,.25);
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--font-body);background:var(--bg);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  user-select:none;-webkit-user-select:none;
+}
+#app{position:relative;width:100%;height:100%;max-width:520px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.screen{position:relative;z-index:1;flex:1;display:none;flex-direction:column;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.screen.on{display:flex;animation:fade .35s ease}
+.screen.flat{padding:0;overflow:hidden}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.topbar{position:relative;z-index:3;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;min-height:48px}
+.spacer{flex:1}
+.iconbtn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:17px;transition:transform .15s,box-shadow .15s,opacity .2s}
+.iconbtn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn.off{opacity:.42}
+.iconbtn:focus-visible,button:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+
+h1.logo{font-family:var(--font-display);font-weight:900;font-size:clamp(42px,12vw,58px);letter-spacing:-.035em;line-height:.92;text-align:center}
+h1.logo .dot{color:var(--accent2)}
+.tag{text-align:center;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-top:12px;font-weight:600}
+h2.title{font-family:var(--font-display);font-weight:600;font-size:26px;letter-spacing:-.02em;margin-bottom:3px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 0 10px}
+
+.btn{width:100%;padding:16px 18px;border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:13px;transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s,border-color .16s}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--accent)}
+.btn:active{transform:scale(.975)}
+.btn .ic{font-size:20px;width:26px;text-align:center;flex:none}
+.btn .arw{margin-left:auto;color:var(--muted);font-size:16px}
+.btn small{display:block;font-weight:400;font-size:11.5px;color:var(--muted);margin-top:2px}
+.btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn.primary small{color:rgba(255,255,255,.78)}
+.btn.primary .arw{color:#fff;opacity:.8}
+.btn.ghost{background:transparent}
+.menu{display:flex;flex-direction:column;gap:11px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.stat b{display:block;font-family:var(--font-display);font-size:22px;font-weight:600}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rules li{margin:0 0 9px 18px;font-size:13.5px;line-height:1.55;color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:7px 11px}
+.sw{width:14px;height:14px;border-radius:4px}
+
+/* ============ GAME ============ */
+#board{flex:1;width:100%;display:block;touch-action:none}
+.hud{display:none;align-items:center;gap:7px;padding:8px 14px 6px;flex-wrap:wrap}
+.hud.on{display:flex}
+.pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--muted)}
+.pill b{color:var(--ink);font-weight:700}
+.pill.tone{background:var(--accent);color:#fff;border-color:transparent;font-weight:600}
+.tray{display:none;align-items:center;gap:12px;padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--surface)}
+.tray.on{display:flex}
+#preview{width:74px;height:74px;flex:none;cursor:pointer;border-radius:12px}
+.trayinfo{flex:1;min-width:0}
+.trayinfo .t{font-family:var(--font-display);font-size:16px;font-weight:600}
+.trayinfo .d{font-size:11.5px;color:var(--muted);margin-top:2px}
+.rotbtn{width:52px;height:52px;border-radius:16px;border:1px solid var(--line);background:var(--bg);font-size:20px;cursor:pointer;flex:none;transition:transform .15s}
+.rotbtn:active{transform:rotate(60deg) scale(.94)}
+
+/* ---- creative tray ---- */
+#trayCreative{flex-direction:column;align-items:stretch;gap:8px;padding:8px 12px calc(10px + env(safe-area-inset-bottom))}
+.palette{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.palette::-webkit-scrollbar{display:none}
+.chip{flex:none;width:50px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:5px 2px 4px;cursor:pointer;font-family:inherit;transition:transform .14s,border-color .14s,box-shadow .14s}
+.chip .sw2{width:26px;height:26px;border-radius:8px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.1)}
+.chip span{display:block;text-align:center;font-size:9px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(107,143,113,.28);transform:translateY(-2px)}
+.chip.on span{color:var(--ink)}
+.crow{display:flex;align-items:center;gap:10px}
+#cpreview{width:86px;height:86px;flex:none;cursor:crosshair;border-radius:14px;background:var(--bg);border:1px solid var(--line);touch-action:none}
+.tools{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tool{height:39px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font-size:16px;cursor:pointer;font-family:inherit;display:grid;place-items:center;transition:transform .14s,background .14s,border-color .14s}
+.tool:hover{border-color:var(--accent)}
+.tool:active{transform:scale(.92)}
+.tool.on{background:var(--accent);color:#fff;border-color:transparent}
+.tool.warn.on{background:var(--bad)}
+.chint{font-size:10.5px;color:var(--muted);text-align:center;line-height:1.4}
+
+.overlay{position:absolute;inset:0;z-index:6;background:rgba(43,38,34,.55);display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
+.overlay.on{display:flex;animation:fade .3s ease}
+.panel{background:var(--surface);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.5)}
+.panel h3{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:4px}
+.big{font-family:var(--font-display);font-size:52px;font-weight:900;color:var(--accent);line-height:1;margin:14px 0 4px}
+
+#toast{position:absolute;left:50%;bottom:196px;transform:translate(-50%,14px);z-index:9;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="visibility:hidden" aria-label="Back">←</button>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="sfxBtn" aria-label="Toggle sound">🔔</button>
+  </div>
+
+  <!-- MAIN -->
+  <section class="screen on" id="s-main">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <h1 class="logo">Tile<span class="dot">.</span>Town</h1>
+      <p class="tag">build · shape · settle</p>
+      <div class="stats">
+        <div class="stat"><b id="mTown">0</b><span>your town</span></div>
+        <div class="stat"><b id="mTiles">0</b><span>tiles laid</span></div>
+        <div class="stat"><b id="mBest">0</b><span>best run</span></div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="btn primary" id="creativeBtn"><span class="ic">🏘</span><span>Creative town<small>Any tile, anywhere — no limits</small></span><span class="arw">→</span></button>
+      <button class="btn" id="contCreBtn" style="display:none"><span class="ic">↩</span>Continue building<span class="arw">→</span></button>
+      <button class="btn" id="playBtn"><span class="ic">🎲</span><span>Random mode<small>The stack deals, you place</small></span><span class="arw">→</span></button>
+      <button class="btn" id="contBtn" style="display:none"><span class="ic">↩</span>Continue random run<span class="arw">→</span></button>
+      <button class="btn ghost" id="helpBtn"><span class="ic">?</span>How to play<span class="arw">→</span></button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section class="screen flat" id="s-game">
+    <div class="hud" id="hudRandom">
+      <span class="pill">Score <b id="pScore">0</b></span>
+      <span class="pill">Stack <b id="pDeck">0</b></span>
+      <span class="pill" id="pCombo" style="display:none">Perfect ×<b id="pComboN">1</b></span>
+    </div>
+    <div class="hud" id="hudCreative">
+      <span class="pill tone">Creative</span>
+      <span class="pill">Tiles <b id="cTiles">0</b></span>
+      <span class="pill">Harmony <b id="cHarm">—</b></span>
+    </div>
+
+    <canvas id="board"></canvas>
+
+    <!-- random mode tray -->
+    <div class="tray" id="trayRandom">
+      <canvas id="preview" width="148" height="148" title="Tap to rotate"></canvas>
+      <div class="trayinfo">
+        <div class="t" id="tileName">—</div>
+        <div class="d" id="tileHint">Tap a dashed space to place</div>
+      </div>
+      <button class="rotbtn" id="rotBtn" aria-label="Rotate tile">⟳</button>
+    </div>
+
+    <!-- creative tray -->
+    <div class="tray" id="trayCreative">
+      <div class="palette" id="palette"></div>
+      <div class="crow">
+        <canvas id="cpreview" width="160" height="160" title="Tap an edge to paint it"></canvas>
+        <div class="tools">
+          <button class="tool" id="tFill" title="Fill the whole tile">🪣</button>
+          <button class="tool" id="tRot" title="Rotate tile">⟳</button>
+          <button class="tool" id="tRand" title="Random tile">🎲</button>
+          <button class="tool" id="tErase" title="Eraser">🧽</button>
+          <button class="tool" id="tPaint" title="Drag to paint">🖌</button>
+          <button class="tool" id="tUndo" title="Undo">↶</button>
+          <button class="tool" id="tCenter" title="Centre the view">⌖</button>
+          <button class="tool warn" id="tClear" title="Clear the town">🗑</button>
+        </div>
+      </div>
+      <div class="chint" id="cHint">Tap the wheel's edges to paint them · tap its middle for the ground</div>
+    </div>
+
+    <div class="overlay" id="endOv">
+      <div class="panel">
+        <h3 id="endTitle">Town complete</h3>
+        <p class="sub" style="margin:0" id="endSub">Every tile found a home.</p>
+        <div class="big" id="endScore">0</div>
+        <p class="sub" id="endBest" style="margin-bottom:16px">—</p>
+        <button class="btn primary" id="againBtn" style="justify-content:center">Build another</button>
+        <button class="btn ghost" id="endHome" style="justify-content:center;margin-top:9px">Back to menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HELP -->
+  <section class="screen" id="s-help">
+    <h2 class="title">How to play</h2>
+    <p class="sub">A quiet map-building game. There is no way to lose.</p>
+
+    <div class="eyebrow">Creative town — the main game</div>
+    <ul class="rules">
+      <li>Build whatever you like: <b>any tile, anywhere</b> on the map.</li>
+      <li>Pick a landscape from the palette, then tap the <b>edges</b> of the tile wheel to paint them — or tap its <b>middle</b> to set the ground underneath.</li>
+      <li><b>🪣</b> fills the whole tile at once, <b>⟳</b> spins it, <b>🎲</b> rolls a surprise tile.</li>
+      <li>Tap the map to lay the tile. Tapping an existing tile replaces it.</li>
+      <li><b>🖌</b> lets you drag to paint a whole run of tiles; turn it off to drag the map around.</li>
+      <li><b>🧽</b> removes tiles, <b>↶</b> undoes, <b>⌖</b> re-centres, <b>🗑</b> starts over (tap twice).</li>
+      <li>Paint <b>River</b> or <b>Rail</b> on a couple of edges to run them through a tile — fill a whole tile with River to make a lake.</li>
+      <li><b>Harmony</b> tells you how many touching edges agree. It is a compliment, never a rule.</li>
+      <li>Your town saves itself as you go.</li>
+    </ul>
+
+    <div class="eyebrow">Random mode</div>
+    <ul class="rules">
+      <li>The stack randomises the layout for you — you place what you are dealt.</li>
+      <li>Tap a <b>dashed space</b> to lay the tile; <b>⟳</b> (or tap the tile) rotates it.</li>
+      <li>Every edge matching its neighbour scores. Rivers and rails are worth more.</li>
+      <li>A <b>perfect fit</b> — every touching edge matching — earns a bonus and a fresh tile.</li>
+      <li>Flagged tiles are <b>requests</b>: grow that landscape to the size on the flag.</li>
+      <li>The run ends when the stack runs out.</li>
+    </ul>
+
+    <div class="eyebrow">Landscapes</div>
+    <div class="legend" id="legend"></div>
+    <button class="btn ghost" id="helpBack" style="justify-content:center;margin-top:24px">Got it</button>
+  </section>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+/* ============================ STATE ============================ */
+const KEY='tiletown.v1', CKEY='tiletown.creative.v1';
+let S={best:0,tiles:0,towns:0,sfx:true};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+
+const $=id=>document.getElementById(id);
+let cur='s-main';
+function go(id){
+  const from=$(cur); if(from)from.classList.remove('on');
+  cur=id; $(id).classList.add('on');
+  $('backBtn').style.visibility = id==='s-main' ? 'hidden' : 'visible';
+  if(id==='s-main')refreshMenu();
+}
+let toastT=null;
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1700);
+}
+
+/* ============================ SOUND ============================ */
+let AC=null;
+function beep(freq,dur,type,vol){
+  if(!S.sfx)return;
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  if(AC.state==='suspended')AC.resume();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'sine'; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,AC.currentTime);
+  g.gain.linearRampToValueAtTime(vol||.14,AC.currentTime+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(dur||.15));
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime+(dur||.15)+.02);
+}
+const sndPlace =()=>beep(320,.13,'sine',.11);
+const sndSoft  =()=>beep(380,.07,'sine',.06);
+const sndErase =()=>beep(170,.09,'sine',.08);
+const sndTick  =()=>beep(240,.05,'square',.05);
+const sndMatch =()=>{beep(520,.12,'triangle',.1);setTimeout(()=>beep(700,.14,'triangle',.09),70);};
+const sndQuest =()=>{[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,'triangle',.09),i*90));};
+
+/* ============================ HEX MATH ============================ */
+const SQ3=Math.sqrt(3);
+const DIRS=[[1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1]]; // E SE SW W NW NE
+const opp=i=>(i+3)%6;
+const hexToPix=(q,r,s)=>({x:s*SQ3*(q+r/2), y:s*1.5*r});
+function pixToHex(x,y,s){
+  const q=(SQ3/3*x - y/3)/s, r=(2/3*y)/s;
+  let rq=Math.round(q),rr=Math.round(r),rs=Math.round(-q-r);
+  const dq=Math.abs(rq-q),dr=Math.abs(rr-r),ds=Math.abs(rs-(-q-r));
+  if(dq>dr&&dq>ds)rq=-rr-rs; else if(dr>ds)rr=-rq-rs;
+  return {q:rq,r:rr};
+}
+const key=(q,r)=>q+','+r;
+
+/* ============================ TERRAIN ============================ */
+const TERR={
+  grass :{name:'Meadow', c:'#A8C878', c2:'#93B765', pts:1},
+  forest:{name:'Forest', c:'#5E9159', c2:'#4C7A48', pts:1},
+  wheat :{name:'Wheat',  c:'#E0C267', c2:'#CDAC50', pts:1},
+  town  :{name:'Village',c:'#D9A05B', c2:'#C4894A', pts:2},
+  sand  :{name:'Sand',   c:'#E8D3A2', c2:'#D5BD86', pts:1},
+  stone :{name:'Stone',  c:'#B9B2A8', c2:'#9E968B', pts:2},
+  snow  :{name:'Snow',   c:'#E7EEF2', c2:'#CFDBE3', pts:2},
+  water :{name:'River',  c:'#71B2D4', c2:'#5C9ABD', pts:3},
+  rail  :{name:'Rail',   c:'#B79A78', c2:'#9E8163', pts:3}
+};
+const PALETTE=['grass','forest','wheat','town','sand','stone','snow','water','rail'];
+const BASES=['grass','forest','wheat','town'];
+const EXTRAS=['sand','stone','snow'];
+const rnd=n=>Math.floor(Math.random()*n);
+const pick=a=>a[rnd(a.length)];
+
+function makeTile(){
+  const e=new Array(6).fill(null);
+  const roll=Math.random();
+  let line=null;
+  if(roll<.20)line='water'; else if(roll<.34)line='rail';
+  if(line){
+    const a=rnd(6); e[a]=line;
+    if(Math.random()<.78){ e[(a+2+rnd(3))%6]=line; }
+  }
+  // fill the rest in soft contiguous runs
+  const pool=[]; const shuffled=BASES.slice();
+  if(Math.random()<.35)shuffled.push(pick(EXTRAS));
+  shuffled.sort(()=>Math.random()-.5);
+  pool.push(shuffled[0]);
+  if(Math.random()<.62)pool.push(shuffled[1]);
+  if(Math.random()<.22)pool.push(shuffled[2]);
+  let last=pick(pool);
+  for(let i=0;i<6;i++){
+    if(e[i])continue;
+    if(Math.random()>.68)last=pick(pool);
+    e[i]=last;
+  }
+  // dominant landscape = the centre biome
+  const tally={};
+  e.forEach(t=>{tally[t]=(tally[t]||0)+1;});
+  let biome='grass',bestN=-1;
+  for(const t in tally){
+    const w=tally[t]+(t==='water'||t==='rail'?-1.5:0);
+    if(w>bestN){bestN=w;biome=t;}
+  }
+  const tile={e,biome,quest:0,done:false};
+  if(Math.random()<.15 && biome!=='water' && biome!=='rail')tile.quest=4+rnd(4);
+  return tile;
+}
+function rotate(t){ t.e.unshift(t.e.pop()); }
+
+/* ============================ GAME ============================ */
+const boards={creative:new Map(),random:new Map()};
+let MODE='creative';
+const G={board:boards.creative,deck:[],tile:null,score:0,combo:0,slots:[],placedCount:0,over:false,quests:[],pops:[]};
+
+/* ---- creative state ---- */
+const CRE={terr:'grass',tile:null,tool:'place',paint:false,hist:[],hover:null,harm:'—'};
+CRE.tile={e:new Array(6).fill('grass'),biome:'grass',quest:0,done:false};
+
+function newGame(){
+  MODE='random';
+  boards.random=new Map(); G.board=boards.random;
+  G.deck=[]; G.score=0; G.combo=0; G.placedCount=0; G.over=false; G.quests=[]; G.pops=[];
+  for(let i=0;i<48;i++)G.deck.push(makeTile());
+  const start=makeTile(); start.quest=0;
+  place(0,0,start,true);
+  G.tile=G.deck.pop();
+  view.zoom=1; view.ox=0; view.oy=0;
+  $('endOv').classList.remove('on');
+  recomputeSlots(); drawPreview(); updateHUD(); modeUI();
+}
+
+function place(q,r,tile,silent){
+  tile.q=q; tile.r=r;
+  G.board.set(key(q,r),tile);
+  G.placedCount++;
+  G.pops.push({q,r,t:performance.now()});
+  if(tile.quest)G.quests.push(tile);
+  if(!silent){S.tiles++;save();}
+}
+
+function neighbours(q,r){
+  const out=[];
+  for(let i=0;i<6;i++){
+    const n=G.board.get(key(q+DIRS[i][0],r+DIRS[i][1]));
+    if(n)out.push({i,n});
+  }
+  return out;
+}
+
+function scoreFor(q,r,tile){
+  const ns=neighbours(q,r);
+  if(!ns.length)return {pts:0,matched:0,total:0,perfect:false};
+  let pts=0,matched=0;
+  for(const {i,n} of ns){
+    const a=tile.e[i], b=n.e[opp(i)];
+    if(a===b){matched++; pts+=TERR[a].pts+1;}
+  }
+  const perfect = matched===ns.length;
+  return {pts,matched,total:ns.length,perfect};
+}
+
+function recomputeSlots(){
+  const set=new Set(); G.slots=[];
+  for(const t of G.board.values()){
+    for(let i=0;i<6;i++){
+      const q=t.q+DIRS[i][0], r=t.r+DIRS[i][1], k=key(q,r);
+      if(G.board.has(k)||set.has(k))continue;
+      set.add(k); G.slots.push({q,r});
+    }
+  }
+}
+
+function groupSize(tile){
+  const seen=new Set([key(tile.q,tile.r)]);
+  const stack=[tile]; let n=0;
+  while(stack.length){
+    const t=stack.pop(); n++;
+    for(let i=0;i<6;i++){
+      const k=key(t.q+DIRS[i][0],t.r+DIRS[i][1]);
+      if(seen.has(k))continue;
+      const nb=G.board.get(k);
+      if(nb&&nb.biome===tile.biome){seen.add(k);stack.push(nb);}
+    }
+  }
+  return n;
+}
+
+function checkQuests(){
+  for(const qt of G.quests){
+    if(qt.done)continue;
+    if(groupSize(qt)>=qt.quest){
+      qt.done=true;
+      const bonus=qt.quest*6;
+      G.score+=bonus;
+      S.towns++; save();
+      sndQuest();
+      toast('Order filled · +'+bonus);
+    }
+  }
+}
+
+function tryPlace(q,r){
+  if(G.over||!G.tile)return;
+  if(G.board.has(key(q,r)))return;
+  if(!G.slots.some(s=>s.q===q&&s.r===r))return;
+
+  const res=scoreFor(q,r,G.tile);
+  let gained=res.pts;
+  if(res.perfect&&res.total>0){
+    G.combo++;
+    gained+=5+Math.min(G.combo,6);
+    G.deck.push(makeTile());
+    sndMatch();
+  }else{
+    G.combo=0;
+    if(res.matched>0)sndMatch(); else sndPlace();
+  }
+  G.score+=gained;
+  place(q,r,G.tile);
+  recomputeSlots();
+  checkQuests();
+
+  if(res.perfect&&res.total>1)toast('Perfect fit · +'+gained);
+
+  if(G.deck.length){ G.tile=G.deck.pop(); drawPreview(); }
+  else { G.tile=null; endGame(); }
+  updateHUD();
+}
+
+function endGame(){
+  G.over=true;
+  const isBest=G.score>S.best;
+  if(isBest){S.best=G.score;}
+  save();
+  $('endScore').textContent=G.score;
+  $('endTitle').textContent=isBest?'A new best town':'Town complete';
+  $('endSub').textContent=G.placedCount+' tiles found a home.';
+  $('endBest').textContent=isBest?'Your finest yet.':'Best · '+S.best;
+  setTimeout(()=>$('endOv').classList.add('on'),600);
+}
+
+function updateHUD(){
+  $('pScore').textContent=G.score;
+  $('pDeck').textContent=G.deck.length;
+  const cb=$('pCombo');
+  if(G.combo>1){cb.style.display='';$('pComboN').textContent=G.combo;}else cb.style.display='none';
+  if(G.tile){
+    $('tileName').textContent=TERR[G.tile.biome].name+(G.tile.quest?' · order '+G.tile.quest:'');
+    $('tileHint').textContent=G.tile.quest?'Grow this landscape to '+G.tile.quest+' tiles':'Tap a dashed space to place';
+  }else{
+    $('tileName').textContent='Stack empty';
+    $('tileHint').textContent='Your town is finished';
+  }
+}
+
+/* ============================ CREATIVE ============================ */
+function enterCreative(){
+  MODE='creative';
+  G.board=boards.creative;
+  $('endOv').classList.remove('on');
+  if(!G.board.size){view.zoom=1;view.ox=0;view.oy=0;}
+  modeUI(); drawBrush(); updateCreativeHUD();
+}
+
+function modeUI(){
+  const c = MODE==='creative';
+  $('hudCreative').classList.toggle('on',c);
+  $('hudRandom').classList.toggle('on',!c);
+  $('trayCreative').classList.toggle('on',c);
+  $('trayRandom').classList.toggle('on',!c);
+}
+
+function brushAt(q,r){
+  return {e:CRE.tile.e.slice(),biome:CRE.tile.biome,quest:0,done:false,q,r};
+}
+const tileSig=t=>t.biome+':'+t.e.join('|');
+
+let strokeOps=null;
+function beginStroke(){ strokeOps=[]; }
+function endStroke(){
+  if(strokeOps&&strokeOps.length){CRE.hist.push(strokeOps);if(CRE.hist.length>80)CRE.hist.shift();}
+  strokeOps=null;
+}
+function record(op){
+  if(strokeOps){strokeOps.push(op);return;}
+  CRE.hist.push([op]); if(CRE.hist.length>80)CRE.hist.shift();
+}
+
+let lastNoise=0;
+function paintNoise(fn){ // keep a fast brush stroke from machine-gunning the speaker
+  const now=performance.now();
+  if(now-lastNoise<70)return;
+  lastNoise=now; fn();
+}
+function creativeAt(q,r){
+  const k=key(q,r), prev=G.board.get(k)||null;
+  if(CRE.tool==='erase'){
+    if(!prev)return false;
+    G.board.delete(k); record({k,prev,next:null}); paintNoise(sndErase);
+  }else{
+    const t=brushAt(q,r);
+    if(prev&&tileSig(prev)===tileSig(t))return false;
+    G.board.set(k,t); record({k,prev,next:t});
+    G.pops.push({q,r,t:performance.now()});
+    S.tiles++;
+    paintNoise(strokeOps?sndSoft:sndPlace);
+  }
+  markDirty();
+  return true;
+}
+
+function undo(){
+  const ops=CRE.hist.pop();
+  if(!ops){toast('Nothing left to undo');return;}
+  for(let i=ops.length-1;i>=0;i--){
+    const o=ops[i];
+    if(o.prev)G.board.set(o.k,o.prev); else G.board.delete(o.k);
+  }
+  sndTick(); markDirty();
+}
+
+let clearArm=0;
+function clearTown(){
+  if(!G.board.size){toast('Nothing to clear');return;}
+  const now=performance.now();
+  if(now-clearArm>2600){clearArm=now;toast('Tap 🗑 again to clear the town');return;}
+  clearArm=0;
+  beginStroke();
+  for(const [k,t] of Array.from(G.board)){ record({k,prev:t,next:null}); }
+  endStroke();
+  G.board.clear(); G.pops=[];
+  sndErase(); markDirty(); toast('Town cleared · ↶ to bring it back');
+}
+
+function recenter(){
+  if(!G.board.size){view.ox=0;view.oy=0;view.zoom=1;return;}
+  const s=BASE*view.zoom; let sx=0,sy=0;
+  for(const t of G.board.values()){const p=hexToPix(t.q,t.r,s);sx+=p.x;sy+=p.y;}
+  view.ox=-sx/G.board.size; view.oy=-sy/G.board.size;
+  sndTick();
+}
+
+function harmony(){
+  let tot=0,m=0;
+  for(const t of G.board.values()){
+    for(let i=0;i<6;i++){
+      const n=G.board.get(key(t.q+DIRS[i][0],t.r+DIRS[i][1]));
+      if(!n)continue; tot++; if(t.e[i]===n.e[opp(i)])m++;
+    }
+  }
+  return tot?Math.round(m/tot*100)+'%':'—';
+}
+
+let saveT=null;
+function markDirty(){
+  CRE.harm=harmony();
+  updateCreativeHUD();
+  clearTimeout(saveT); saveT=setTimeout(saveCreative,500);
+  save();
+}
+function updateCreativeHUD(){
+  $('cTiles').textContent=G.board.size;
+  $('cHarm').textContent=CRE.harm;
+}
+function saveCreative(){
+  try{
+    const a=[];
+    for(const t of boards.creative.values())a.push([t.q,t.r,t.biome,t.e.join('|')]);
+    localStorage.setItem(CKEY,JSON.stringify(a));
+  }catch(e){}
+}
+function loadCreative(){
+  try{
+    const a=JSON.parse(localStorage.getItem(CKEY)||'[]');
+    if(!Array.isArray(a))return;
+    for(const row of a){
+      if(!row||row.length<4)continue;
+      const q=row[0],r=row[1],biome=TERR[row[2]]?row[2]:'grass';
+      const es=String(row[3]).split('|');
+      if(es.length!==6)continue;
+      const e=es.map(x=>TERR[x]?x:'grass');
+      boards.creative.set(key(q,r),{e,biome,quest:0,done:false,q,r});
+    }
+  }catch(e){}
+}
+
+/* ---- palette ---- */
+function buildPalette(){
+  const el=$('palette');
+  PALETTE.forEach(k=>{
+    const b=document.createElement('button');
+    b.className='chip'+(k===CRE.terr?' on':'');
+    b.dataset.t=k;
+    b.innerHTML='<div class="sw2" style="background:'+TERR[k].c+'"></div><span>'+TERR[k].name+'</span>';
+    b.onclick=()=>{
+      CRE.terr=k;
+      el.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.t===k));
+      if(CRE.tool==='erase')setTool('place');
+      sndTick();
+    };
+    el.appendChild(b);
+  });
+}
+function setTool(t){
+  CRE.tool=t;
+  $('tErase').classList.toggle('on',t==='erase');
+  $('cHint').textContent = t==='erase'
+    ? 'Eraser on — tap a tile to lift it off the map'
+    : "Tap the wheel's edges to paint them · tap its middle for the ground";
+}
+
+/* ============================ RENDER ============================ */
+const cv=$('board'), ctx=cv.getContext('2d');
+const pv=$('preview'), pctx=pv.getContext('2d');
+const cpv=$('cpreview'), cpctx=cpv.getContext('2d');
+const view={zoom:1,ox:0,oy:0};
+const BASE=42;
+let W=0,H=0,DPR=1;
+
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2.5);
+  W=cv.clientWidth; H=cv.clientHeight;
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize',()=>{resize();});
+
+function hexPath(c,cx,cy,s){
+  c.beginPath();
+  for(let k=0;k<6;k++){
+    const a=(60*k-30)*Math.PI/180;
+    const x=cx+s*Math.cos(a), y=cy+s*Math.sin(a);
+    k?c.lineTo(x,y):c.moveTo(x,y);
+  }
+  c.closePath();
+}
+
+function drawTile(c,tile,cx,cy,s,alpha){
+  c.save();
+  c.globalAlpha=alpha===undefined?1:alpha;
+  // wedges per edge
+  for(let k=0;k<6;k++){
+    const a1=(60*k-30)*Math.PI/180, a2=(60*(k+1)-30)*Math.PI/180;
+    c.beginPath(); c.moveTo(cx,cy);
+    c.lineTo(cx+s*Math.cos(a1),cy+s*Math.sin(a1));
+    c.lineTo(cx+s*Math.cos(a2),cy+s*Math.sin(a2));
+    c.closePath();
+    const t=TERR[tile.e[k]]||TERR.grass;
+    c.fillStyle = ((tile.e[k]==='water'||tile.e[k]==='rail')&&tile.biome!==tile.e[k]) ? TERR[tile.biome].c : t.c;
+    c.fill();
+  }
+  // centre blob in the biome colour to soften the pinwheel
+  const bc=TERR[tile.biome]||TERR.grass;
+  const g=c.createRadialGradient(cx,cy,0,cx,cy,s*.78);
+  g.addColorStop(0,bc.c); g.addColorStop(.5,bc.c); g.addColorStop(1,'rgba(255,255,255,0)');
+  c.beginPath(); c.arc(cx,cy,s*.52,0,7); c.fillStyle=g; c.fill();
+
+  // rivers / rails run from centre to their edge
+  for(let k=0;k<6;k++){
+    const t=tile.e[k];
+    if(t!=='water'&&t!=='rail')continue;
+    if(tile.biome===t)continue; // a full lake / yard needs no spoke
+    const a=60*k*Math.PI/180;
+    const ex=cx+s*.88*Math.cos(a), ey=cy+s*.88*Math.sin(a);
+    c.lineCap='round';
+    if(t==='water'){
+      c.strokeStyle=TERR.water.c; c.lineWidth=s*.30;
+      c.beginPath(); c.moveTo(cx,cy); c.lineTo(ex,ey); c.stroke();
+      c.strokeStyle='rgba(255,255,255,.32)'; c.lineWidth=s*.09;
+      c.beginPath(); c.moveTo(cx,cy); c.lineTo(ex,ey); c.stroke();
+    }else{
+      c.strokeStyle=TERR.rail.c2; c.lineWidth=s*.20;
+      c.beginPath(); c.moveTo(cx,cy); c.lineTo(ex,ey); c.stroke();
+      c.strokeStyle='rgba(255,255,255,.55)'; c.lineWidth=s*.055;
+      const px=-Math.sin(a),py=Math.cos(a);
+      for(let j=1;j<=4;j++){
+        const f=j/4.6, mx=cx+(ex-cx)*f, my=cy+(ey-cy)*f;
+        c.beginPath();
+        c.moveTo(mx-px*s*.11,my-py*s*.11);
+        c.lineTo(mx+px*s*.11,my+py*s*.11);
+        c.stroke();
+      }
+    }
+  }
+  // decoration by biome
+  const seed=(((tile.q|0)*73856093) ^ ((tile.r|0)*19349663))>>>0;
+  const rr=n=>{const x=Math.sin(seed*0.0001+n*12.9898)*43758.5453;return x-Math.floor(x);};
+  if(tile.biome==='forest'){
+    for(let j=0;j<3;j++){
+      const a=rr(j)*6.283, d=s*(.18+rr(j+9)*.34);
+      const x=cx+Math.cos(a)*d, y=cy+Math.sin(a)*d, rad=s*.15;
+      c.fillStyle='#3E6B3B'; c.beginPath(); c.arc(x,y-rad*.3,rad,0,7); c.fill();
+      c.fillStyle='#5C4433'; c.fillRect(x-rad*.13,y+rad*.4,rad*.26,rad*.5);
+    }
+  }else if(tile.biome==='town'){
+    for(let j=0;j<2;j++){
+      const a=rr(j+3)*6.283, d=s*(.1+rr(j+5)*.3);
+      const x=cx+Math.cos(a)*d, y=cy+Math.sin(a)*d, w=s*.26;
+      c.fillStyle='#FBF3E4'; c.fillRect(x-w/2,y-w*.28,w,w*.6);
+      c.fillStyle='#B4553F'; c.beginPath();
+      c.moveTo(x-w*.6,y-w*.28); c.lineTo(x,y-w*.78); c.lineTo(x+w*.6,y-w*.28); c.closePath(); c.fill();
+    }
+  }else if(tile.biome==='wheat'){
+    c.strokeStyle='rgba(160,125,40,.5)'; c.lineWidth=Math.max(1,s*.045);
+    for(let j=0;j<5;j++){
+      const y=cy-s*.34+j*s*.17;
+      c.beginPath(); c.moveTo(cx-s*.42,y); c.lineTo(cx+s*.42,y); c.stroke();
+    }
+  }else if(tile.biome==='grass'){
+    c.fillStyle='rgba(255,255,255,.28)';
+    for(let j=0;j<4;j++){
+      const a=rr(j+7)*6.283, d=s*(.15+rr(j+2)*.38);
+      c.beginPath(); c.arc(cx+Math.cos(a)*d,cy+Math.sin(a)*d,s*.055,0,7); c.fill();
+    }
+  }else if(tile.biome==='sand'){
+    c.fillStyle='rgba(160,128,74,.38)';
+    for(let j=0;j<5;j++){
+      const a=rr(j+11)*6.283, d=s*(.12+rr(j+4)*.4);
+      c.beginPath(); c.ellipse(cx+Math.cos(a)*d,cy+Math.sin(a)*d,s*.055,s*.03,a,0,7); c.fill();
+    }
+  }else if(tile.biome==='stone'){
+    for(let j=0;j<3;j++){
+      const a=rr(j+13)*6.283, d=s*(.08+rr(j+6)*.34);
+      const x=cx+Math.cos(a)*d, y=cy+Math.sin(a)*d, rad=s*(.11+rr(j+8)*.07);
+      c.fillStyle='#8E877D'; c.beginPath(); c.arc(x,y,rad,0,7); c.fill();
+      c.fillStyle='rgba(255,255,255,.35)'; c.beginPath(); c.arc(x-rad*.24,y-rad*.28,rad*.52,0,7); c.fill();
+    }
+  }else if(tile.biome==='snow'){
+    c.fillStyle='rgba(140,172,198,.45)';
+    for(let j=0;j<4;j++){
+      const a=rr(j+17)*6.283, d=s*(.14+rr(j+3)*.36);
+      c.beginPath(); c.arc(cx+Math.cos(a)*d,cy+Math.sin(a)*d,s*.05,0,7); c.fill();
+    }
+  }else if(tile.biome==='water'){
+    c.strokeStyle='rgba(255,255,255,.45)'; c.lineWidth=Math.max(1,s*.05); c.lineCap='round';
+    for(let j=0;j<3;j++){
+      const y=cy-s*.24+j*s*.24, w=s*(.16+rr(j+1)*.14);
+      c.beginPath(); c.arc(cx+(rr(j+2)-.5)*s*.34,y,w,Math.PI*.15,Math.PI*.85); c.stroke();
+    }
+  }else if(tile.biome==='rail'){
+    c.strokeStyle=TERR.rail.c2; c.lineWidth=Math.max(1,s*.07);
+    for(const off of [-s*.17,s*.17]){
+      c.beginPath(); c.moveTo(cx-s*.52,cy+off); c.lineTo(cx+s*.52,cy+off); c.stroke();
+    }
+    c.strokeStyle='rgba(255,255,255,.5)'; c.lineWidth=Math.max(1,s*.04);
+    for(let j=-2;j<=2;j++){
+      const x=cx+j*s*.22;
+      c.beginPath(); c.moveTo(x,cy-s*.27); c.lineTo(x,cy+s*.27); c.stroke();
+    }
+  }
+  // outline
+  hexPath(c,cx,cy,s);
+  c.strokeStyle='rgba(43,38,34,.16)'; c.lineWidth=Math.max(1,s*.035); c.stroke();
+
+  // quest flag
+  if(tile.quest){
+    const done=tile.done;
+    c.fillStyle=done?'#5B8C5A':'#2B2622';
+    c.fillRect(cx-s*.03,cy-s*.62,s*.06,s*.5);
+    c.fillStyle=done?'#5B8C5A':'#C97B5A';
+    c.beginPath(); c.moveTo(cx+s*.02,cy-s*.62); c.lineTo(cx+s*.42,cy-s*.5); c.lineTo(cx+s*.02,cy-s*.36); c.closePath(); c.fill();
+    c.fillStyle='#fff'; c.font='600 '+(s*.24|0)+'px '+"'Outfit',sans-serif";
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(done?'✓':tile.quest, cx+s*.16, cy-s*.49);
+  }
+  c.restore();
+}
+
+function drawGrid(s,cx0,cy0){
+  const rowH=1.5*s, colW=SQ3*s;
+  const rmin=Math.floor((-cy0-s)/rowH)-1, rmax=Math.ceil((H-cy0+s)/rowH)+1;
+  const rows=rmax-rmin+1, cols=Math.ceil((W+2*s)/colW)+2;
+  if(rows*cols>900)return; // zoomed too far out to be useful
+  ctx.save();
+  ctx.strokeStyle='rgba(43,38,34,.10)'; ctx.lineWidth=1;
+  for(let r=rmin;r<=rmax;r++){
+    const qmin=Math.floor((-cx0-s)/colW - r/2)-1, qmax=Math.ceil((W-cx0+s)/colW - r/2)+1;
+    for(let q=qmin;q<=qmax;q++){
+      if(G.board.has(key(q,r)))continue;
+      const p=hexToPix(q,r,s);
+      hexPath(ctx,cx0+p.x,cy0+p.y,s*.9); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function draw(){
+  if(!W)resize();
+  ctx.clearRect(0,0,W,H);
+  const s=BASE*view.zoom;
+  const cx0=W/2+view.ox, cy0=H/2+view.oy;
+  const now=performance.now();
+
+  if(MODE==='creative'){
+    drawGrid(s,cx0,cy0);
+  }else{
+    ctx.save();
+    ctx.setLineDash([5,5]); ctx.lineWidth=1.6;
+    ctx.strokeStyle='rgba(43,38,34,.30)';
+    for(const sl of G.slots){
+      const p=hexToPix(sl.q,sl.r,s);
+      const x=cx0+p.x, y=cy0+p.y;
+      if(x<-s*2||x>W+s*2||y<-s*2||y>H+s*2)continue;
+      hexPath(ctx,x,y,s*.92); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // tiles
+  for(const t of G.board.values()){
+    const p=hexToPix(t.q,t.r,s);
+    const x=cx0+p.x, y=cy0+p.y;
+    if(x<-s*2||x>W+s*2||y<-s*2||y>H+s*2)continue;
+    let sc=1;
+    const pop=G.pops.find(o=>o.q===t.q&&o.r===t.r);
+    if(pop){
+      const k=(now-pop.t)/280;
+      if(k>=1){G.pops.splice(G.pops.indexOf(pop),1);}
+      else sc=.6+.4*(1+Math.sin((k*Math.PI)-Math.PI/2))/2*1.06;
+    }
+    drawTile(ctx,t,x,y,s*sc);
+  }
+
+  // creative hover ghost
+  if(MODE==='creative'&&CRE.hover){
+    const p=hexToPix(CRE.hover.q,CRE.hover.r,s);
+    const x=cx0+p.x, y=cy0+p.y;
+    const occupied=G.board.has(key(CRE.hover.q,CRE.hover.r));
+    if(CRE.tool==='erase'){
+      if(occupied){
+        ctx.save(); ctx.strokeStyle='rgba(196,87,75,.85)'; ctx.lineWidth=2.4;
+        hexPath(ctx,x,y,s*.92); ctx.stroke(); ctx.restore();
+      }
+    }else{
+      drawTile(ctx,brushAt(CRE.hover.q,CRE.hover.r),x,y,s*.94,occupied?.75:.55);
+      ctx.save(); ctx.strokeStyle='rgba(107,143,113,.9)'; ctx.lineWidth=2;
+      hexPath(ctx,x,y,s*.94); ctx.stroke(); ctx.restore();
+    }
+  }
+  requestAnimationFrame(draw);
+}
+
+function drawPreview(){
+  pctx.setTransform(1,0,0,1,0,0);
+  pctx.clearRect(0,0,pv.width,pv.height);
+  if(!G.tile)return;
+  const t=Object.assign({},G.tile,{q:0,r:0});
+  drawTile(pctx,t,pv.width/2,pv.height/2,pv.width*.44);
+}
+
+function drawBrush(){
+  cpctx.setTransform(1,0,0,1,0,0);
+  cpctx.clearRect(0,0,cpv.width,cpv.height);
+  const cx=cpv.width/2, cy=cpv.height/2, s=cpv.width*.44;
+  drawTile(cpctx,Object.assign({},CRE.tile,{q:0,r:0}),cx,cy,s);
+  // spokes so the six editable zones read clearly
+  cpctx.save();
+  cpctx.strokeStyle='rgba(255,253,248,.55)'; cpctx.lineWidth=1.4;
+  for(let k=0;k<6;k++){
+    const a=(60*k-30)*Math.PI/180;
+    cpctx.beginPath(); cpctx.moveTo(cx+Math.cos(a)*s*.42,cy+Math.sin(a)*s*.42);
+    cpctx.lineTo(cx+Math.cos(a)*s*.95,cy+Math.sin(a)*s*.95); cpctx.stroke();
+  }
+  cpctx.beginPath(); cpctx.arc(cx,cy,s*.4,0,7);
+  cpctx.strokeStyle='rgba(255,253,248,.7)'; cpctx.lineWidth=1.4; cpctx.stroke();
+  cpctx.restore();
+}
+
+/* ============================ INPUT ============================ */
+let drag=null, pinch=null;
+
+function hexAt(e){
+  const rect=cv.getBoundingClientRect();
+  const s=BASE*view.zoom;
+  return pixToHex(e.clientX-rect.left-W/2-view.ox, e.clientY-rect.top-H/2-view.oy, s);
+}
+
+cv.addEventListener('pointerdown',e=>{
+  cv.setPointerCapture(e.pointerId);
+  drag={x:e.clientX,y:e.clientY,ox:view.ox,oy:view.oy,moved:0,id:e.pointerId,painting:false,last:null};
+  if(MODE==='creative'&&CRE.paint&&e.button===0){ // right / middle drag still pans
+    drag.painting=true;
+    beginStroke();
+    const h=hexAt(e); drag.last=key(h.q,h.r);
+    creativeAt(h.q,h.r);
+  }
+});
+cv.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id){
+    if(MODE==='creative'&&e.pointerType==='mouse'){CRE.hover=hexAt(e);}
+    return;
+  }
+  const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+  drag.moved=Math.max(drag.moved,Math.hypot(dx,dy));
+  if(drag.painting){
+    const h=hexAt(e), k=key(h.q,h.r);
+    if(k!==drag.last){drag.last=k;creativeAt(h.q,h.r);}
+    if(e.pointerType==='mouse')CRE.hover=h;
+    return;
+  }
+  view.ox=drag.ox+dx; view.oy=drag.oy+dy;
+  if(MODE==='creative'&&e.pointerType==='mouse')CRE.hover=hexAt(e);
+});
+function endDrag(e){
+  if(!drag||e.pointerId!==drag.id)return;
+  if(drag.painting){ endStroke(); }
+  else if(drag.moved<8){
+    const h=hexAt(e);
+    if(MODE==='creative')creativeAt(h.q,h.r);
+    else tryPlace(h.q,h.r);
+  }
+  drag=null;
+}
+cv.addEventListener('pointerup',endDrag);
+cv.addEventListener('pointercancel',()=>{if(drag&&drag.painting)endStroke();drag=null;});
+cv.addEventListener('pointerleave',()=>{CRE.hover=null;});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const lo=MODE==='creative'?.3:.45;
+  view.zoom=Math.min(2.2,Math.max(lo,view.zoom*(e.deltaY>0?.9:1.11)));
+},{passive:false});
+// pinch
+cv.addEventListener('touchmove',e=>{
+  if(e.touches.length!==2)return;
+  e.preventDefault();
+  const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  if(pinch){
+    const lo=MODE==='creative'?.3:.45;
+    view.zoom=Math.min(2.2,Math.max(lo,view.zoom*(d/pinch)));
+    if(drag&&drag.painting)endStroke();
+    drag=null;
+  }
+  pinch=d;
+},{passive:false});
+cv.addEventListener('touchend',()=>{pinch=null;});
+
+function doRotate(){ if(!G.tile||G.over)return; rotate(G.tile); drawPreview(); sndTick(); }
+$('rotBtn').onclick=doRotate;
+pv.onclick=doRotate;
+
+/* ---- brush editor ---- */
+cpv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  const rect=cpv.getBoundingClientRect();
+  const x=(e.clientX-rect.left)/rect.width*cpv.width - cpv.width/2;
+  const y=(e.clientY-rect.top)/rect.height*cpv.height - cpv.height/2;
+  const s=cpv.width*.44;
+  if(Math.hypot(x,y)<s*.42){
+    CRE.tile.biome=CRE.terr;
+  }else{
+    let deg=Math.atan2(y,x)*180/Math.PI; deg=(deg+360)%360;
+    const k=Math.floor(((deg+30)%360)/60);
+    CRE.tile.e[k]=CRE.terr;
+  }
+  if(CRE.tool==='erase')setTool('place');
+  drawBrush(); sndTick();
+});
+
+/* ---- creative tools ---- */
+$('tFill').onclick=()=>{
+  CRE.tile.e=new Array(6).fill(CRE.terr);
+  CRE.tile.biome=CRE.terr;
+  if(CRE.tool==='erase')setTool('place');
+  drawBrush(); sndSoft();
+};
+$('tRot').onclick=()=>{ rotate(CRE.tile); drawBrush(); sndTick(); };
+$('tRand').onclick=()=>{
+  const t=makeTile(); t.quest=0;
+  CRE.tile={e:t.e,biome:t.biome,quest:0,done:false};
+  if(CRE.tool==='erase')setTool('place');
+  drawBrush(); sndSoft();
+};
+$('tErase').onclick=()=>{ setTool(CRE.tool==='erase'?'place':'erase'); sndTick(); };
+$('tPaint').onclick=()=>{
+  CRE.paint=!CRE.paint;
+  $('tPaint').classList.toggle('on',CRE.paint);
+  toast(CRE.paint?'Brush on — drag to paint':'Brush off — drag to move the map');
+  sndTick();
+};
+$('tUndo').onclick=undo;
+$('tCenter').onclick=recenter;
+$('tClear').onclick=clearTown;
+
+/* ============================ WIRING ============================ */
+function refreshMenu(){
+  $('mBest').textContent=S.best;
+  $('mTiles').textContent=S.tiles;
+  $('mTown').textContent=boards.creative.size;
+  $('contCreBtn').style.display=boards.creative.size?'':'none';
+  $('contBtn').style.display=(boards.random.size>1&&!G.over&&G.tile)?'':'none';
+}
+function openGame(){ go('s-game'); setTimeout(resize,30); }
+$('creativeBtn').onclick=()=>{enterCreative();openGame();};
+$('contCreBtn').onclick=()=>{enterCreative();openGame();};
+$('playBtn').onclick=()=>{newGame();openGame();};
+$('contBtn').onclick=()=>{MODE='random';G.board=boards.random;modeUI();openGame();};
+$('helpBtn').onclick=()=>go('s-help');
+$('helpBack').onclick=()=>go('s-main');
+$('backBtn').onclick=()=>{if(MODE==='creative')saveCreative();go('s-main');};
+$('againBtn').onclick=()=>{newGame();setTimeout(resize,30);};
+$('endHome').onclick=()=>{$('endOv').classList.remove('on');go('s-main');};
+$('sfxBtn').onclick=()=>{S.sfx=!S.sfx;save();$('sfxBtn').classList.toggle('off',!S.sfx);beep(600,.08,'sine',.1);};
+$('sfxBtn').classList.toggle('off',!S.sfx);
+window.addEventListener('pagehide',saveCreative);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveCreative();});
+
+(function legend(){
+  const el=$('legend');
+  for(const k of PALETTE){
+    const d=document.createElement('div'); d.className='lg';
+    d.innerHTML='<span class="sw" style="background:'+TERR[k].c+'"></span>'+TERR[k].name;
+    el.appendChild(d);
+  }
+})();
+
+loadCreative();
+buildPalette();
+setTool('place');
+drawBrush();
+CRE.harm=harmony();
+updateCreativeHUD();
+modeUI();
+refreshMenu();
+resize();
+requestAnimationFrame(draw);
+new ResizeObserver(resize).observe(cv);
+</script>
+</body>
+</html>

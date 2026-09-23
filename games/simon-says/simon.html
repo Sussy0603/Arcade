@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Simon Says</title>
+<style>
+:root{
+  --bg1:#232946; --bg2:#121629;
+  --ink:#FFFFFE;
+  --panel:#2E3358;
+  --g:#2ECC71; --r:#FF5D5D; --y:#FFD93D; --b:#4DA6FF;
+  --shadow:0 6px 0 rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Baloo 2','Comic Sans MS','Chalkboard SE','Segoe UI',system-ui,sans-serif;
+  background:radial-gradient(circle at 50% 20%,var(--bg1),var(--bg2));
+  color:var(--ink);
+  min-height:100%; display:flex; flex-direction:column; align-items:center;
+  padding:14px 12px 24px; user-select:none;-webkit-user-select:none; overflow-x:hidden;
+}
+header{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+h1{font-size:clamp(22px,6vw,30px);letter-spacing:1px;}
+.btn{
+  border:none;cursor:pointer;font-family:inherit;font-weight:700;color:var(--ink);
+  background:var(--panel);border-radius:999px;padding:8px 14px;font-size:14px;
+  box-shadow:var(--shadow);transition:transform .1s;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.btn.small{padding:6px 10px;font-size:13px;}
+.topbtns{display:flex;gap:6px;}
+.hud{
+  width:100%;max-width:460px;display:flex;justify-content:space-between;align-items:center;
+  margin:6px 0 14px;font-weight:700;
+}
+.hud .stat{background:var(--panel);border-radius:14px;padding:8px 14px;box-shadow:var(--shadow);font-size:15px;}
+.hud .stat b{font-size:18px;color:var(--y);}
+#stage{position:relative;width:min(84vw,380px);aspect-ratio:1;margin:6px 0 18px;}
+#pads{
+  position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px;
+  transform:rotate(0deg);
+}
+.pad{
+  border:none;cursor:pointer;border-radius:26px;opacity:.55;transition:opacity .1s, transform .08s, box-shadow .1s;
+  box-shadow:0 8px 0 rgba(0,0,0,.4), inset 0 -6px 12px rgba(0,0,0,.25);
+}
+.pad:active{transform:translateY(3px);}
+.pad[data-p="0"]{background:var(--g);border-top-left-radius:70%;}
+.pad[data-p="1"]{background:var(--r);border-top-right-radius:70%;}
+.pad[data-p="2"]{background:var(--y);border-bottom-left-radius:70%;}
+.pad[data-p="3"]{background:var(--b);border-bottom-right-radius:70%;}
+.pad.lit{opacity:1;box-shadow:0 8px 0 rgba(0,0,0,.4), 0 0 34px 6px currentColor, inset 0 -6px 12px rgba(0,0,0,.15);}
+.pad[data-p="0"].lit{color:var(--g);} .pad[data-p="1"].lit{color:var(--r);}
+.pad[data-p="2"].lit{color:var(--y);} .pad[data-p="3"].lit{color:var(--b);}
+#center{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:38%;aspect-ratio:1;border-radius:50%;background:var(--bg2);
+  border:6px solid var(--panel);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  box-shadow:0 6px 18px rgba(0,0,0,.5);
+  z-index:2;text-align:center;
+}
+#center .lvl{font-size:clamp(24px,8vw,38px);font-weight:800;color:var(--y);line-height:1;}
+#center .lbl{font-size:11px;opacity:.7;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+#msg{min-height:26px;font-weight:700;font-size:17px;text-align:center;margin-bottom:10px;}
+#msg.happy{color:var(--g);} #msg.sad{color:var(--r);}
+#startBtn{
+  background:linear-gradient(145deg,#7C4DFF,#5E35B1);color:#fff;font-size:18px;padding:12px 34px;
+  border-radius:999px;border:none;cursor:pointer;font-family:inherit;font-weight:800;
+  box-shadow:0 6px 0 rgba(0,0,0,.4);letter-spacing:.5px;transition:transform .1s;
+}
+#startBtn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.4);}
+#startBtn:disabled{opacity:.45;cursor:default;}
+.seg{display:flex;background:var(--panel);border-radius:999px;padding:4px;gap:4px;margin-top:14px;box-shadow:var(--shadow);}
+.seg button{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink);
+  background:transparent;border-radius:999px;padding:6px 12px;opacity:.6;}
+.seg button.on{background:rgba(255,255,255,.14);opacity:1;}
+footer{margin-top:16px;font-size:12px;opacity:.4;font-weight:600;}
+@media (prefers-reduced-motion:reduce){ .pad{transition:none;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎵 <span data-i18n="title">Simon Says</span></h1>
+  <div class="topbtns">
+    <button class="btn small" id="langBtn">FR</button>
+    <button class="btn small" id="soundBtn">🔊</button>
+  </div>
+</header>
+
+<div class="hud">
+  <div class="stat"><span data-i18n="level">Level</span> <b id="level">–</b></div>
+  <div class="stat"><span data-i18n="best">Best</span> <b id="best">0</b></div>
+</div>
+
+<div id="stage">
+  <div id="pads">
+    <button class="pad" data-p="0" aria-label="green"></button>
+    <button class="pad" data-p="1" aria-label="red"></button>
+    <button class="pad" data-p="2" aria-label="yellow"></button>
+    <button class="pad" data-p="3" aria-label="blue"></button>
+  </div>
+  <div id="center">
+    <div class="lvl" id="centerLvl">🎧</div>
+    <div class="lbl" id="centerLbl"></div>
+  </div>
+</div>
+
+<div id="msg"></div>
+<button id="startBtn" data-i18n="start">START</button>
+
+<div class="seg" id="speedSeg">
+  <button data-speed="chill" class="on">🐢 <span data-i18n="chill">Chill</span></button>
+  <button data-speed="normal">🐇 <span data-i18n="normal">Normal</span></button>
+  <button data-speed="turbo">⚡ <span data-i18n="turbo">Turbo</span></button>
+</div>
+
+<footer>STeamWorkS · Simon Says</footer>
+
+<script>
+"use strict";
+const STR={
+  en:{title:"Simon Says",level:"Level",best:"Best",start:"START",again:"PLAY AGAIN",
+      watch:"Watch carefully… 👀",go:"Your turn! 🎮",good:"Great! Next level ⤴",
+      oops:"Oops! You reached level {n}",newbest:"⭐ New best: level {n}!",
+      chill:"Chill",normal:"Normal",turbo:"Turbo"},
+  fr:{title:"Jean Dit",level:"Niveau",best:"Record",start:"JOUER",again:"REJOUER",
+      watch:"Regarde bien… 👀",go:"À toi ! 🎮",good:"Super ! Niveau suivant ⤴",
+      oops:"Oups ! Tu as atteint le niveau {n}",newbest:"⭐ Nouveau record : niveau {n} !",
+      chill:"Tranquille",normal:"Normal",turbo:"Turbo"}
+};
+const SKEY="stws_simon_v1";
+const FREQ=[329.63,261.63,220.00,164.81]; // classic-simon-ish tones per pad
+const SPEEDS={chill:{base:820,min:420,step:22},normal:{base:640,min:280,step:26},turbo:{base:460,min:190,step:26}};
+
+let save=load();
+let lang=save.lang||"en";
+let soundOn=save.sound!==false;
+let speed=save.speed||"chill";
+let best=save.best||0;
+
+let seq=[], pos=0, level=0, phase="idle"; // idle | show | input | over
+let timers=[];
+
+function load(){try{return JSON.parse(localStorage.getItem(SKEY))||{};}catch(e){return {};}}
+function persist(){save.lang=lang;save.sound=soundOn;save.speed=speed;save.best=best;
+  try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}}
+
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,dur,vol,type){
+  if(!soundOn)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"square";o.frequency.value=f;
+  g.gain.setValueAtTime(0,c.currentTime);
+  g.gain.linearRampToValueAtTime(vol||.12,c.currentTime+.015);
+  g.gain.setValueAtTime(vol||.12,c.currentTime+dur*.7);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);
+  o.connect(g);g.connect(c.destination);
+  o.start();o.stop(c.currentTime+dur+.05);
+}
+const sBuzz=()=>{tone(110,.55,.1,"sawtooth");};
+const sWin=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.16,.12,"triangle"),i*110));};
+
+function clearTimers(){timers.forEach(t=>clearTimeout(t));timers=[];}
+function later(fn,ms){timers.push(setTimeout(fn,ms));}
+
+function stepDur(){const s=SPEEDS[speed];return Math.max(s.min,s.base-level*s.step);}
+function litDur(){return stepDur()*.62;}
+
+function light(p,dur){
+  const el=document.querySelector(`.pad[data-p="${p}"]`);
+  el.classList.add("lit"); tone(FREQ[p],(dur||litDur())/1000,.14);
+  later(()=>el.classList.remove("lit"),dur||litDur());
+}
+
+function startGame(){
+  clearTimers(); seq=[]; level=0; phase="idle";
+  document.getElementById("startBtn").disabled=true;
+  nextLevel();
+}
+function nextLevel(){
+  level++; seq.push(Math.floor(Math.random()*4)); pos=0;
+  updateHud(); setMsg(STR[lang].watch,"");
+  phase="show";
+  const d=stepDur();
+  seq.forEach((p,i)=>later(()=>light(p),400+i*d));
+  later(()=>{phase="input";setMsg(STR[lang].go,"happy");},400+seq.length*d);
+}
+function padPress(p){
+  if(phase!=="input")return;
+  light(p,240);
+  if(p===seq[pos]){
+    pos++;
+    if(pos===seq.length){
+      phase="show"; setMsg(STR[lang].good,"happy");
+      later(nextLevel,900);
+    }
+  }else{
+    gameOver();
+  }
+}
+function gameOver(){
+  phase="over"; clearTimers(); sBuzz();
+  const reached=level;
+  let txt=STR[lang].oops.replace("{n}",reached);
+  if(reached>best){best=reached;persist();txt=STR[lang].newbest.replace("{n}",reached);sWin();}
+  setMsg(txt, reached>best-1?"happy":"sad");
+  const sb=document.getElementById("startBtn");
+  sb.disabled=false; sb.textContent=STR[lang].again;
+  updateHud();
+  /* flash all pads */
+  document.querySelectorAll(".pad").forEach(el=>{el.classList.add("lit");later(()=>el.classList.remove("lit"),350);});
+}
+function setMsg(t,cls){const m=document.getElementById("msg");m.textContent=t;m.className=cls||"";}
+function updateHud(){
+  document.getElementById("level").textContent=level||"–";
+  document.getElementById("best").textContent=best;
+  document.getElementById("centerLvl").textContent=level||"🎧";
+  document.getElementById("centerLbl").textContent=level?STR[lang].level:"";
+}
+
+document.querySelectorAll(".pad").forEach(el=>{
+  el.addEventListener("pointerdown",()=>padPress(+el.dataset.p));
+});
+document.getElementById("startBtn").addEventListener("click",startGame);
+document.getElementById("speedSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#speedSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");speed=b.dataset.speed;persist();
+});
+document.getElementById("langBtn").addEventListener("click",()=>{lang=lang==="en"?"fr":"en";persist();applyLang();});
+document.getElementById("soundBtn").addEventListener("click",e=>{
+  soundOn=!soundOn;persist();e.currentTarget.textContent=soundOn?"🔊":"🔇";});
+
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{el.textContent=STR[lang][el.dataset.i18n];});
+  document.getElementById("langBtn").textContent=lang==="en"?"FR":"EN";
+  if(phase==="over")document.getElementById("startBtn").textContent=STR[lang].again;
+  updateHud();
+}
+document.querySelectorAll("#speedSeg button").forEach(b=>b.classList.toggle("on",b.dataset.speed===speed));
+document.getElementById("soundBtn").textContent=soundOn?"🔊":"🔇";
+applyLang(); updateHud();
+
+window.__test={getState:()=>({seq:seq.slice(),level,phase,best}),startGame,padPress,SPEEDS,
+  _force:(s)=>{seq=s.slice();level=s.length;pos=0;phase="input";}};
+</script>
+</body>
+</html>

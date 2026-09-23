@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#1b2621"/>
+<title>Steepwell — Tea Shop</title>
+<style>
+:root{
+  --bg:#121a17; --room:#1b2621; --panel:#243128; --panelIn:#2e3d33;
+  --line:rgba(255,255,255,.16); --line2:rgba(255,255,255,.28);
+  --text:#f2ece0; --dim:#a8b6a6;
+  --wood:#6b4a32; --wood2:#8a613f; --cream:#f3e7cf;
+  --jade:#7fc08a; --jade2:#a9dcae; --amber:#e8b45c; --amber2:#f5d99a;
+  --bad:#e2705f; --gold:#f0c24a;
+  --ui:'Nunito','Segoe UI',system-ui,-apple-system,sans-serif;
+  --dsp:ui-rounded,'SF Pro Rounded','Baloo 2','Trebuchet MS','Segoe UI',system-ui,sans-serif;
+  --mono:'SFMono-Regular',Menlo,Consolas,monospace;
+  --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+body{font-family:var(--ui);background:#0b110e;color:var(--text);display:flex;
+  align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+#app{position:relative;width:100%;height:100%;max-width:540px;max-height:100vh;overflow:hidden;
+  background:
+    radial-gradient(120% 60% at 50% 0%, #2c3a30 0%, transparent 60%),
+    linear-gradient(180deg,#1b2621 0%,#161f1a 58%,#121915 100%);
+  box-shadow:0 0 90px rgba(0,0,0,.6);display:flex;flex-direction:column}
+@media(min-width:760px){#app{max-width:min(94vw,620px)}}
+#fx{position:absolute;inset:0;z-index:30;pointer-events:none}
+
+/* ---------------- HUD ---------------- */
+.hud{position:relative;z-index:20;display:flex;gap:7px;align-items:center;
+  padding:calc(9px + env(safe-area-inset-top)) 11px 7px}
+.chip{background:rgba(10,20,14,.55);border:1px solid var(--line);border-radius:999px;
+  padding:6px 12px;display:flex;align-items:center;gap:6px;font-weight:800;font-size:13.5px;
+  white-space:nowrap;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.chip b{font-family:var(--mono);letter-spacing:-.3px}
+.chip.coins{color:var(--gold)}
+.chip.rep{color:var(--jade2)}
+.spacer{flex:1}
+.icbtn{width:37px;height:37px;border-radius:50%;border:1px solid var(--line);flex:none;
+  background:rgba(10,20,14,.55);display:grid;place-items:center;font-size:16px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:transform .12s}
+.icbtn:active{transform:scale(.9)}
+.icbtn.off{opacity:.42}
+
+/* ---------------- CUSTOMERS ---------------- */
+#queue{position:relative;z-index:12;display:flex;gap:7px;padding:2px 10px 6px;
+  flex:1.05 1 0;min-height:104px;max-height:190px;align-items:stretch}
+.cust{flex:1 1 0;min-width:0;background:linear-gradient(180deg,var(--panel),#1f2b23);
+  border:1px solid var(--line);border-radius:14px;padding:7px 6px 6px;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  animation:custIn .34s cubic-bezier(.2,1.3,.4,1);transition:transform .12s,box-shadow .2s}
+.cust:active{transform:translateY(2px) scale(.98)}
+.cust.hl{box-shadow:0 0 0 2px var(--jade),0 8px 22px rgba(0,0,0,.4)}
+.cust.leaving{animation:custOut .4s ease forwards}
+@keyframes custIn{from{transform:translateY(-24px) scale(.8);opacity:0}}
+@keyframes custOut{to{transform:translateY(-26px) scale(.7);opacity:0}}
+.cust .face{font-size:26px;line-height:1}
+.cust .nm{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cust .order{background:var(--cream);color:#2a2018;border-radius:9px;padding:3px 6px;
+  font-size:10.5px;font-weight:900;display:flex;align-items:center;gap:4px;max-width:100%;
+  box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.cust .order i{font-style:normal;font-size:13px}
+.cust .order span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar{width:100%;height:5px;border-radius:9px;background:rgba(0,0,0,.4);overflow:hidden;margin-top:2px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--jade),var(--jade2));
+  transition:width .2s linear}
+.cust.warn .pbar i{background:linear-gradient(90deg,var(--amber),var(--amber2))}
+.cust.crit .pbar i{background:linear-gradient(90deg,#c94b3b,var(--bad))}
+.cust.crit{animation:jiggle .55s infinite}
+@keyframes jiggle{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1deg)}}
+.emptySeat{flex:1 1 0;border:1px dashed rgba(255,255,255,.11);border-radius:14px;
+  display:grid;place-items:center;font-size:11px;color:rgba(255,255,255,.18);font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase}
+
+/* ---------------- BENCH / POTS ---------------- */
+#bench{position:relative;z-index:12;display:flex;gap:8px;justify-content:center;
+  padding:4px 10px 6px;flex:1.15 1 0;min-height:112px;max-height:210px;align-items:stretch}
+.pot{flex:1 1 0;max-width:150px;background:linear-gradient(180deg,#314135,#212c25);
+  border:1px solid var(--line);border-radius:16px;padding:8px 7px 7px;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;overflow:hidden;
+  transition:transform .12s,box-shadow .2s}
+.pot:active{transform:translateY(2px) scale(.985)}
+.pot.sel{box-shadow:0 0 0 2px var(--amber),0 8px 20px rgba(0,0,0,.45)}
+.pot.ready{box-shadow:0 0 0 2px var(--jade),0 0 26px rgba(127,192,138,.35)}
+.pot.burnt{box-shadow:0 0 0 2px var(--bad)}
+.pot .glyph{font-size:30px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
+  transition:transform .2s}
+.pot.pour .glyph{animation:tip .5s ease}
+@keyframes tip{40%{transform:rotate(-26deg) translateY(3px)}}
+.pot .lab{font-size:9.5px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--dim);text-align:center;min-height:12px;line-height:1.2}
+.pot .lab.on{color:var(--cream)}
+.steep{width:100%;height:11px;border-radius:8px;background:rgba(0,0,0,.45);position:relative;
+  overflow:hidden;border:1px solid rgba(0,0,0,.5)}
+.steep .zone{position:absolute;top:0;bottom:0;background:rgba(127,192,138,.34);
+  border-left:1px solid rgba(169,220,174,.75);border-right:1px solid rgba(169,220,174,.75)}
+.steep i{position:absolute;left:0;top:0;bottom:0;border-radius:8px 0 0 8px;
+  background:linear-gradient(90deg,#c9a25e,#8e6234)}
+.steep.over i{background:linear-gradient(90deg,#7a3b2c,#4d2119)}
+.dump{position:absolute;top:4px;right:5px;width:19px;height:19px;border-radius:50%;
+  background:rgba(0,0,0,.42);display:none;place-items:center;font-size:10px;color:#ffb8ae;
+  border:1px solid rgba(255,255,255,.14)}
+.pot.hasStuff .dump{display:grid}
+.tempTag{position:absolute;top:5px;left:6px;font-size:9px;font-weight:900;font-family:var(--mono);
+  padding:1px 5px;border-radius:999px;background:rgba(0,0,0,.4);border:1px solid var(--line)}
+.tempTag.good{color:var(--jade2)} .tempTag.mid{color:var(--amber2)} .tempTag.poor{color:#ffa79a}
+
+/* ---------------- KETTLE ---------------- */
+#kettleWrap{position:relative;z-index:12;display:flex;gap:9px;align-items:center;
+  padding:2px 12px 6px}
+#gauge{flex:1;height:36px;border-radius:12px;background:rgba(0,0,0,.4);border:1px solid var(--line);
+  position:relative;overflow:hidden}
+#gaugeFill{position:absolute;left:0;top:0;bottom:0;width:0%;
+  background:linear-gradient(90deg,#4a7fb5,#8fbf7a 42%,#e8b45c 72%,#e2705f);
+  transition:width .06s linear}
+#gaugeBand{position:absolute;top:0;bottom:0;background:rgba(255,255,255,.16);
+  border-left:2px solid var(--cream);border-right:2px solid var(--cream);display:none}
+#gaugeBand.on{display:block}
+#gaugeTxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--mono);font-weight:800;font-size:13px;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+#gaugeTxt small{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.75;
+  font-family:var(--ui)}
+#heatBtn{width:92px;height:44px;border-radius:14px;flex:none;
+  background:linear-gradient(180deg,var(--amber),#c58c34);color:#3a2609;font-family:var(--dsp);
+  font-weight:900;font-size:13px;box-shadow:0 5px 0 #8f6320;display:flex;align-items:center;
+  justify-content:center;gap:5px;border:1px solid rgba(255,255,255,.22)}
+#heatBtn.on{transform:translateY(4px);box-shadow:0 1px 0 #8f6320;
+  background:linear-gradient(180deg,#ffd58a,var(--amber))}
+
+/* ---------------- COUNTER (cups) ---------------- */
+#counter{position:relative;z-index:12;flex:1;min-height:74px;display:flex;gap:7px;justify-content:center;
+  align-items:center;padding:10px 14px;flex-wrap:wrap;align-content:center;margin:2px 11px 0;
+  border-radius:16px 16px 0 0;
+  background:linear-gradient(180deg,rgba(138,95,63,.16),rgba(138,95,63,.34));
+  border:1px solid rgba(255,255,255,.08);border-bottom:none;
+  box-shadow:inset 0 12px 26px rgba(0,0,0,.28)}
+#counter::before{content:'';position:absolute;left:14px;right:14px;top:9px;height:1px;
+  background:rgba(255,255,255,.07)}
+.cup{width:54px;border-radius:12px;background:var(--cream);color:#2a2018;padding:4px 3px 3px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;position:relative;
+  box-shadow:0 5px 0 rgba(0,0,0,.32);animation:cupIn .28s cubic-bezier(.2,1.5,.4,1);
+  transition:transform .12s}
+@keyframes cupIn{from{transform:translateY(14px) scale(.6);opacity:0}}
+.cup:active{transform:translateY(2px)}
+.cup.sel{box-shadow:0 0 0 2px var(--jade),0 6px 0 rgba(0,0,0,.32);transform:translateY(-4px)}
+.cup .em{font-size:20px;line-height:1.05}
+.cup .nm{font-size:7.5px;font-weight:900;letter-spacing:.03em;text-transform:uppercase;opacity:.65;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cup .st{font-size:8px;letter-spacing:.5px;color:#a9791f}
+.counterHint{font-size:10.5px;color:rgba(255,255,255,.28);font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase}
+
+/* ---------------- SHELF ---------------- */
+#shelfWrap{position:relative;z-index:12;
+  padding:6px 8px calc(9px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(107,74,50,0),rgba(107,74,50,.35) 32%,rgba(60,40,26,.62));
+  border-top:1px solid rgba(255,255,255,.08)}
+#shelf{display:flex;gap:6px;overflow-x:auto;padding:3px 2px 4px;scrollbar-width:none}
+#shelf::-webkit-scrollbar{display:none}
+.tin{flex:0 0 auto;width:62px;border-radius:13px;padding:6px 4px 5px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#3a4a3d,#26332b);display:flex;flex-direction:column;
+  align-items:center;gap:2px;transition:transform .12s,box-shadow .2s;position:relative}
+.tin:active{transform:translateY(2px) scale(.96)}
+.tin .em{font-size:19px;line-height:1}
+.tin .nm{font-size:8.5px;font-weight:900;text-align:center;line-height:1.15}
+.tin .tp{font-size:8px;font-family:var(--mono);color:var(--dim)}
+.tin.locked{opacity:.34;filter:grayscale(.7)}
+.tin.avail{box-shadow:0 0 0 1.5px rgba(232,180,92,.55)}
+.tin .lockTag{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:900;
+  background:rgba(12,20,16,.78);border-radius:13px;color:var(--amber2);letter-spacing:.02em}
+#hint{text-align:center;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--amber2);min-height:14px;padding-top:2px;opacity:.9}
+
+/* ---------------- SHEETS ---------------- */
+.scrim{position:absolute;inset:0;z-index:60;display:none;background:rgba(5,12,8,.66);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);align-items:center;justify-content:center;
+  padding:16px}
+.scrim.on{display:flex;animation:fade .2s ease}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:420px;max-height:86%;background:linear-gradient(180deg,#2a3830,#182119);
+  border:1px solid var(--line2);border-radius:22px;display:flex;flex-direction:column;overflow:hidden;
+  animation:pop .3s cubic-bezier(.2,1.25,.4,1);box-shadow:0 24px 60px rgba(0,0,0,.6)}
+@keyframes pop{from{transform:scale(.88);opacity:0}}
+.shead{padding:15px 18px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.09)}
+.shead h2{font-family:var(--dsp);font-size:21px;font-weight:900;letter-spacing:-.01em}
+.shead p{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--amber2);opacity:.85;margin-top:2px}
+.sbody{padding:14px 18px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sfoot{padding:10px 16px calc(14px + env(safe-area-inset-bottom));flex:none;display:flex;gap:8px;
+  border-top:1px solid rgba(255,255,255,.09)}
+.btn{flex:1;padding:13px 14px;border-radius:14px;font-family:var(--dsp);font-weight:900;font-size:15px;
+  background:var(--panelIn);border:1px solid var(--line2);transition:transform .1s}
+.btn:active{transform:translateY(2px)}
+.btn.pri{background:linear-gradient(180deg,var(--jade),#4f9560);color:#0f2314;
+  box-shadow:0 4px 0 #3a6f47;border-color:rgba(255,255,255,.25)}
+.btn.pri:active{box-shadow:0 1px 0 #3a6f47}
+.btn.gold{background:linear-gradient(180deg,var(--amber),#c58c34);color:#3a2609;box-shadow:0 4px 0 #8f6320}
+.row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.row:last-child{border-bottom:none}
+.row .ic{width:40px;height:40px;border-radius:12px;background:var(--panelIn);display:grid;
+  place-items:center;font-size:19px;flex:none;border:1px solid var(--line)}
+.row .tx{flex:1;min-width:0}
+.row .tx b{display:block;font-size:14px;font-weight:900}
+.row .tx small{display:block;font-size:11px;color:var(--dim);line-height:1.35;margin-top:1px}
+.row .buy{padding:8px 12px;border-radius:11px;background:var(--gold);color:#31240a;font-weight:900;
+  font-size:12px;white-space:nowrap;flex:none}
+.row .buy.no{background:rgba(255,255,255,.09);color:var(--dim)}
+.row .buy.max{background:rgba(127,192,138,.2);color:var(--jade2)}
+.statGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.stat{background:rgba(0,0,0,.26);border:1px solid var(--line);border-radius:13px;padding:9px 11px}
+.stat small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--dim)}
+.stat b{font-size:20px;font-family:var(--dsp);font-weight:900}
+.recap{max-height:190px;overflow-y:auto;margin-bottom:6px}
+.recap .ln{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.recap .ln .s{margin-left:auto;font-family:var(--mono);font-weight:800}
+.help li{margin:0 0 9px 16px;font-size:13px;line-height:1.5;color:#dfe7dc}
+.help li b{color:var(--amber2)}
+.big{font-family:var(--dsp);font-size:34px;font-weight:900;text-align:center;letter-spacing:-.02em}
+.sub{text-align:center;color:var(--dim);font-size:13px;line-height:1.5;margin-top:6px}
+
+/* toast */
+#toast{position:absolute;left:50%;top:52%;transform:translateX(-50%);z-index:55;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;gap:5px}
+.tst{background:rgba(8,16,11,.86);border:1px solid var(--line2);border-radius:999px;padding:7px 15px;
+  font-weight:900;font-size:13px;animation:tup 1.5s ease forwards;white-space:nowrap}
+@keyframes tup{0%{transform:translateY(10px) scale(.9);opacity:0}
+  14%{transform:none;opacity:1}72%{opacity:1}100%{transform:translateY(-22px);opacity:0}}
+.tst.good{color:var(--jade2)} .tst.bad{color:#ffa79a} .tst.gold{color:var(--gold)}
+
+#title{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:5px;padding:26px;text-align:center;
+  background:radial-gradient(90% 60% at 50% 34%,#33453a,#111814 72%)}
+#title.hide{display:none}
+#title .logo{font-size:60px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.6));animation:bob 3.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-9px)}}
+#title h1{font-family:var(--dsp);font-size:40px;font-weight:900;letter-spacing:-.02em;margin-top:4px}
+#title .tag{color:var(--amber2);font-size:12px;font-weight:800;letter-spacing:.24em;
+  text-transform:uppercase;margin-bottom:20px}
+#title .btn{max-width:250px;width:100%;flex:none}
+#title .btns{display:flex;flex-direction:column;gap:9px;width:100%;align-items:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="fx"></canvas>
+
+  <div class="hud">
+    <div class="chip coins">🪙<b id="hCoins">0</b></div>
+    <div class="chip">📅 Day <b id="hDay">1</b></div>
+    <div class="chip rep">⭐<b id="hRep">0</b></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="bShop">🛍️</button>
+    <button class="icbtn" id="bHelp">？</button>
+    <button class="icbtn" id="bSound">🔊</button>
+  </div>
+
+  <div id="queue"></div>
+  <div id="bench"></div>
+
+  <div id="kettleWrap">
+    <div id="gauge">
+      <div id="gaugeFill"></div>
+      <div id="gaugeBand"></div>
+      <div id="gaugeTxt"><small>Kettle</small><span id="tempNum">40°</span></div>
+    </div>
+    <button id="heatBtn">🔥 Heat</button>
+  </div>
+
+  <div id="counter"></div>
+
+  <div id="shelfWrap">
+    <div id="hint">Tap a pot, then pick leaves</div>
+    <div id="shelf"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+  <div id="title">
+    <div class="logo">🍵</div>
+    <h1>Steepwell</h1>
+    <div class="tag">A quiet tea shop</div>
+    <div class="btns">
+      <button class="btn pri" id="tPlay">Open the shop</button>
+      <button class="btn" id="tHelp">How to brew</button>
+      <button class="btn" id="tReset" style="display:none">Start over</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   Steepwell — a small tea shop.
+   Brew leaves at the right temperature, pull the cup at the right strength,
+   and hand it over before the customer's patience runs out.
+   ========================================================================== */
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const SAVE_KEY = 'steepwell.save.v1';
+
+/* ------------------------------ tea catalogue ------------------------------ */
+/* temp: ideal water °C  tol: how forgiving  steep: seconds to reach the window
+   band: half-width of the strength window (0..1 of the bar)                   */
+const TEAS = [
+  {id:'green',  name:'Sencha',   em:'🍃', cup:'🍵', temp:75, tol:7,  steep:5.0, band:.11, price:8,  rep:0,  desc:'Grassy green — hates hot water.'},
+  {id:'black',  name:'Assam',    em:'🌿', cup:'☕', temp:97, tol:8,  steep:6.5, band:.12, price:9,  rep:0,  desc:'Malty black — wants a rolling boil.'},
+  {id:'chamo',  name:'Chamomile',em:'🌼', cup:'🍯', temp:95, tol:10, steep:8.0, band:.15, price:10, rep:6,  desc:'Sleepy flowers. Very patient.'},
+  {id:'jasmine',name:'Jasmine',  em:'🌸', cup:'🫖', temp:82, tol:6,  steep:5.5, band:.10, price:12, rep:14, desc:'Perfumed and delicate.'},
+  {id:'oolong', name:'Oolong',   em:'🍂', cup:'🍵', temp:90, tol:5,  steep:7.0, band:.09, price:14, rep:26, desc:'Half-oxidised. Fussy about heat.'},
+  {id:'chai',   name:'Masala',   em:'🫚', cup:'🥛', temp:99, tol:9,  steep:9.0, band:.13, price:16, rep:40, desc:'Spiced and simmered long.'},
+  {id:'matcha', name:'Matcha',   em:'🥄', cup:'🍶', temp:72, tol:6,  steep:0,   band:0,   price:20, rep:56, desc:'Whisked, not steeped. Tap fast!', whisk:true},
+];
+const teaById = id => TEAS.find(t => t.id === id);
+
+const NAMES = ['Wren','Odell','Mira','Sable','Pip','Bea','Tomas','Juno','Ines','Cyril','Nell','Ash',
+  'Rosalind','Hob','Vera','Emmet','Lark','Suri','Bartholomew','Fen'];
+const FACES = ['🧑','👵','👴','🧕','👩‍🦰','🧔','👩‍🌾','🧑‍🎨','👨‍🏫','🧑‍🚀','👩‍⚕️','🧙','🧑‍🍳','👩‍🎤'];
+
+const UPGRADES = [
+  {id:'burner', name:'Copper burner',  em:'🔥', max:3, cost:l=>60*(l+1),
+    desc:l=>`Kettle heats ${(18+l*7).toFixed(0)}°/s → ${(18+(l+1)*7).toFixed(0)}°/s.`},
+  {id:'pot',    name:'Third teapot',   em:'🫖', max:1, cost:()=>150,
+    desc:()=>'Brew three pots at once.'},
+  {id:'chairs', name:'Soft chairs',    em:'🪑', max:3, cost:l=>80*(l+1),
+    desc:l=>`Customers wait ${(6+l*4)}s longer → ${(6+(l+1)*4)}s.`},
+  {id:'timer',  name:'Sand timer',     em:'⏳', max:2, cost:l=>120*(l+1),
+    desc:l=>`Widens the perfect window by ${((l+1)*22)}%.`},
+  {id:'chime',  name:'Brass chime',    em:'🔔', max:1, cost:()=>90,
+    desc:()=>'Rings the moment a pot is perfect.'},
+  {id:'sign',   name:'Painted sign',   em:'🪧', max:3, cost:l=>110*(l+1),
+    desc:l=>`+${(l+1)*12}% on every sale.`},
+];
+
+/* ------------------------------ state ------------------------------ */
+let S = {coins:0, day:1, rep:0, up:{}, best:0, cups:0, perfect:0, sound:true, seen:false};
+let R = null;              // the running day, null between days
+let selPot = null, selCup = null, selCust = null;
+let running = false, lastT = 0;
+
+function save(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    if(d && typeof d === 'object'){ S = Object.assign(S, d); S.up = S.up || {}; return true; }
+  }catch(e){}
+  return false;
+}
+const lv = id => S.up[id] || 0;
+const heatRate  = () => 18 + lv('burner')*7;
+const potCount  = () => 2 + lv('pot');
+const waitBonus = () => lv('chairs')*4;
+const bandMul   = () => 1 + lv('timer')*0.22;
+const priceMul  = () => 1 + lv('sign')*0.12;
+const unlocked  = t => S.rep >= t.rep;
+
+/* ------------------------------ audio ------------------------------ */
+let AC = null;
+function beep(freq, dur, type, vol){
+  if(!S.sound) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, AC.currentTime);
+    g.gain.linearRampToValueAtTime(vol || .07, AC.currentTime + .012);
+    g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + (dur || .16));
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + (dur || .16) + .02);
+  }catch(e){}
+}
+const sfx = {
+  tap:   () => beep(520, .07, 'triangle', .05),
+  pour:  () => beep(300, .3,  'sine',     .06),
+  leaf:  () => beep(680, .1,  'triangle', .05),
+  cup:   () => beep(760, .12, 'sine',     .06),
+  good:  () => {beep(660,.1,'sine',.07); setTimeout(()=>beep(880,.16,'sine',.07),90);},
+  great: () => {beep(660,.1,'sine',.07); setTimeout(()=>beep(880,.1,'sine',.07),80);
+                setTimeout(()=>beep(1180,.22,'sine',.07),170);},
+  bad:   () => beep(150, .26, 'sawtooth', .05),
+  coin:  () => beep(1040, .1, 'square',   .04),
+  chime: () => beep(1320, .5, 'sine',     .05),
+  bell:  () => {beep(520,.18,'sine',.06); setTimeout(()=>beep(392,.3,'sine',.05),140);},
+};
+
+/* ------------------------------ particles ------------------------------ */
+const cv = $('#fx'), ctx = cv.getContext('2d');
+let parts = [], W = 0, H = 0, DPR = 1;
+function sizeCanvas(){
+  const r = $('#app').getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = r.width; H = r.height;
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', sizeCanvas);
+
+function appXY(el, fx, fy){
+  const a = $('#app').getBoundingClientRect(), b = el.getBoundingClientRect();
+  return {x: b.left - a.left + b.width*(fx==null?.5:fx), y: b.top - a.top + b.height*(fy==null?.5:fy)};
+}
+function steam(x, y, n){
+  for(let i=0;i<(n||1);i++) parts.push({t:'steam', x:x+rnd(-7,7), y:y, vx:rnd(-.12,.12), vy:rnd(-.34,-.16),
+    r:rnd(5,11), life:1, decay:rnd(.006,.012), sway:rnd(0,6.28)});
+}
+function sparkle(x, y, col, n){
+  for(let i=0;i<(n||10);i++){
+    const a = rnd(0,6.28), s = rnd(.5,2.4);
+    parts.push({t:'spark', x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - .5, r:rnd(1.5,3.4),
+      life:1, decay:rnd(.014,.03), col:col||'#f0c24a'});
+  }
+}
+function floatText(x, y, txt, col){
+  parts.push({t:'txt', x, y, vy:-.55, life:1, decay:.012, txt, col:col||'#f3e7cf'});
+}
+function drawParts(dt){
+  ctx.clearRect(0,0,W,H);
+  for(let i=parts.length-1;i>=0;i--){
+    const p = parts[i];
+    p.life -= p.decay*dt*60;
+    if(p.life <= 0){ parts.splice(i,1); continue; }
+    if(p.t === 'steam'){
+      p.sway += .04*dt*60;
+      p.x += p.vx*dt*60 + Math.sin(p.sway)*.28;
+      p.y += p.vy*dt*60;
+      p.r += .09*dt*60;
+      ctx.globalAlpha = p.life*.3;
+      ctx.fillStyle = '#e8f2e6';
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.283); ctx.fill();
+    }else if(p.t === 'spark'){
+      p.vy += .06*dt*60; p.x += p.vx*dt*60; p.y += p.vy*dt*60;
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.col;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,6.283); ctx.fill();
+    }else{
+      p.y += p.vy*dt*60;
+      ctx.globalAlpha = Math.min(1, p.life*1.6);
+      ctx.fillStyle = p.col;
+      ctx.font = '900 15px ' + getComputedStyle(document.body).fontFamily;
+      ctx.textAlign = 'center';
+      ctx.fillText(p.txt, p.x, p.y);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ------------------------------ toast ------------------------------ */
+function toast(msg, kind){
+  const d = document.createElement('div');
+  d.className = 'tst ' + (kind || '');
+  d.textContent = msg;
+  $('#toast').appendChild(d);
+  setTimeout(()=>d.remove(), 1500);
+}
+function hint(t){ $('#hint').textContent = t; }
+
+/* ------------------------------ day setup ------------------------------ */
+function customersForDay(d){ return Math.min(6 + d*2, 18); }
+function dayPool(){
+  const av = TEAS.filter(unlocked);
+  return av.length ? av : [TEAS[0]];
+}
+function startDay(){
+  const pool = dayPool();
+  const total = customersForDay(S.day);
+  const queue = [];
+  for(let i=0;i<total;i++){
+    const t = pool[Math.floor(Math.random()*pool.length)];
+    queue.push({tea:t.id, delay: i===0 ? 0.6 : rnd(2.2, 5.6) - Math.min(2, S.day*.12)});
+  }
+  R = {
+    pending: queue, seats: [null,null,null], nextIn: 0, served:0, left:0, total,
+    earned:0, stars:0, log:[],
+    pots: Array.from({length: potCount()}, (_,i)=>({
+      id:i, state:'empty', tea:null, temp:0, tScore:0, strength:0, whisk:0, chimed:false
+    })),
+    cups: [], kettle:{temp:40, heating:false}, over:false, t:0,
+  };
+  selPot = selCup = selCust = null;
+  renderAll();
+  hint('Tap a pot, then pick leaves');
+  sfx.bell();
+  running = true; lastT = performance.now();
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------ rendering ------------------------------ */
+function renderAll(){ renderHUD(); renderQueue(); renderBench(); renderCups(); renderShelf(); }
+
+function renderHUD(){
+  $('#hCoins').textContent = Math.floor(S.coins);
+  $('#hDay').textContent = S.day;
+  $('#hRep').textContent = S.rep;
+}
+
+function renderQueue(){
+  const q = $('#queue');
+  q.innerHTML = '';
+  if(!R) return;
+  R.seats.forEach((c, i) => {
+    if(!c){
+      const e = document.createElement('div');
+      e.className = 'emptySeat';
+      e.textContent = i === 0 && R.pending.length === 0 ? '' : '· · ·';
+      q.appendChild(e);
+      return;
+    }
+    const t = teaById(c.tea);
+    const frac = c.patience / c.maxPatience;
+    const el = document.createElement('div');
+    el.className = 'cust' + (frac < .22 ? ' crit' : frac < .48 ? ' warn' : '') +
+                   (selCust === c ? ' hl' : '');
+    el.innerHTML =
+      `<div class="face">${c.face}</div>` +
+      `<div class="nm">${c.name}</div>` +
+      `<div class="order"><i>${t.em}</i><span>${t.name}</span></div>` +
+      `<div class="pbar"><i style="width:${(frac*100).toFixed(1)}%"></i></div>`;
+    el.onclick = () => tapCustomer(c);
+    q.appendChild(el);
+  });
+}
+
+function renderBench(){
+  const b = $('#bench');
+  b.innerHTML = '';
+  if(!R) return;
+  R.pots.forEach(p => {
+    const t = p.tea ? teaById(p.tea) : null;
+    const el = document.createElement('div');
+    let cls = 'pot';
+    if(selPot === p) cls += ' sel';
+    if(p.state !== 'empty') cls += ' hasStuff';
+    if(p.state === 'steeping' && inWindow(p)) cls += ' ready';
+    if(p.state === 'steeping' && p.strength > 1) cls += ' burnt';
+    el.className = cls;
+
+    let glyph = '🫖', lab = 'empty', labOn = false;
+    if(p.state === 'leaves'){ glyph = t.em; lab = t.name + ' · needs water'; labOn = true; }
+    else if(p.state === 'steeping'){
+      glyph = t.whisk ? '🥣' : t.cup;
+      lab = t.whisk ? 'whisk! ' + p.whisk + '/' + WHISK_GOAL : (p.strength > 1 ? 'bitter!' : 'steeping');
+      labOn = true;
+    }
+    el.innerHTML = `<div class="glyph">${glyph}</div><div class="lab${labOn?' on':''}">${lab}</div>`;
+
+    // strength / whisk bar
+    if(p.state === 'steeping'){
+      const bar = document.createElement('div');
+      bar.className = 'steep' + (p.strength > 1 ? ' over' : '');
+      if(t.whisk){
+        bar.innerHTML = `<i style="width:${clamp(p.whisk/WHISK_GOAL,0,1)*100}%"></i>`;
+      }else{
+        const half = t.band * bandMul();
+        const lo = clamp((1-half)*100/1.35, 0, 100), hi = clamp((1+half)*100/1.35, 0, 100);
+        bar.innerHTML =
+          `<div class="zone" style="left:${lo}%;width:${Math.max(2,hi-lo)}%"></div>` +
+          `<i style="width:${clamp(p.strength/1.35,0,1)*100}%"></i>`;
+      }
+      el.appendChild(bar);
+      const tag = document.createElement('div');
+      tag.className = 'tempTag ' + (p.tScore > .82 ? 'good' : p.tScore > .5 ? 'mid' : 'poor');
+      tag.textContent = Math.round(p.temp) + '°';
+      el.appendChild(tag);
+    }else{
+      const sp = document.createElement('div');
+      sp.className = 'steep'; sp.style.visibility = 'hidden';
+      el.appendChild(sp);
+    }
+
+    if(p.state !== 'empty'){
+      const d = document.createElement('div');
+      d.className = 'dump'; d.textContent = '✕';
+      d.onclick = ev => { ev.stopPropagation(); dumpPot(p); };
+      el.appendChild(d);
+    }
+    el.onclick = () => tapPot(p);
+    b.appendChild(el);
+  });
+}
+
+function renderCups(){
+  const c = $('#counter');
+  c.innerHTML = '';
+  if(!R) return;
+  if(!R.cups.length){
+    const h = document.createElement('div');
+    h.className = 'counterHint';
+    h.textContent = 'counter';
+    c.appendChild(h);
+    return;
+  }
+  R.cups.forEach(cup => {
+    const t = teaById(cup.tea);
+    const el = document.createElement('div');
+    el.className = 'cup' + (selCup === cup ? ' sel' : '');
+    el.innerHTML = `<div class="em">${t.cup}</div><div class="nm">${t.name}</div>` +
+                   `<div class="st">${'★'.repeat(cup.stars)}${'☆'.repeat(3-cup.stars)}</div>`;
+    el.onclick = () => tapCup(cup);
+    c.appendChild(el);
+  });
+}
+
+/* The two functions below touch only the numbers that move every frame.
+   Rebuilding the rows instead would restart the entry animations and leave
+   every card permanently mid-fade. */
+function updateQueue(){
+  const kids = $('#queue').children;
+  R.seats.forEach((c, i) => {
+    const el = kids[i];
+    if(!c || !el || !el.classList.contains('cust')) return;
+    const frac = clamp(c.patience / c.maxPatience, 0, 1);
+    el.classList.toggle('crit', frac < .22);
+    el.classList.toggle('warn', frac >= .22 && frac < .48);
+    const bar = el.querySelector('.pbar i');
+    if(bar) bar.style.width = (frac*100).toFixed(1) + '%';
+  });
+}
+function updateBench(){
+  const kids = document.querySelectorAll('#bench .pot');
+  R.pots.forEach(p => {
+    const el = kids[p.id];
+    if(!el || p.state !== 'steeping') return;
+    const t = teaById(p.tea);
+    if(t.whisk) return;
+    const bar = el.querySelector('.steep i');
+    if(bar) bar.style.width = clamp(p.strength/1.35, 0, 1)*100 + '%';
+    const track = el.querySelector('.steep');
+    if(track) track.classList.toggle('over', p.strength > 1);
+    el.classList.toggle('ready', inWindow(p));
+    el.classList.toggle('burnt', p.strength > 1);
+    const lab = el.querySelector('.lab');
+    if(lab) lab.textContent = p.strength > 1 ? 'bitter!' : 'steeping';
+  });
+}
+
+function renderShelf(){
+  const s = $('#shelf');
+  s.innerHTML = '';
+  TEAS.forEach(t => {
+    const ok = unlocked(t);
+    const wanted = R && R.seats.some(c => c && c.tea === t.id);
+    const el = document.createElement('div');
+    el.className = 'tin' + (ok ? '' : ' locked') + (ok && wanted ? ' avail' : '');
+    el.innerHTML = `<div class="em">${t.em}</div><div class="nm">${t.name}</div>` +
+                   `<div class="tp">${t.temp}°</div>` +
+                   (ok ? '' : `<div class="lockTag">🔒${t.rep}⭐</div>`);
+    el.onclick = () => tapTin(t);
+    s.appendChild(el);
+  });
+}
+
+/* ------------------------------ brewing rules ------------------------------ */
+const WHISK_GOAL = 14;
+function inWindow(p){
+  const t = teaById(p.tea);
+  if(t.whisk) return p.whisk >= WHISK_GOAL;
+  const half = t.band * bandMul();
+  return p.strength >= 1 - half && p.strength <= 1 + half;
+}
+function tempScore(t, temp){
+  const d = Math.abs(temp - t.temp) / (t.tol * (1 + lv('timer')*.08));
+  return clamp(1 - d*d*0.55, 0, 1);
+}
+function steepScore(p){
+  const t = teaById(p.tea);
+  if(t.whisk) return clamp(p.whisk / WHISK_GOAL, 0, 1);
+  const half = t.band * bandMul();
+  const d = Math.abs(p.strength - 1);
+  if(d <= half) return 1 - (d/half)*0.14;                 // inside the window: near-perfect
+  const over = (d - half) / 0.34;
+  return clamp(1 - over*over - 0.14, 0, 1);
+}
+
+/* ------------------------------ interactions ------------------------------ */
+function tapPot(p){
+  if(!R || R.over) return;
+  if(p.state === 'empty'){
+    selPot = (selPot === p) ? null : p;
+    hint(selPot ? 'Pick leaves from the shelf' : 'Tap a pot, then pick leaves');
+    sfx.tap(); renderBench(); return;
+  }
+  if(p.state === 'leaves'){
+    if(R.kettle.temp < 45){ toast('Water is cold', 'bad'); sfx.bad(); return; }
+    const t = teaById(p.tea);
+    p.temp = R.kettle.temp;
+    p.tScore = tempScore(t, p.temp);
+    p.state = 'steeping';
+    p.strength = 0; p.whisk = 0; p.chimed = false;
+    R.kettle.temp = Math.max(40, R.kettle.temp - 26);     // pouring cools the kettle
+    sfx.pour();
+    const at = appXY(document.querySelectorAll('.pot')[p.id] || $('#bench'), .5, .2);
+    steam(at.x, at.y, 8);
+    floatText(at.x, at.y - 14,
+      p.tScore > .9 ? 'perfect heat!' : p.tScore > .65 ? 'good heat' : p.tScore > .35 ? 'off heat' : 'wrong heat',
+      p.tScore > .65 ? '#a9dcae' : p.tScore > .35 ? '#f5d99a' : '#ffa79a');
+    hint(t.whisk ? 'Tap the bowl fast to whisk' : 'Pull the cup inside the green band');
+    renderBench(); return;
+  }
+  if(p.state === 'steeping'){
+    const t = teaById(p.tea);
+    if(t.whisk && p.whisk < WHISK_GOAL){
+      p.whisk++;
+      sfx.tap();
+      const at = appXY(document.querySelectorAll('.pot')[p.id] || $('#bench'), .5, .3);
+      if(p.whisk % 3 === 0) sparkle(at.x, at.y, '#a9dcae', 4);
+      renderBench(); return;
+    }
+    pourCup(p);
+  }
+}
+function pourCup(p){
+  const t = teaById(p.tea);
+  const q = clamp(p.tScore*0.42 + steepScore(p)*0.58, 0, 1);
+  const stars = q >= .90 ? 3 : q >= .68 ? 2 : q >= .40 ? 1 : 0;
+  R.cups.push({tea:p.tea, quality:q, stars});
+  const el = document.querySelectorAll('.pot')[p.id];
+  if(el) el.classList.add('pour');
+  const at = appXY(el || $('#bench'), .5, .5);
+  steam(at.x, at.y, 5);
+  if(stars === 3){ sparkle(at.x, at.y, '#f0c24a', 14); floatText(at.x, at.y-20, 'perfect cup', '#f0c24a'); sfx.great(); }
+  else if(stars === 0){ floatText(at.x, at.y-20, q < .2 ? 'ruined' : 'weak', '#ffa79a'); sfx.bad(); }
+  else sfx.cup();
+  p.state = 'empty'; p.tea = null; p.strength = 0; p.whisk = 0; p.chimed = false;
+  hint('Tap the cup, then the customer');
+  renderBench(); renderCups();
+}
+function dumpPot(p){
+  p.state = 'empty'; p.tea = null; p.strength = 0; p.whisk = 0; p.chimed = false;
+  sfx.tap(); toast('Tipped out'); renderBench();
+}
+function tapTin(t){
+  if(!R || R.over) return;
+  if(!unlocked(t)){ toast(`Unlocks at ${t.rep}⭐`, 'bad'); sfx.bad(); return; }
+  let p = selPot && selPot.state === 'empty' ? selPot : R.pots.find(x => x.state === 'empty');
+  if(!p){ toast('All pots are busy', 'bad'); sfx.bad(); return; }
+  p.state = 'leaves'; p.tea = t.id;
+  selPot = null;
+  sfx.leaf();
+  hint(`Heat to ${t.temp}° — then tap the pot to pour`);
+  renderBench(); renderShelf();
+}
+function tapCup(c){
+  if(!R || R.over) return;
+  selCup = (selCup === c) ? null : c;
+  sfx.tap();
+  if(selCup){
+    const match = R.seats.find(s => s && s.tea === selCup.tea);
+    if(match){ selCust = null; serve(match, selCup); return; }
+    hint('Nobody ordered that — tap the cup again to keep it');
+  }
+  renderCups(); renderQueue();
+}
+function tapCustomer(c){
+  if(!R || R.over) return;
+  if(selCup){ serve(c, selCup); return; }
+  const cup = R.cups.find(x => x.tea === c.tea);
+  if(cup){ serve(c, cup); return; }
+  selCust = (selCust === c) ? null : c;
+  const t = teaById(c.tea);
+  hint(selCust ? `${c.name} wants ${t.name} at ${t.temp}°` : 'Tap a pot, then pick leaves');
+  sfx.tap();
+  renderQueue();
+}
+function serve(c, cup){
+  const t = teaById(c.tea);
+  if(cup.tea !== c.tea){
+    toast(`${c.name} ordered ${t.name}`, 'bad');
+    sfx.bad();
+    c.patience = Math.max(2, c.patience - 4);
+    selCup = null; renderCups(); renderQueue();
+    return;
+  }
+  const idx = R.cups.indexOf(cup);
+  if(idx >= 0) R.cups.splice(idx, 1);
+
+  const patFrac = c.patience / c.maxPatience;
+  const tip = patFrac > .55 ? Math.round(t.price * .3 * patFrac) : 0;
+  const pay = Math.round((t.price * (0.45 + cup.quality * 0.85) + tip) * priceMul());
+  S.coins += pay; R.earned += pay; R.stars += cup.stars; R.served++;
+  S.cups++; if(cup.stars === 3) S.perfect++;
+  S.rep += cup.stars;
+  R.log.push({name:c.name, tea:t.name, stars:cup.stars, pay});
+
+  const seatIdx = R.seats.indexOf(c);
+  const el = $('#queue').children[seatIdx];
+  if(el){
+    const at = appXY(el);
+    sparkle(at.x, at.y, cup.stars === 3 ? '#f0c24a' : '#a9dcae', cup.stars*5 + 4);
+    floatText(at.x, at.y - 10, '+' + pay + '🪙', '#f0c24a');
+  }
+  if(cup.stars === 3) sfx.great(); else if(cup.stars === 0) sfx.bad(); else sfx.good();
+  sfx.coin();
+  if(seatIdx >= 0) R.seats[seatIdx] = null;
+  selCup = null; selCust = null;
+  checkTeaUnlock();
+  renderHUD(); renderCups(); renderQueue(); renderShelf();
+}
+function checkTeaUnlock(){
+  TEAS.forEach(t => {
+    if(t.rep > 0 && S.rep >= t.rep && S.rep - t.rep < 3 && !t._told){
+      t._told = true;
+      toast(`${t.em} ${t.name} unlocked!`, 'gold');
+      sfx.chime();
+    }
+  });
+}
+
+/* kettle press */
+const heatBtn = $('#heatBtn');
+const holdOn  = e => { if(!R || R.over) return; e.preventDefault(); R.kettle.heating = true;  heatBtn.classList.add('on'); };
+const holdOff = () => { if(!R) return; R.kettle.heating = false; heatBtn.classList.remove('on'); };
+heatBtn.addEventListener('pointerdown', holdOn);
+window.addEventListener('pointerup', holdOff);
+window.addEventListener('pointercancel', holdOff);
+
+/* ------------------------------ main loop ------------------------------ */
+function loop(now){
+  if(!running) return;
+  const dt = Math.min(.05, (now - lastT)/1000);
+  lastT = now;
+  tick(dt);
+  drawParts(dt);
+  requestAnimationFrame(loop);
+}
+function tick(dt){
+  if(!R || R.over) return;
+  R.t += dt;
+
+  /* kettle */
+  const k = R.kettle;
+  k.temp += (k.heating ? heatRate() : -7) * dt;
+  k.temp = clamp(k.temp, 40, 100);
+  const pct = (k.temp - 40) / 60 * 100;
+  $('#gaugeFill').style.width = pct.toFixed(1) + '%';
+  $('#tempNum').textContent = Math.round(k.temp) + '°';
+  // show the band for whichever pot is waiting for water
+  const waiting = R.pots.find(p => p.state === 'leaves');
+  const band = $('#gaugeBand');
+  if(waiting){
+    const t = teaById(waiting.tea);
+    const lo = clamp((t.temp - t.tol - 40)/60*100, 0, 100);
+    const hi = clamp((t.temp + t.tol - 40)/60*100, 0, 100);
+    band.classList.add('on');
+    band.style.left = lo + '%';
+    band.style.width = Math.max(2, hi - lo) + '%';
+  }else band.classList.remove('on');
+
+  /* steeping pots */
+  R.pots.forEach(p => {
+    if(p.state !== 'steeping') return;
+    const t = teaById(p.tea);
+    if(t.whisk) return;
+    const before = p.strength;
+    p.strength += dt / t.steep;
+    if(!p.chimed && lv('chime') && inWindow(p)){ p.chimed = true; sfx.chime(); }
+    if(before <= 1.36 && p.strength > 1.36){ toast('A pot went bitter', 'bad'); sfx.bad(); }
+    if(p.strength > 0.35 && Math.random() < dt*7){
+      const el = document.querySelectorAll('.pot')[p.id];
+      if(el){ const a = appXY(el, .5, .18); steam(a.x, a.y, 1); }
+    }
+  });
+
+  /* customers */
+  R.nextIn -= dt;
+  const freeSeat = R.seats.indexOf(null);
+  if(R.pending.length && freeSeat >= 0 && R.nextIn <= 0){
+    const spec = R.pending.shift();
+    const base = 26 + waitBonus() + (teaById(spec.tea).steep) - Math.min(8, S.day*.5);
+    R.seats[freeSeat] = {
+      tea: spec.tea, name: pick(NAMES), face: pick(FACES),
+      patience: base, maxPatience: base,
+    };
+    R.nextIn = R.pending.length ? R.pending[0].delay : 0;
+    sfx.bell();
+    renderQueue(); renderShelf();
+  }
+  let seatsChanged = false;
+  R.seats.forEach((c, i) => {
+    if(!c) return;
+    c.patience -= dt;
+    if(c.patience <= 0){
+      R.seats[i] = null;
+      R.left++;
+      seatsChanged = true;
+      S.rep = Math.max(0, S.rep - 1);
+      toast(`${c.name} left`, 'bad');
+      sfx.bad();
+      renderHUD();
+    }
+  });
+  if(seatsChanged) renderQueue();
+  updateQueue();
+  updateBench();
+
+  /* day over? */
+  if(!R.pending.length && R.seats.every(s => !s)){
+    R.over = true;
+    setTimeout(endDay, 700);
+  }
+}
+
+/* ------------------------------ day end / shop ------------------------------ */
+function endDay(){
+  running = false;
+  const maxStars = R.total * 3;
+  const grade = R.total ? R.stars / maxStars : 0;
+  const bonus = R.left === 0 && R.total > 0 ? 25 + S.day*5 : 0;
+  if(bonus) S.coins += bonus;
+  if(R.earned > S.best) S.best = R.earned;
+  S.day++;
+  save();
+  renderHUD();
+
+  const rows = R.log.slice(-14).map(l =>
+    `<div class="ln"><span>${l.tea}</span><span style="color:#f0c24a">${'★'.repeat(l.stars)}</span>` +
+    `<span class="s">+${l.pay}</span></div>`).join('') || '<div class="ln">Nobody was served.</div>';
+
+  openSheet(`
+    <div class="shead"><h2>Closing time</h2><p>Day ${S.day-1}</p></div>
+    <div class="sbody">
+      <div class="statGrid">
+        <div class="stat"><small>Served</small><b>${R.served}/${R.total}</b></div>
+        <div class="stat"><small>Walked out</small><b>${R.left}</b></div>
+        <div class="stat"><small>Earned</small><b>${R.earned}🪙</b></div>
+        <div class="stat"><small>Stars</small><b>${R.stars}</b></div>
+      </div>
+      ${bonus ? `<div class="stat" style="margin-bottom:12px"><small>Nobody left — full house bonus</small><b>+${bonus}🪙</b></div>` : ''}
+      <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#a8b6a6;margin-bottom:4px">Today's cups</div>
+      <div class="recap">${rows}</div>
+      <p style="font-size:13px;color:#a8b6a6;line-height:1.5">${
+        grade > .85 ? 'The shop smelled like the good afternoons.' :
+        grade > .55 ? 'A steady day. The kettle never fully cooled.' :
+        grade > .25 ? 'A few bitter pots, but the door kept opening.' :
+                      'Tomorrow the leaves will be kinder.'}</p>
+    </div>
+    <div class="sfoot">
+      <button class="btn" id="sShop">🛍️ Shop</button>
+      <button class="btn pri" id="sNext">Open Day ${S.day}</button>
+    </div>`);
+  $('#sShop').onclick = () => openShop(true);
+  $('#sNext').onclick = () => { closeSheet(); startDay(); };
+}
+
+function openShop(fromEnd){
+  const rows = UPGRADES.map(u => {
+    const l = lv(u.id), maxed = l >= u.max, cost = u.cost(l);
+    const afford = S.coins >= cost;
+    return `<div class="row">
+      <div class="ic">${u.em}</div>
+      <div class="tx"><b>${u.name} ${l ? '· Lv' + l : ''}</b><small>${maxed ? 'Fully upgraded.' : u.desc(l)}</small></div>
+      <button class="buy ${maxed ? 'max' : afford ? '' : 'no'}" data-u="${u.id}">
+        ${maxed ? 'MAX' : cost + '🪙'}</button>
+    </div>`;
+  }).join('');
+  openSheet(`
+    <div class="shead"><h2>Back room</h2><p>${Math.floor(S.coins)} coins</p></div>
+    <div class="sbody">${rows}
+      <p style="font-size:12px;color:#a8b6a6;margin-top:12px;line-height:1.5">
+        New teas unlock with stars, not coins — serve perfect cups.</p>
+    </div>
+    <div class="sfoot">
+      <button class="btn ${fromEnd ? '' : 'pri'}" id="sBack">${fromEnd ? '← Back' : 'Close'}</button>
+      ${fromEnd ? `<button class="btn pri" id="sNext2">Open Day ${S.day}</button>` : ''}
+    </div>`);
+  $$('#sheet .buy').forEach(b => b.onclick = () => {
+    const u = UPGRADES.find(x => x.id === b.dataset.u);
+    const l = lv(u.id);
+    if(l >= u.max) return;
+    const cost = u.cost(l);
+    if(S.coins < cost){ toast('Not enough coins', 'bad'); sfx.bad(); return; }
+    S.coins -= cost; S.up[u.id] = l + 1;
+    if(u.id === 'pot' && R && !R.over) R.pots.push({id:R.pots.length, state:'empty', tea:null,
+      temp:0, tScore:0, strength:0, whisk:0, chimed:false});
+    save(); sfx.coin(); toast(u.name + ' ✓', 'good');
+    renderHUD(); renderBench();
+    openShop(fromEnd);
+  });
+  $('#sBack').onclick = () => { if(fromEnd) endDayAgain(); else closeSheet(); };
+  const n2 = $('#sNext2');
+  if(n2) n2.onclick = () => { closeSheet(); startDay(); };
+}
+function endDayAgain(){
+  // returning from the shop to the closing screen
+  openSheet(`
+    <div class="shead"><h2>Closing time</h2><p>Day ${S.day-1}</p></div>
+    <div class="sbody">
+      <div class="statGrid">
+        <div class="stat"><small>Coins</small><b>${Math.floor(S.coins)}🪙</b></div>
+        <div class="stat"><small>Reputation</small><b>${S.rep}⭐</b></div>
+      </div>
+      <p style="font-size:13px;color:#a8b6a6;line-height:1.5">The tins are topped up and the cloths are folded.</p>
+    </div>
+    <div class="sfoot">
+      <button class="btn" id="sShop2">🛍️ Shop</button>
+      <button class="btn pri" id="sNext3">Open Day ${S.day}</button>
+    </div>`);
+  $('#sShop2').onclick = () => openShop(true);
+  $('#sNext3').onclick = () => { closeSheet(); startDay(); };
+}
+
+/* ------------------------------ sheets ------------------------------ */
+function openSheet(html){
+  $('#sheet').innerHTML = html;
+  $('#scrim').classList.add('on');
+}
+function closeSheet(){ $('#scrim').classList.remove('on'); }
+$('#scrim').addEventListener('click', e => {
+  if(e.target === $('#scrim') && $('#sheet').dataset.dismiss !== 'no') closeSheet();
+});
+
+function helpSheet(){
+  openSheet(`
+    <div class="shead"><h2>How to brew</h2><p>Four small steps</p></div>
+    <div class="sbody">
+      <ol class="help">
+        <li><b>Leaves.</b> Tap an empty pot, then a tin on the shelf. The tin shows the tea's ideal water temperature.</li>
+        <li><b>Heat.</b> Hold <b>🔥 Heat</b>. The kettle climbs while you hold and cools when you let go. A white band appears on the gauge showing the pot's target.</li>
+        <li><b>Pour.</b> Tap the waiting pot to pour. Whatever the kettle reads at that moment is locked in.</li>
+        <li><b>Pull.</b> The pot fills with colour. Tap it again while the bar sits in the <b>green window</b>. Past it, the tea turns bitter.</li>
+        <li><b>Serve.</b> Tap the cup, then the customer who ordered it — or just tap a customer and the right cup flies over.</li>
+      </ol>
+      <p style="font-size:13px;color:#a8b6a6;line-height:1.55;margin-top:6px">
+        ⭐ Stars come from accuracy and buy new teas. 🪙 Coins come from sales and tips, and buy the back room.
+        Matcha is whisked, not steeped — tap it fast.</p>
+    </div>
+    <div class="sfoot"><button class="btn pri" id="sOk">Got it</button></div>`);
+  $('#sOk').onclick = closeSheet;
+}
+
+/* ------------------------------ boot ------------------------------ */
+$('#bShop').onclick  = () => { if(R && !R.over) toast('The shop is open — after close', 'bad'); else openShop(false); };
+$('#bHelp').onclick  = helpSheet;
+$('#bSound').onclick = () => {
+  S.sound = !S.sound; save();
+  $('#bSound').textContent = S.sound ? '🔊' : '🔇';
+  $('#bSound').classList.toggle('off', !S.sound);
+};
+$('#tHelp').onclick  = helpSheet;
+$('#tPlay').onclick  = () => {
+  $('#title').classList.add('hide');
+  S.seen = true; save();
+  sizeCanvas();
+  startDay();
+};
+$('#tReset').onclick = () => {
+  if(!confirm('Clear the shop and start from Day 1?')) return;
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  location.reload();
+};
+
+const had = load();
+$('#bSound').textContent = S.sound ? '🔊' : '🔇';
+$('#bSound').classList.toggle('off', !S.sound);
+if(had){
+  $('#tPlay').textContent = `Open Day ${S.day}`;
+  $('#tReset').style.display = '';
+}
+renderHUD(); renderShelf();
+sizeCanvas();
+setTimeout(sizeCanvas, 120);
+</script>
+</body>
+</html>

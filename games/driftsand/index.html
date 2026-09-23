@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#3a3226"/>
+<title>Driftsand</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --line:rgba(255,255,255,.22);
+    --gold:#e8c88a; --gold2:#c9a05e;
+    --accent:#9ec9c2; --accent2:#e8a888;
+    --bad:#ff6b6b;
+    --ui-font:'Nunito',system-ui,sans-serif;
+    --dis-font:'Baloo 2',system-ui,sans-serif;
+    --r:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  body{font-family:var(--ui-font);background:#1c1810;color:#fff;
+    display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+  #app{position:relative;width:100%;height:100%;max-width:520px;max-height:100vh;
+    overflow:hidden;background:#3a3226;box-shadow:0 0 80px rgba(0,0,0,.6)}
+  @media(min-width:700px){#app{max-width:min(92vw,900px)}}
+  canvas#garden{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+  .hud{position:absolute;top:0;left:0;right:0;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;gap:8px;align-items:flex-start;z-index:20;pointer-events:none}
+  .hud>*{pointer-events:auto}
+  .chip{background:rgba(28,24,16,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:999px;padding:7px 13px;display:flex;align-items:center;gap:7px;
+    font-weight:800;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
+  .icbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(28,24,16,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    display:grid;place-items:center;font-size:17px;cursor:pointer;color:#fff;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .12s;flex:none}
+  .icbtn:active{transform:scale(.9)}
+  .icbtn.off{opacity:.45}
+  .spacer{flex:1}
+
+  .dock{position:absolute;left:0;right:0;bottom:0;z-index:20;padding:10px 10px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center}
+  .tool{position:relative;flex:1;max-width:110px;border-radius:16px;cursor:pointer;padding:10px 4px 8px;
+    font-family:var(--ui-font);color:#fff;background:rgba(28,24,16,.55);border:1px solid var(--line);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;align-items:center;gap:3px;
+    transition:transform .12s,background .2s;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .tool:active{transform:translateY(2px) scale(.96)}
+  .tool .ic{font-size:21px;line-height:1}
+  .tool .tx{font-size:10.5px;font-weight:800;letter-spacing:.03em}
+  .tool.armed{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#2a2010;border-color:#fff6;
+    box-shadow:0 0 0 3px rgba(232,200,138,.28),0 10px 26px rgba(0,0,0,.35)}
+  .tool.armed .tx{color:#2a2010}
+  .badge{position:absolute;top:4px;right:6px;background:var(--bad);border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;line-height:1.5}
+
+  .scrim{position:absolute;inset:0;z-index:40;display:none;background:rgba(10,8,4,.55);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:flex-end;justify-content:center}
+  .scrim.on{display:flex;animation:fade .22s ease}
+  @keyframes fade{from{opacity:0}}
+  .sheet{width:100%;max-height:86%;background:linear-gradient(180deg,#4a4030,#231e14);
+    border-top-left-radius:26px;border-top-right-radius:26px;border-top:1px solid rgba(255,255,255,.2);
+    display:flex;flex-direction:column;animation:up .3s cubic-bezier(.2,1,.3,1);box-shadow:0 -20px 60px rgba(0,0,0,.5)}
+  @keyframes up{from{transform:translateY(100%)}}
+  .sheet.center{border-radius:24px;margin:auto 14px;max-width:400px;animation:pop .28s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes pop{from{transform:scale(.85);opacity:0}}
+  .scrim.mid{align-items:center}
+  .grab{width:38px;height:4px;border-radius:9px;background:rgba(255,255,255,.3);margin:9px auto 2px;flex:none}
+  .shead{display:flex;align-items:center;gap:10px;padding:10px 18px 12px;flex:none;border-bottom:1px solid rgba(255,255,255,.1)}
+  .shead h2{font-family:var(--dis-font);font-size:23px;font-weight:800;flex:1}
+  .x{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.12);border:none;color:#fff;
+    font-size:16px;cursor:pointer;display:grid;place-items:center;flex:none}
+  .sbody{overflow-y:auto;padding:14px 16px 22px;-webkit-overflow-scrolling:touch;flex:1}
+  .sbody::-webkit-scrollbar{width:0}
+  .tabs{display:flex;gap:6px;padding:0 16px 12px;flex:none;flex-wrap:wrap}
+  .tab{flex:1;min-width:64px;padding:8px 2px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);
+    color:#fff;font-weight:800;font-size:11.5px;cursor:pointer;font-family:var(--ui-font)}
+  .tab.on{background:linear-gradient(180deg,var(--gold),var(--gold2));color:#2a2010;border-color:transparent}
+
+  .card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:var(--r);
+    padding:12px;margin-bottom:10px;display:flex;gap:11px;align-items:center}
+  .card .art{width:52px;height:52px;border-radius:14px;flex:none;display:grid;place-items:center;background:rgba(0,0,0,.22);overflow:hidden}
+  .card .art .emo{font-size:26px}
+  .card .info{flex:1;min-width:0}
+  .card .nm{font-weight:900;font-size:14.5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+  .card .sub{font-size:11.5px;opacity:.72;margin-top:2px;line-height:1.35}
+  .btn{border:none;border-radius:12px;padding:9px 13px;font-weight:900;font-size:12.5px;cursor:pointer;
+    font-family:var(--ui-font);background:linear-gradient(180deg,var(--gold),var(--gold2));color:#2a2010;
+    flex:none;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .12s;white-space:nowrap}
+  .btn:active{transform:scale(.93)}
+  .btn.ghost{background:rgba(255,255,255,.14);color:#fff;box-shadow:none}
+  .btn.mint{background:linear-gradient(180deg,#9ec9c2,#5fa89e);color:#04241f}
+  .btn[disabled]{opacity:.35;pointer-events:none}
+  .btn.wide{width:100%;padding:13px;font-size:14px;margin-top:6px}
+
+  .empty{text-align:center;padding:34px 16px;opacity:.75;font-size:13px;line-height:1.6}
+  .empty .e{font-size:40px;display:block;margin-bottom:8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;margin-bottom:9px}
+  .row .l{font-weight:800;font-size:13.5px}
+  .row .d{font-size:11px;opacity:.68;margin-top:2px}
+
+  .sw{width:50px;height:28px;border-radius:999px;background:rgba(255,255,255,.2);position:relative;
+    cursor:pointer;flex:none;transition:background .2s;border:none}
+  .sw:after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+    background:#fff;transition:transform .22s cubic-bezier(.3,1.4,.5,1)}
+  .sw.on{background:linear-gradient(90deg,var(--gold),var(--gold2))}
+  .sw.on:after{transform:translateX(22px)}
+
+  .themes{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  .th{border-radius:15px;padding:11px;cursor:pointer;border:2px solid transparent;position:relative;
+    display:flex;flex-direction:column;gap:7px;transition:transform .12s}
+  .th:active{transform:scale(.96)}
+  .th.on{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.22)}
+  .th .tn{font-weight:900;font-size:12.5px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .th .dots{display:flex;gap:4px}
+  .th .dots i{width:13px;height:13px;border-radius:50%;display:block;border:1px solid rgba(255,255,255,.35)}
+  .th .lk{position:absolute;top:7px;right:8px;font-size:11px}
+  .th.locked{opacity:.55}
+
+  input[type=text]{width:100%;padding:12px 13px;border-radius:13px;border:1px solid var(--line);
+    background:rgba(0,0,0,.28);color:#fff;font-size:15px;font-family:var(--ui-font);font-weight:700}
+  input:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+  .st{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:10px 11px}
+  .st .v{font-family:var(--dis-font);font-size:20px;font-weight:800}
+  .st .k{font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.07em;font-weight:800;margin-top:1px}
+
+  .ach{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;margin-bottom:8px;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+  .ach.got{background:linear-gradient(90deg,rgba(232,200,138,.2),rgba(158,201,194,.12));border-color:rgba(232,200,138,.45)}
+  .ach .ai{font-size:22px;width:38px;height:38px;border-radius:11px;background:rgba(0,0,0,.25);display:grid;place-items:center;flex:none}
+  .ach.got .ai{background:linear-gradient(135deg,var(--gold),var(--accent))}
+  .ach .an{font-weight:900;font-size:13px}
+  .ach .ad{font-size:11px;opacity:.7;margin-top:1px}
+  .ach .ac{margin-left:auto;font-size:16px;flex:none}
+  .ach.locked{opacity:.55}
+
+  #toasts{position:absolute;top:calc(78px + env(safe-area-inset-top));left:0;right:0;z-index:60;display:flex;flex-direction:column;
+    align-items:center;gap:6px;pointer-events:none}
+  .toast{background:rgba(28,24,16,.85);border:1px solid var(--line);border-radius:999px;padding:8px 16px;
+    font-weight:800;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    animation:tin .3s cubic-bezier(.2,1.4,.4,1), tout .3s ease 2.2s forwards;
+    backdrop-filter:blur(10px);max-width:90%;text-align:center}
+  .toast.gold{background:linear-gradient(90deg,var(--gold),var(--gold2));color:#2a2010;border-color:#fff5}
+  @keyframes tin{from{transform:translateY(-16px) scale(.85);opacity:0}}
+  @keyframes tout{to{transform:translateY(-10px);opacity:0}}
+
+  #banner{position:absolute;top:-140px;left:14px;right:14px;z-index:70;
+    background:linear-gradient(135deg,#e8c88a,#9ec9c2);color:#241c10;border-radius:20px;padding:13px 15px;
+    display:flex;gap:11px;align-items:center;box-shadow:0 14px 40px rgba(0,0,0,.5);
+    transition:top .5s cubic-bezier(.2,1.4,.4,1)}
+  #banner.show{top:calc(14px + env(safe-area-inset-top))}
+  #banner .bi{font-size:26px}
+  #banner .bt{font-size:9.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
+  #banner .bn{font-weight:900;font-size:15px;font-family:var(--dis-font)}
+
+  .reward{text-align:center;padding:8px 4px 4px}
+  .reward .big{font-size:56px;animation:bob 2s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
+  .reward h3{font-family:var(--dis-font);font-size:26px;margin:6px 0 2px}
+  .reward p{opacity:.78;font-size:13px;line-height:1.5}
+
+  .hint{position:absolute;bottom:calc(86px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:18;
+    background:rgba(28,24,16,.7);border:1px solid var(--line);border-radius:999px;padding:6px 14px;
+    font-size:11.5px;font-weight:800;backdrop-filter:blur(10px);white-space:nowrap;
+    animation:pulse 1.8s ease-in-out infinite;pointer-events:none}
+  @keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+  .mini{font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(0,0,0,.28)}
+  .mini.warn{background:rgba(255,107,107,.3)}
+  .mini.good{background:rgba(92,224,141,.22)}
+
+  .deco-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .deco{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:14px;
+    padding:9px 5px;text-align:center;cursor:pointer;transition:transform .12s}
+  .deco:active{transform:scale(.94)}
+  .deco.locked{opacity:.5}
+  .deco .de{font-size:26px;line-height:1.2}
+  .deco .dn{font-size:9.5px;font-weight:800;margin-top:3px;opacity:.85}
+  .deco .dp{font-size:9.5px;font-weight:700;color:var(--accent);margin-top:3px;line-height:1.3}
+  .deco.locked .dp{color:#ffb0a0}
+
+  #splash{position:absolute;inset:0;z-index:100;background:linear-gradient(180deg,#5a4c34,#1c1810);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    transition:opacity .6s;cursor:pointer}
+  #splash.gone{opacity:0;pointer-events:none}
+  #splash .lg{font-family:var(--dis-font);font-size:52px;font-weight:800;
+    background:linear-gradient(90deg,#e8c88a,#c9a05e,#9ec9c2);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;animation:bob 3s ease-in-out infinite}
+  #splash .sb{opacity:.7;font-size:13px;font-weight:700;letter-spacing:.05em}
+  #splash .go{margin-top:22px;padding:13px 34px;border-radius:999px;border:1px solid rgba(255,255,255,.3);
+    background:rgba(255,255,255,.1);font-weight:900;font-size:14px;animation:pulse 1.6s ease-in-out infinite}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="garden"></canvas>
+
+  <div class="hud">
+    <div class="chip" id="themeChip" style="cursor:pointer"><span id="themeEmo">☀️</span><span id="themeTx">Daylight</span></div>
+    <div class="chip" id="elChip" style="cursor:pointer"><span>🪨</span><span id="elCount">0</span></div>
+    <div class="spacer"></div>
+    <button class="icbtn" id="muteBtn">🔊</button>
+    <button class="icbtn" id="menuBtn">☰</button>
+  </div>
+
+  <div class="hint" id="hint">Tap a tool below to begin</div>
+
+  <div class="dock">
+    <button class="tool" id="tRake"><span class="ic">🧹</span><span class="tx">RAKE</span></button>
+    <button class="tool" id="tSmooth"><span class="ic">🫳</span><span class="tx">SMOOTH</span></button>
+    <button class="tool" id="tElements"><span class="ic">🪨</span><span class="tx">ELEMENTS</span></button>
+    <button class="tool" id="tClear"><span class="ic">🌀</span><span class="tx">CLEAR</span></button>
+  </div>
+
+  <div id="toasts"></div>
+  <div id="banner"><div class="bi">🏆</div><div><div class="bt">Unlocked</div><div class="bn" id="bnName"></div></div></div>
+
+  <div class="scrim" id="scrim">
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="shead"><h2 id="shTitle">Title</h2><button class="x" id="shX">✕</button></div>
+      <div class="tabs" id="shTabs" style="display:none"></div>
+      <div class="sbody" id="shBody"></div>
+    </div>
+  </div>
+
+  <div class="scrim mid" id="scrim2">
+    <div class="sheet center">
+      <div class="shead"><h2 id="sh2Title">Title</h2><button class="x" id="sh2X">✕</button></div>
+      <div class="sbody" id="sh2Body"></div>
+    </div>
+  </div>
+
+  <div id="splash">
+    <div class="lg">Driftsand</div>
+    <div class="sb">a little sand garden, yours to rake</div>
+    <div class="go">Tap to begin</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const K='driftsand.save.v1';
+const SLOTS_KEY='driftsand.slots.v1', ACTIVE_KEY='driftsand.activeSlot';
+const slotKey=id=>'driftsand.save.'+id;
+function loadSlots(){
+  try{const raw=localStorage.getItem(SLOTS_KEY);const arr=raw?JSON.parse(raw):[];return Array.isArray(arr)?arr:[];}
+  catch(e){return [];}
+}
+function saveSlots(arr){try{localStorage.setItem(SLOTS_KEY,JSON.stringify(arr));}catch(e){}}
+function getActiveSlot(){try{return localStorage.getItem(ACTIVE_KEY);}catch(e){return null;}}
+function setActiveSlot(id){try{localStorage.setItem(ACTIVE_KEY,id);}catch(e){}}
+function activeKey(){const id=getActiveSlot();return id?slotKey(id):null;}
+function updateSlotMeta(id){
+  if(!id||!S)return;
+  const slots=loadSlots();
+  const i=slots.findIndex(x=>x.id===id);
+  const meta={id:id,name:S.name,elements:S.placed.length,achCount:Object.keys(S.ach).length,streak:S.streak,updated:Date.now()};
+  if(i>=0)slots[i]=meta; else slots.push(meta);
+  saveSlots(slots);
+}
+function ensureSlots(){
+  let slots=loadSlots();
+  const active=getActiveSlot();
+  if(slots.length===0){
+    let legacy=null;
+    try{legacy=localStorage.getItem(K);}catch(e){}
+    if(legacy){
+      const id='s'+Date.now();
+      try{localStorage.setItem(slotKey(id),legacy);}catch(e){}
+      let name='Keeper', elements=0;
+      try{const d=JSON.parse(legacy);name=d.name||name;elements=(d.placed||[]).length;}catch(e){}
+      slots=[{id:id,name:name,elements:elements,updated:Date.now()}];
+      saveSlots(slots); setActiveSlot(id);
+      return id;
+    }
+    return null;
+  }
+  if(active&&slots.some(s=>s.id===active))return active;
+  const fallback=slots.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))[0];
+  if(fallback){setActiveSlot(fallback.id);return fallback.id;}
+  return null;
+}
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const now=()=>Date.now();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function dayNum(t){const d=new Date(t); return d.getFullYear()*400+d.getMonth()*32+d.getDate();}
+function isNightNow(){const h=new Date().getHours(); return h>=21||h<6;}
+
+/* ---------------- Rake styles ---------------- */
+const RAKE_STYLES=[
+  {id:'fine',n:'Fine Comb',mode:'drag',tines:3,spacing:5,wave:0,free:true},
+  {id:'wide',n:'Wide Rake',mode:'drag',tines:5,spacing:8,wave:0},
+  {id:'wave',n:'Wave Comb',mode:'drag',tines:4,spacing:7,wave:7},
+  {id:'ripple',n:'Ripple Rings',mode:'stamp',rings:5,ringGap:11},
+];
+const rakeStyleDef=()=>RAKE_STYLES.find(r=>r.id===S.rakeStyle)||RAKE_STYLES[0];
+
+/* ---------------- Placeable elements ---------------- */
+const ELEMENTS=[
+  {id:'roundstone',n:'Round Stone',e:'🪨',free:true},
+  {id:'flatstone',n:'Flat Stone',e:'🌑',free:true},
+  {id:'tallstone',n:'Tall Stone',e:'🗿',unlock:'stones3'},
+  {id:'cluster',n:'Stone Cluster',e:'🧱',unlock:'rake50'},
+  {id:'bonsai',n:'Bonsai',e:'🌳',unlock:'smooth10'},
+  {id:'moss',n:'Moss Patch',e:'🌿',unlock:'time5'},
+  {id:'lantern',n:'Stone Lantern',e:'🏮',unlock:'night'},
+  {id:'bamboo',n:'Bamboo',e:'🎋',unlock:'streak3'},
+  {id:'pond',n:'Small Pond',e:'💧',unlock:'streak7'},
+  {id:'chime',n:'Wind Chime',e:'🎐',unlock:'rake100'},
+  {id:'blossombranch',n:'Blossom Branch',e:'🌸',unlock:'elements5'},
+  {id:'fireflyjar',n:'Firefly Jar',e:'✨',unlock:'streak30'},
+];
+const elDef=id=>ELEMENTS.find(e=>e.id===id);
+
+/* ---------------- Themes ---------------- */
+const THEMES=[
+  {id:'daylight',n:'Daylight',emo:'☀️',sky:['#cfe8ee','#f3f8ec'],sand:'#d9c48a',mote:'#ffffff',free:true},
+  {id:'dusk',n:'Dusk',emo:'🌇',sky:['#e8a06a','#5a3a5c'],sand:'#c9985c',mote:'#ffd9a0',unlock:'time10'},
+  {id:'moonlit',n:'Moonlit Night',emo:'🌙',sky:['#1c2038','#0a0c1c'],sand:'#5a5648',mote:'#c8d8ff',unlock:'night'},
+  {id:'mistydawn',n:'Misty Dawn',emo:'🌫️',sky:['#d8dce0','#eef0ec'],sand:'#c8bc9a',mote:'#ffffff',unlock:'rake30'},
+  {id:'blossom',n:'Blossom Season',emo:'🌸',sky:['#ffd9ec','#fff0f8'],sand:'#e0c8a0',mote:'#ffb0d0',unlock:'elements5'},
+  {id:'autumn',n:'Autumn',emo:'🍁',sky:['#e8a868','#5c3820'],sand:'#c89860',mote:'#ffcf9a',unlock:'streak5'},
+  {id:'snowfall',n:'Snowfall',emo:'❄️',sky:['#dbeeff','#f5fbff'],sand:'#e8e4d8',mote:'#ffffff',unlock:'streak14'},
+  {id:'starlit',n:'Starlit Sky',emo:'🌌',sky:['#0a0a2a','#1c1a3c'],sand:'#4a4636',mote:'#c8b0ff',unlock:'ach10'},
+];
+const themeDef=()=>THEMES.find(t=>t.id===S.theme)||THEMES[0];
+
+/* ---------------- Achievements (double as the unlock system — no currency) ---------------- */
+const ACHS=[
+  {id:'firstRake',n:'First Line',d:'Rake your first line in the sand.',e:'🧹',cond:s=>s.rakes>=1},
+  {id:'firstSmooth',n:'Clean Slate',d:'Smooth the sand for the first time.',e:'🫳',cond:s=>s.smooths>=1},
+  {id:'firstElement',n:'A Quiet Addition',d:'Place your first element.',e:'🪨',cond:s=>s.elementsEver>=1},
+  {id:'rake20',n:'Getting the Hang of It',d:'Rake 20 lines.',e:'〰️',cond:s=>s.rakes>=20,unlock:{rake:'wide'}},
+  {id:'rake30',n:'Morning Practice',d:'Rake 30 lines.',e:'🌫️',cond:s=>s.rakes>=30,unlock:{theme:'mistydawn'}},
+  {id:'rake50',n:'Steady Hands',d:'Rake 50 lines.',e:'🧱',cond:s=>s.rakes>=50,unlock:{element:'cluster'}},
+  {id:'rake100',n:'A Practiced Art',d:'Rake 100 lines.',e:'🎐',cond:s=>s.rakes>=100,unlock:{element:'chime'}},
+  {id:'smooth10',n:'Starting Over',d:'Smooth the sand 10 times.',e:'🌳',cond:s=>s.smooths>=10,unlock:{element:'bonsai'}},
+  {id:'stones3',n:'Placement Matters',d:'Place 3 elements.',e:'🗿',cond:s=>s.elementsEver>=3,unlock:{element:'tallstone'}},
+  {id:'elements5',n:'A Little Scene',d:'Place 5 elements.',e:'🌸',cond:s=>s.elementsEver>=5,unlock:{theme:'blossom',element:'blossombranch'}},
+  {id:'stones5',n:'Composition',d:'Place 5 stones-and-more, total.',e:'💫',cond:s=>s.elementsEver>=5,unlock:{rake:'ripple'}},
+  {id:'time5',n:'A Few Quiet Minutes',d:'Spend 5 minutes total in the garden.',e:'🌿',cond:s=>s.openMinutes>=5,unlock:{element:'moss'}},
+  {id:'time10',n:'Settling In',d:'Spend 10 minutes total in the garden.',e:'🌇',cond:s=>s.openMinutes>=10,unlock:{theme:'dusk'}},
+  {id:'night',n:'Night Visitor',d:'Visit the garden late at night.',e:'🌙',cond:s=>s.nightVisited,unlock:{theme:'moonlit',element:'lantern'}},
+  {id:'streak3',n:'Three Days Running',d:'Visit 3 days in a row.',e:'🎋',cond:s=>s.streak>=3,unlock:{element:'bamboo'}},
+  {id:'streak5',n:'A Small Ritual',d:'Visit 5 days in a row.',e:'🍁',cond:s=>s.streak>=5,unlock:{theme:'autumn'}},
+  {id:'streak7',n:'A Whole Week',d:'Visit 7 days in a row.',e:'💧',cond:s=>s.streak>=7,unlock:{element:'pond'}},
+  {id:'streak14',n:'Two Weeks Steady',d:'Visit 14 days in a row.',e:'❄️',cond:s=>s.streak>=14,unlock:{theme:'snowfall'}},
+  {id:'streak30',n:'Devoted Keeper',d:'Visit 30 days in a row.',e:'✨',cond:s=>s.streak>=30,unlock:{element:'fireflyjar'}},
+  {id:'allThemes',n:'Every Season',d:'Try every theme at least once.',e:'🌊',cond:s=>THEMES.every(t=>t.free||(s.themesVisited||{})[t.id]),unlock:{rake:'wave'}},
+  {id:'ach10',n:'A Life of Small Moments',d:'Earn 10 achievements.',e:'🌌',cond:s=>Object.keys(s.ach).length>=10,unlock:{theme:'starlit'}},
+  {id:'zenmaster',n:'Zen Master',d:'Earn every other achievement.',e:'☯️',cond:s=>ACHS.filter(a=>a.id!=='zenmaster').every(a=>!!s.ach[a.id])},
+];
+function has(id){return !!S.ach[id];}
+function isUnlocked(type,id){
+  if(type==='rake'){ const r=RAKE_STYLES.find(x=>x.id===id); if(r&&r.free)return true; }
+  if(type==='element'){ const e=elDef(id); if(e&&e.free)return true; }
+  if(type==='theme'){ const t=THEMES.find(x=>x.id===id); if(t&&t.free)return true; }
+  return ACHS.some(a=>has(a.id)&&a.unlock&&a.unlock[type]===id);
+}
+function unlockHint(type,id){
+  const a=ACHS.find(a=>a.unlock&&a.unlock[type]===id);
+  return a?a.d:'';
+}
+
+/* ---------------- Audio (procedural, ambient) ---------------- */
+const A={ctx:null,master:null,musicGain:null,sfxGain:null,cur:null,nodes:[],timer:null,chimeTimer:null};
+function audioInit(){
+  if(A.ctx)return;
+  try{
+    A.ctx=new (window.AudioContext||window.webkitAudioContext)();
+    A.master=A.ctx.createGain(); A.master.gain.value=1; A.master.connect(A.ctx.destination);
+    A.musicGain=A.ctx.createGain(); A.musicGain.gain.value=S.music?.2:0; A.musicGain.connect(A.master);
+    A.sfxGain=A.ctx.createGain(); A.sfxGain.gain.value=S.sound?.4:0; A.sfxGain.connect(A.master);
+  }catch(e){}
+}
+function audioResume(){if(A.ctx&&A.ctx.state==='suspended')A.ctx.resume().catch(()=>{});}
+function noiseBuf(sec){const c=A.ctx,b=c.createBuffer(1,Math.max(1,(c.sampleRate*sec)|0),c.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1; return b;}
+function sfx(type){
+  if(!A.ctx||!S.sound)return;
+  const c=A.ctx,t=c.currentTime;
+  const mk=(f0,f1,dur,vol,wave)=>{
+    const o=c.createOscillator(),g=c.createGain();
+    o.type=wave||'sine'; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.02); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g); g.connect(A.sfxGain); o.start(t); o.stop(t+dur+.02);
+  };
+  if(type==='rake'){
+    const src=c.createBufferSource(); src.buffer=noiseBuf(.15);
+    const g=c.createGain(), f=c.createBiquadFilter();
+    f.type='bandpass'; f.frequency.value=1400; f.Q.value=.6;
+    g.gain.setValueAtTime(.06,t); g.gain.exponentialRampToValueAtTime(.001,t+.15);
+    src.connect(f); f.connect(g); g.connect(A.sfxGain); src.start(t); src.stop(t+.16);
+  }
+  else if(type==='smooth')mk(500,240,.4,.15,'sine');
+  else if(type==='place')mk(500,760,.2,.25,'sine');
+  else if(type==='remove')mk(400,220,.15,.2,'triangle');
+  else if(type==='chime')mk(1200,1800,.7,.15,'sine');
+  else if(type==='unlock')mk(500,1300,.5,.25,'triangle');
+  else if(type==='bad')mk(220,120,.24,.25,'sawtooth');
+  else if(type==='tap')mk(500,700,.06,.15,'sine');
+}
+function musicPlay(){
+  if(!A.ctx||!S.music)return;
+  if(A.cur==='garden')return;
+  musicStop(); A.cur='garden';
+  const sc=[262,294,330,392,440];
+  const step=()=>{
+    if(A.cur!=='garden')return;
+    const c=A.ctx, t=c.currentTime+.1;
+    tone(pick(sc)/2,t,rnd(3,5),'sine',.05,A.musicGain);
+    A.timer=setTimeout(step,rnd(3200,5200));
+  };
+  step();
+  const chimeStep=()=>{
+    if(A.cur!=='garden')return;
+    if(S.placed.some(p=>p.type==='chime')&&Math.random()<0.6)sfx('chime');
+    A.chimeTimer=setTimeout(chimeStep,rnd(6000,14000));
+  };
+  chimeStep();
+}
+function tone(f,st,dur,type,vol,dest){
+  const c=A.ctx,o=c.createOscillator(),g=c.createGain();
+  o.type=type||'sine'; o.frequency.value=f;
+  g.gain.setValueAtTime(0,st); g.gain.linearRampToValueAtTime(vol,st+.3); g.gain.exponentialRampToValueAtTime(.001,st+dur);
+  o.connect(g); g.connect(dest); o.start(st); o.stop(st+dur+.1); A.nodes.push(o);
+}
+function musicStop(){
+  if(A.timer)clearTimeout(A.timer);
+  if(A.chimeTimer)clearTimeout(A.chimeTimer);
+  A.nodes.forEach(n=>{try{n.stop&&n.stop();}catch(e){} try{n.disconnect&&n.disconnect();}catch(e){}});
+  A.nodes=[]; A.cur=null;
+}
+
+/* ---------------- State ---------------- */
+function fresh(){return{name:'Keeper',theme:'daylight',rakeStyle:'fine',sound:true,music:true,
+  placed:[], // {id,type,x,y} normalized 0-1 coords
+  rakes:0,smooths:0,elementsEver:0,openMinutes:0,streak:0,lastLogin:0,
+  themesVisited:{daylight:true},nightVisited:isNightNow(),
+  ach:{},lastAch:null,lastTick:now(),grooveImg:null,onboarded:false};}
+function load(){
+  try{
+    const key=activeKey(); if(!key)return fresh();
+    const raw=localStorage.getItem(key);
+    if(!raw)return fresh();
+    const d=JSON.parse(raw), s=Object.assign(fresh(),d);
+    s.onboarded=(d.onboarded===undefined)?true:!!d.onboarded;
+    s.placed=Array.isArray(d.placed)?d.placed.filter(p=>p&&elDef(p.type)):[];
+    s.ach=d.ach||{}; s.themesVisited=d.themesVisited||{daylight:true};
+    s.grooveImg=d.grooveImg||null;
+    return s;
+  }catch(e){return fresh();}
+}
+let saveT=0;
+function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,400);}
+function saveNow(){
+  const id=getActiveSlot(); if(!id)return;
+  try{ S.grooveImg=grooveCv.toDataURL('image/png'); }catch(e){}
+  try{localStorage.setItem(slotKey(id),JSON.stringify(S));}catch(e){}
+  updateSlotMeta(id);
+}
+
+/* ---------------- Canvas setup ---------------- */
+const cv=$('garden'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+const GW=900, GH=1400; // fixed internal groove-buffer resolution
+const grooveCv=document.createElement('canvas'); grooveCv.width=GW; grooveCv.height=GH;
+const grooveCtx=grooveCv.getContext('2d');
+function toGroove(x,y){ return {x:x*(GW/W), y:y*(GH/H)}; }
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  const r=$('app').getBoundingClientRect();
+  cv.width=Math.round(r.width*DPR); cv.height=Math.round(r.height*DPR);
+  cv.style.width=r.width+'px'; cv.style.height=r.height+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  W=r.width; H=r.height;
+}
+window.addEventListener('resize',resize);
+
+function shade(hex,amt){
+  const c=hex.replace('#',''); const n=parseInt(c,16);
+  let r=(n>>16)+amt, g=((n>>8)&255)+amt, b=(n&255)+amt;
+  r=clamp(r,0,255); g=clamp(g,0,255); b=clamp(b,0,255);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+/* ---------------- Ambient particles ---------------- */
+let motes=[];
+function initFx(){
+  motes=[];
+  for(let i=0;i<22;i++)motes.push({x:rnd(0,1),y:rnd(0,1),r:rnd(1,2.6),spd:rnd(.01,.05),drift:rnd(-1,1),kind:'mote'});
+}
+function ambientKind(){
+  const th=S.theme;
+  if(th==='blossom')return 'petal';
+  if(th==='snowfall')return 'snow';
+  if(th==='moonlit'||th==='starlit')return 'star';
+  return 'mote';
+}
+function bg(t){
+  const th=themeDef();
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,th.sky[0]); g.addColorStop(1,th.sky[1]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // sand bed
+  const sandTop=H*0.1, sandBottom=H*0.92;
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(W*0.05,sandTop,W*0.9,sandBottom-sandTop,18); ctx.clip();
+  const sg=ctx.createLinearGradient(0,sandTop,0,sandBottom);
+  sg.addColorStop(0,shade(th.sand,14)); sg.addColorStop(1,shade(th.sand,-14));
+  ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+  // grooves (persistent raked pattern), stretched from fixed buffer to fit
+  ctx.drawImage(grooveCv,0,0,GW,GH,0,0,W,H);
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.roundRect(W*0.05,sandTop,W*0.9,sandBottom-sandTop,18); ctx.stroke();
+  ctx.restore();
+
+  // glass rim highlight
+  ctx.save();
+  ctx.globalAlpha=.08;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.min(W,H)*.02;
+  ctx.beginPath(); ctx.roundRect(6,6,W-12,H-12,26); ctx.stroke();
+  ctx.restore();
+
+  // ambient particles
+  const kind=ambientKind();
+  ctx.save();
+  motes.forEach(m=>{
+    m.y+= (kind==='snow'?1:kind==='petal'?0.6:-0.15) *m.spd*0.01;
+    m.x+=Math.sin(t*0.0006+m.drift)*0.0006;
+    if(m.y>1.05)m.y=-0.05; if(m.y<-.05)m.y=1.05;
+    const px=m.x*W, py=m.y*H;
+    if(kind==='petal'){ ctx.fillStyle='#ffb0d0'; ctx.globalAlpha=.8; ctx.beginPath(); ctx.ellipse(px,py,m.r*1.6,m.r,t*0.001+m.drift,0,7); ctx.fill(); }
+    else if(kind==='snow'){ ctx.fillStyle='#ffffff'; ctx.globalAlpha=.85; ctx.beginPath(); ctx.arc(px,py,m.r*1.2,0,7); ctx.fill(); }
+    else if(kind==='star'){ ctx.fillStyle=th.mote; ctx.globalAlpha=0.4+Math.sin(t*0.002+m.drift)*0.3; ctx.beginPath(); ctx.arc(px,py,m.r,0,7); ctx.fill(); }
+    else{ ctx.fillStyle=th.mote; ctx.globalAlpha=.35; ctx.beginPath(); ctx.arc(px,py,m.r,0,7); ctx.fill(); }
+  });
+  ctx.restore();
+}
+
+/* ---------------- Placed elements ---------------- */
+function findElementAt(x,y){
+  let best=null,bd=1e9;
+  for(const p of S.placed){
+    const ex=p.x*W, ey=p.y*H;
+    const d=Math.hypot(x-ex,y-ey);
+    if(d<30&&d<bd){bd=d;best=p;}
+  }
+  return best;
+}
+function drawElements(t){
+  ctx.save();
+  ctx.font=(Math.min(W,H)*0.06)+'px serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  S.placed.slice().sort((a,b)=>a.y-b.y).forEach(p=>{
+    const def=elDef(p.type); if(!def)return;
+    const x=p.x*W, y=p.y*H;
+    let bob=0;
+    if(p.type==='pond')bob=Math.sin(t*0.0015)*2;
+    else if(p.type==='fireflyjar')bob=Math.sin(t*0.003)*3;
+    else if(p.type==='bamboo'||p.type==='blossombranch')bob=Math.sin(t*0.001+x)*1.5;
+    ctx.save();
+    ctx.globalAlpha=p===dragEl?0.7:1;
+    ctx.fillText(def.e,x,y+bob);
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+/* ---------------- Rake / Smooth application ---------------- */
+let lastRakePt=null, rakeDist=0;
+function applyRakeAt(sx,sy){
+  const style=rakeStyleDef();
+  const g=toGroove(sx,sy);
+  if(style.mode==='stamp'){
+    grooveCtx.save();
+    for(let i=0;i<style.rings;i++){
+      const r=14+i*style.ringGap;
+      grooveCtx.strokeStyle='rgba(0,0,0,0.22)'; grooveCtx.lineWidth=3;
+      grooveCtx.beginPath(); grooveCtx.arc(g.x,g.y,r,0,7); grooveCtx.stroke();
+      grooveCtx.strokeStyle='rgba(255,255,255,0.14)'; grooveCtx.lineWidth=2;
+      grooveCtx.beginPath(); grooveCtx.arc(g.x,g.y,r+2,0,7); grooveCtx.stroke();
+    }
+    grooveCtx.restore();
+    S.rakes++; sfx('rake'); checkAch(); save();
+    return;
+  }
+  if(!lastRakePt){ lastRakePt=g; rakeDist=0; return; }
+  const dx=g.x-lastRakePt.x, dy=g.y-lastRakePt.y;
+  const len=Math.hypot(dx,dy);
+  if(len<0.5)return;
+  const nx=-dy/len, ny=dx/len;
+  rakeDist+=len;
+  const waveOff=style.wave?Math.sin(rakeDist*0.05)*style.wave:0;
+  grooveCtx.save();
+  for(let i=0;i<style.tines;i++){
+    const off=(i-(style.tines-1)/2)*style.spacing+waveOff;
+    const x1=lastRakePt.x+nx*off, y1=lastRakePt.y+ny*off;
+    const x2=g.x+nx*off, y2=g.y+ny*off;
+    grooveCtx.strokeStyle='rgba(0,0,0,0.26)'; grooveCtx.lineWidth=3; grooveCtx.lineCap='round';
+    grooveCtx.beginPath(); grooveCtx.moveTo(x1,y1); grooveCtx.lineTo(x2,y2); grooveCtx.stroke();
+    grooveCtx.strokeStyle='rgba(255,255,255,0.16)'; grooveCtx.lineWidth=2;
+    grooveCtx.beginPath(); grooveCtx.moveTo(x1+nx*2,y1+ny*2); grooveCtx.lineTo(x2+nx*2,y2+ny*2); grooveCtx.stroke();
+  }
+  grooveCtx.restore();
+  lastRakePt=g;
+}
+function endRakeStroke(){
+  if(lastRakePt&&rakeDist>6){ S.rakes++; sfx('rake'); checkAch(); save(); }
+  lastRakePt=null; rakeDist=0;
+}
+function applySmoothAt(sx,sy){
+  const g=toGroove(sx,sy);
+  const r=60*(GW/W);
+  grooveCtx.save();
+  grooveCtx.globalCompositeOperation='destination-out';
+  const grad=grooveCtx.createRadialGradient(g.x,g.y,0,g.x,g.y,r);
+  grad.addColorStop(0,'rgba(0,0,0,0.9)'); grad.addColorStop(1,'rgba(0,0,0,0)');
+  grooveCtx.fillStyle=grad;
+  grooveCtx.beginPath(); grooveCtx.arc(g.x,g.y,r,0,7); grooveCtx.fill();
+  grooveCtx.restore();
+}
+let smoothed=false;
+function endSmoothStroke(){
+  if(smoothed){ S.smooths++; sfx('smooth'); checkAch(); save(); }
+  smoothed=false;
+}
+
+/* ---------------- Interaction ---------------- */
+let armed=null; // 'rake' | 'smooth' | null
+let placingElement=null;
+let dragEl=null, downPt=null, moved=false, dragging=false;
+function setArmed(a){
+  armed=(armed===a)?null:a;
+  placingElement=null;
+  $('tRake').classList.toggle('armed',armed==='rake');
+  $('tSmooth').classList.toggle('armed',armed==='smooth');
+  updateHint();
+}
+function updateHint(){
+  const h=$('hint');
+  if(placingElement)h.textContent='Tap the sand to place '+placingElement.n;
+  else if(armed==='rake')h.textContent=rakeStyleDef().mode==='stamp'?'Tap the sand to stamp ripples':'Drag across the sand to rake it';
+  else if(armed==='smooth')h.textContent='Drag across the sand to smooth it flat';
+  else h.textContent='Tap an element to move it, or tap again to remove it';
+}
+function pos(ev){
+  const r=cv.getBoundingClientRect();
+  const p=ev.touches?ev.touches[0]:(ev.changedTouches?ev.changedTouches[0]:ev);
+  return {x:p.clientX-r.left,y:p.clientY-r.top};
+}
+function down(ev){
+  audioInit(); audioResume();
+  const p=pos(ev); dragging=true; moved=false; downPt=p;
+  if(armed==='rake'){ lastRakePt=null; rakeDist=0; applyRakeAt(p.x,p.y); }
+  else if(armed==='smooth'){ smoothed=true; applySmoothAt(p.x,p.y); }
+  else if(placingElement){ placeElementAt(p.x,p.y); }
+  else{
+    const hit=findElementAt(p.x,p.y);
+    if(hit)dragEl=hit;
+  }
+}
+function move(ev){
+  if(!dragging)return;
+  const p=pos(ev);
+  if(downPt&&Math.hypot(p.x-downPt.x,p.y-downPt.y)>8)moved=true;
+  if(armed==='rake')applyRakeAt(p.x,p.y);
+  else if(armed==='smooth'){ smoothed=true; applySmoothAt(p.x,p.y); }
+  else if(dragEl&&moved){ dragEl.x=clamp(p.x/W,0.06,0.94); dragEl.y=clamp(p.y/H,0.12,0.9); }
+}
+function endPointer(){
+  if(armed==='rake')endRakeStroke();
+  else if(armed==='smooth')endSmoothStroke();
+  else if(dragEl){
+    if(!moved)removeElement(dragEl);
+    else save();
+    dragEl=null;
+  }
+  dragging=false;
+}
+cv.addEventListener('mousedown',down); cv.addEventListener('mousemove',move); window.addEventListener('mouseup',endPointer);
+cv.addEventListener('touchstart',e=>{e.preventDefault();down(e);},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();move(e);},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault();endPointer();},{passive:false});
+
+function placeElementAt(x,y){
+  const def=placingElement;
+  S.placed.push({id:'e'+now()+Math.floor(Math.random()*999),type:def.id,x:clamp(x/W,0.06,0.94),y:clamp(y/H,0.12,0.9)});
+  S.elementsEver++;
+  placingElement=null;
+  sfx('place'); toast('Placed '+def.n);
+  refreshHUD(); checkAch(); save(); updateHint();
+}
+function removeElement(p){
+  const idx=S.placed.findIndex(x=>x.id===p.id);
+  if(idx>=0)S.placed.splice(idx,1);
+  sfx('remove'); refreshHUD(); save();
+}
+
+/* ---------------- HUD ---------------- */
+function refreshHUD(){
+  const th=themeDef();
+  $('themeEmo').textContent=th.emo; $('themeTx').textContent=th.n;
+  $('elCount').textContent=S.placed.length;
+}
+
+/* ---------------- Toasts ---------------- */
+let toastQ=[], toastBusy=false;
+function toast(msg,kind){
+  toastQ.push({msg,kind}); if(!toastBusy)advanceToast();
+}
+function advanceToast(){
+  if(!toastQ.length){toastBusy=false;return;}
+  toastBusy=true;
+  const {msg,kind}=toastQ.shift();
+  const el=document.createElement('div');
+  el.className='toast'+(kind==='gold'?' gold':'');
+  el.textContent=msg;
+  $('toasts').appendChild(el);
+  setTimeout(()=>{el.remove(); advanceToast();},2500);
+}
+
+/* ---------------- Achievements / unlocks ---------------- */
+function grant(id){
+  if(has(id))return;
+  const a=ACHS.find(x=>x.id===id); if(!a)return;
+  S.ach[id]={ts:now()}; S.lastAch=id;
+  sfx('unlock');
+  $('bnName').textContent=a.n;
+  $('banner').classList.add('show');
+  setTimeout(()=>$('banner').classList.remove('show'),3200);
+  save();
+}
+function checkAch(){
+  ACHS.forEach(a=>{ if(!has(a.id)&&a.cond(S))grant(a.id); });
+}
+
+/* ---------------- Sheets / modals ---------------- */
+let activeGameCleanup=null;
+function openSheet(title,html,tabs,onTab){
+  $('shTitle').textContent=title;
+  $('shBody').innerHTML=html;
+  const tabsEl=$('shTabs');
+  if(tabs){
+    tabsEl.style.display='flex';
+    tabsEl.innerHTML=tabs.map(tb=>`<button class="tab ${tb.on?'on':''}" data-tab="${tb.id}">${esc(tb.label)}</button>`).join('');
+    tabsEl.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>onTab(b.dataset.tab)));
+  }else{
+    tabsEl.style.display='none'; tabsEl.innerHTML='';
+  }
+  $('scrim').classList.add('on');
+}
+function closeSheet(){$('scrim').classList.remove('on');}
+function openModal(title,html){
+  $('sh2Title').textContent=title; $('sh2Body').innerHTML=html; $('scrim2').classList.add('on');
+}
+function closeModal(){
+  $('scrim2').classList.remove('on');
+  if(activeGameCleanup){ activeGameCleanup(); activeGameCleanup=null; }
+}
+$('shX').addEventListener('click',closeSheet);
+$('sh2X').addEventListener('click',closeModal);
+$('scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet();});
+$('scrim2').addEventListener('click',e=>{if(e.target.id==='scrim2')closeModal();});
+
+/* ---------------- Elements palette ---------------- */
+function openElements(){
+  const html=`<div class="deco-grid">${ELEMENTS.map(e=>{
+    const unlocked=isUnlocked('element',e.id);
+    return `<div class="deco ${unlocked?'':'locked'}" data-el="${e.id}">
+      <div class="de">${unlocked?e.e:'🔒'}</div><div class="dn">${esc(e.n)}</div>
+      <div class="dp">${unlocked?'Tap to place':esc(unlockHint('element',e.id))}</div>
+    </div>`;
+  }).join('')}</div>`;
+  openSheet('Elements',html);
+  $('shBody').querySelectorAll('[data-el]').forEach(d=>d.addEventListener('click',()=>{
+    const def=elDef(d.dataset.el);
+    if(!isUnlocked('element',def.id)){ toast('Not unlocked yet','error'); return; }
+    placingElement=def; closeSheet(); updateHint();
+  }));
+}
+
+/* ---------------- Rake style picker ---------------- */
+function openRakeStyles(){
+  const html=RAKE_STYLES.map(r=>{
+    const unlocked=isUnlocked('rake',r.id);
+    const cur=S.rakeStyle===r.id;
+    return `<div class="row ${cur?'fx-boost':''}" data-rake="${r.id}" style="cursor:pointer;${unlocked?'':'opacity:.5'}">
+      <div><div class="l">${unlocked?'':'🔒 '}${esc(r.n)}</div><div class="d">${unlocked?(r.mode==='stamp'?'Tap to stamp concentric ripples':'Drag to rake'):esc(unlockHint('rake',r.id))}</div></div>
+      <div class="mini ${cur?'good':''}">${cur?'Active':unlocked?'Pick':'Locked'}</div>
+    </div>`;
+  }).join('');
+  openModal('Rake styles',html);
+  $('sh2Body').querySelectorAll('[data-rake]').forEach(r=>r.addEventListener('click',()=>{
+    const id=r.dataset.rake;
+    if(!isUnlocked('rake',id)){ toast('Not unlocked yet','error'); return; }
+    S.rakeStyle=id; save(); closeModal(); updateHint();
+  }));
+}
+
+/* ---------------- Themes ---------------- */
+function openThemes(){
+  const html=`<div class="themes">${THEMES.map(th=>{
+    const unlocked=isUnlocked('theme',th.id);
+    const cur=S.theme===th.id;
+    return `<div class="th ${cur?'on':''} ${unlocked?'':'locked'}" data-theme="${th.id}" style="background:linear-gradient(135deg,${th.sky[0]},${th.sky[1]})">
+      <div class="tn">${esc(th.n)}</div>
+      <div class="dots"><i style="background:${th.sand}"></i><i style="background:${th.mote}"></i></div>
+      ${unlocked?'':`<div class="lk">🔒</div>`}
+    </div>`;
+  }).join('')}</div>`;
+  openSheet('Themes',html);
+  $('shBody').querySelectorAll('[data-theme]').forEach(th=>th.addEventListener('click',()=>{
+    const def=THEMES.find(x=>x.id===th.dataset.theme);
+    if(!isUnlocked('theme',def.id)){ toast(unlockHint('theme',def.id)||'Not unlocked yet','error'); return; }
+    S.theme=def.id; S.themesVisited[def.id]=true;
+    refreshHUD(); save(); checkAch(); closeSheet(); openThemes();
+  }));
+}
+
+/* ---------------- Menu / settings / achievements / slots ---------------- */
+function buildStatsCard(){
+  return `<div class="stats">
+    <div class="st"><div class="v">${S.rakes}</div><div class="k">Lines raked</div></div>
+    <div class="st"><div class="v">${S.placed.length}</div><div class="k">Elements placed</div></div>
+    <div class="st"><div class="v">${Math.round(S.openMinutes)}</div><div class="k">Minutes spent</div></div>
+    <div class="st"><div class="v">${S.streak}</div><div class="k">Day streak</div></div>
+  </div>`;
+}
+function openAch(){
+  const html=ACHS.map(a=>{
+    const got=has(a.id);
+    return `<div class="ach ${got?'got':'locked'}"><div class="ai">${a.e}</div>
+      <div style="flex:1"><div class="an">${esc(a.n)}</div><div class="ad">${esc(a.d)}</div></div>
+      <div class="ac">${got?'✅':'🔒'}</div></div>`;
+  }).join('');
+  const count=ACHS.filter(a=>has(a.id)).length;
+  openModal('Achievements ('+count+'/'+ACHS.length+')',`<div class="sbody" style="padding:0;max-height:60vh;overflow-y:auto">${html}</div>`);
+}
+function openSettings(){
+  openModal('Settings',`
+    ${buildStatsCard()}
+    <div class="row"><div><div class="l">Sound effects</div></div><button class="sw ${S.sound?'on':''}" id="swSound"></button></div>
+    <div class="row"><div><div class="l">Ambient music</div></div><button class="sw ${S.music?'on':''}" id="swMusic"></button></div>
+    <button class="btn wide ghost" id="openAchBtn" style="margin-top:8px">🏆 Achievements</button>
+    <button class="btn wide ghost" id="openSlotsBtn" style="margin-top:8px">💾 Save slots</button>
+    <button class="btn wide ghost" id="exportBtn" style="margin-top:8px">⬆️ Export save</button>
+    <button class="btn wide ghost" id="importBtn" style="margin-top:8px">⬇️ Import save</button>
+    <button class="btn wide" id="resetBtn" style="margin-top:14px;background:rgba(255,107,107,.3);color:#fff">Reset this garden</button>
+  `);
+  $('swSound').addEventListener('click',()=>{S.sound=!S.sound; if(A.sfxGain)A.sfxGain.gain.value=S.sound?.4:0; save(); openSettings();});
+  $('swMusic').addEventListener('click',()=>{S.music=!S.music; if(A.musicGain)A.musicGain.gain.value=S.music?.2:0; if(S.music)musicPlay(); else musicStop(); save(); openSettings();});
+  $('openAchBtn').addEventListener('click',openAch);
+  $('openSlotsBtn').addEventListener('click',openSaveSlots);
+  $('exportBtn').addEventListener('click',exportSave);
+  $('importBtn').addEventListener('click',importSave);
+  $('resetBtn').addEventListener('click',()=>{
+    if(!confirm("This wipes this garden's progress and pattern. Are you sure?"))return;
+    const id=getActiveSlot();
+    S=fresh(); S.onboarded=false;
+    grooveCtx.clearRect(0,0,GW,GH);
+    if(id){try{localStorage.setItem(slotKey(id),JSON.stringify(S));}catch(e){} updateSlotMeta(id);}
+    closeModal(); location.reload();
+  });
+}
+function openMenu(){
+  openModal('Menu',`
+    <button class="btn wide" id="mElements">🪨 Elements</button>
+    <button class="btn wide" id="mRake" style="margin-top:8px">🧹 Rake styles</button>
+    <button class="btn wide" id="mThemes" style="margin-top:8px">🎨 Themes</button>
+    <button class="btn wide ghost" id="mSettings" style="margin-top:8px">⚙️ Settings</button>
+  `);
+  $('mElements').addEventListener('click',()=>{closeModal();openElements();});
+  $('mRake').addEventListener('click',()=>{closeModal();openRakeStyles();});
+  $('mThemes').addEventListener('click',()=>{closeModal();openThemes();});
+  $('mSettings').addEventListener('click',()=>{closeModal();openSettings();});
+}
+function openSaveSlots(){
+  const slots=loadSlots(); const active=getActiveSlot();
+  const html=slots.map(s=>`<div class="row"><div><div class="l">${esc(s.name)} ${s.id===active?'<span class="mini good">Active</span>':''}</div>
+    <div class="d">${s.elements||0} elements</div></div>
+    <div style="display:flex;gap:6px">${s.id!==active?`<button class="btn btn-sm" data-switch="${s.id}">Play</button>`:''}${slots.length>1?`<button class="btn btn-sm ghost" data-del="${s.id}" style="background:rgba(255,107,107,.25)">Del</button>`:''}</div>
+  </div>`).join('');
+  openModal('Save slots',`${html}<button class="btn wide" id="newSlotBtn" style="margin-top:10px">+ New garden</button>`);
+  $('sh2Body').querySelectorAll('[data-switch]').forEach(b=>b.addEventListener('click',()=>switchSlot(b.dataset.switch)));
+  $('sh2Body').querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>confirmDeleteSlot(b.dataset.del)));
+  $('newSlotBtn').addEventListener('click',openNewSlotPicker);
+}
+function switchSlot(id){ setActiveSlot(id); closeModal(); location.reload(); }
+function openNewSlotPicker(){
+  openModal('New garden',`<input type="text" id="newSlotName" placeholder="Your name" maxlength="18"><button class="btn wide" id="newSlotGo" style="margin-top:10px">Start</button>`);
+  $('newSlotGo').addEventListener('click',()=>{
+    const name=$('newSlotName').value.trim()||'Keeper';
+    const id='s'+Date.now();
+    const fr=fresh(); fr.name=name; fr.onboarded=false;
+    try{localStorage.setItem(slotKey(id),JSON.stringify(fr));}catch(e){}
+    setActiveSlot(id); updateSlotMeta(id); closeModal(); location.reload();
+  });
+}
+function confirmDeleteSlot(id){
+  if(!confirm('Delete this garden forever?'))return;
+  try{localStorage.removeItem(slotKey(id));}catch(e){}
+  const slots=loadSlots().filter(s=>s.id!==id); saveSlots(slots);
+  if(getActiveSlot()===id)setActiveSlot(slots[0]?slots[0].id:null);
+  closeModal(); if(slots.length)openSaveSlots(); else location.reload();
+}
+function exportSave(){
+  const data=JSON.stringify(S);
+  openModal('Export save',`<p style="opacity:.75;font-size:12.5px;margin-bottom:8px">Copy this text somewhere safe.</p><textarea readonly style="width:100%;height:140px;background:rgba(0,0,0,.3);color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px">${esc(data)}</textarea>`);
+}
+function importSave(){
+  openModal('Import save',`<textarea id="importArea" style="width:100%;height:140px;background:rgba(0,0,0,.3);color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px" placeholder="Paste save text here"></textarea><button class="btn wide" id="importGo" style="margin-top:10px">Import</button>`);
+  $('importGo').addEventListener('click',()=>{
+    try{
+      const d=JSON.parse($('importArea').value);
+      const id=getActiveSlot()||('s'+Date.now());
+      setActiveSlot(id);
+      localStorage.setItem(slotKey(id),JSON.stringify(d));
+      updateSlotMeta(id);
+      closeModal(); location.reload();
+    }catch(e){ toast("That didn't look like a valid save",'error'); }
+  });
+}
+
+/* ---------------- Onboarding / daily streak ---------------- */
+const ONBOARD=[
+  {t:'Welcome to Driftsand',b:'A little sand garden with nothing to lose and nowhere to fail. Rake it, rest it, decorate it — however you like.'},
+  {t:'🧹 Rake',b:'Drag across the sand to carve a groove. Different rake styles unlock as you go.'},
+  {t:'🫳 Smooth',b:'Drag to smooth an area back to flat sand — start a new pattern whenever you like.'},
+  {t:'🪨 Elements',b:'Pick a stone, plant, or lantern to place. Tap a placed element to remove it, or drag it to move it.'},
+];
+function runOnboarding(i){
+  if(i>=ONBOARD.length){ S.onboarded=true; save(); return; }
+  const step=ONBOARD[i];
+  openModal(step.t,`<p style="opacity:.85;font-size:14px;line-height:1.6">${step.b}</p><button class="btn wide" id="obNext" style="margin-top:14px">${i===ONBOARD.length-1?"Let's begin":'Next'}</button>`);
+  $('obNext').addEventListener('click',()=>{closeModal(); runOnboarding(i+1);});
+}
+function checkDaily(){
+  const d=dayNum(now());
+  const lastDay=S.lastLogin?dayNum(S.lastLogin):0;
+  if(lastDay===d)return;
+  const streakAlive=lastDay===(d-1);
+  S.streak=streakAlive?S.streak+1:1;
+  S.lastLogin=now();
+  if(S.streak>1)toast('🌱 Day '+S.streak+' — welcome back');
+  checkAch(); save();
+}
+
+/* ---------------- Boot ---------------- */
+let S=null;
+function proceedIntoGame(){
+  $('splash').classList.add('gone');
+  audioInit(); audioResume(); musicPlay();
+  refreshHUD();
+  if(isNightNow()&&!S.nightVisited){ S.nightVisited=true; }
+  if(!S.onboarded)runOnboarding(0);
+  checkDaily();
+  checkAch();
+}
+function startNewSlot(name){
+  const id='s'+Date.now();
+  const fr=fresh(); fr.name=name||'Keeper'; fr.onboarded=false;
+  try{localStorage.setItem(slotKey(id),JSON.stringify(fr));}catch(e){}
+  setActiveSlot(id); updateSlotMeta(id);
+  S=load();
+}
+function renderNamePicker(){
+  openModal('Name your garden',`<input type="text" id="startName" placeholder="Your name (optional)"><button class="btn wide" id="startGo" style="margin-top:10px">Begin</button>`);
+  $('startGo').addEventListener('click',()=>{
+    const name=$('startName').value.trim();
+    startNewSlot(name);
+    closeModal();
+    proceedIntoGame();
+  });
+}
+function loadGrooveImage(){
+  if(!S.grooveImg)return;
+  const img=new Image();
+  img.onload=()=>{ grooveCtx.clearRect(0,0,GW,GH); grooveCtx.drawImage(img,0,0,GW,GH); };
+  img.src=S.grooveImg;
+}
+function boot(){
+  const activeId=ensureSlots();
+  S=activeId?load():fresh();
+  resize();
+  loadGrooveImage();
+  refreshHUD();
+  $('splash').addEventListener('click',function go(){
+    $('splash').removeEventListener('click',go);
+    $('splash').classList.add('gone');
+    if(!activeId){ renderNamePicker(); }
+    else{ proceedIntoGame(); }
+  },{once:true});
+
+  $('themeChip').addEventListener('click',openThemes);
+  $('elChip').addEventListener('click',openElements);
+  $('muteBtn').addEventListener('click',()=>{
+    S.sound=!S.sound; S.music=!S.sound?false:S.music;
+    if(A.sfxGain)A.sfxGain.gain.value=S.sound?.4:0;
+    if(A.musicGain)A.musicGain.gain.value=(S.sound&&S.music)?.2:0;
+    $('muteBtn').textContent=S.sound?'🔊':'🔇';
+    if(!S.sound)musicStop(); else musicPlay();
+    save();
+  });
+  $('menuBtn').addEventListener('click',openMenu);
+  $('tRake').addEventListener('click',()=>{ setArmed('rake'); });
+  $('tRake').addEventListener('dblclick',openRakeStyles);
+  $('tSmooth').addEventListener('click',()=>setArmed('smooth'));
+  $('tElements').addEventListener('click',()=>{ armed=null; $('tRake').classList.remove('armed'); $('tSmooth').classList.remove('armed'); openElements(); });
+  $('tClear').addEventListener('click',()=>{
+    if(!confirm('Smooth the whole garden back to flat sand? Placed elements stay put.'))return;
+    grooveCtx.clearRect(0,0,GW,GH); toast('🌀 Freshly smoothed'); save();
+  });
+
+  initFx();
+  let last=performance.now();
+  let lastMinuteTick=now();
+  function loop(t){
+    const nowT=now();
+    const elapsedMin=(nowT-lastMinuteTick)/60000;
+    if(elapsedMin>0&&elapsedMin<5){ S.openMinutes+=elapsedMin; }
+    lastMinuteTick=nowT;
+    bg(t);
+    drawElements(t);
+    if(Math.random()<0.01){ checkAch(); refreshHUD(); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  setInterval(()=>{ if($('splash').classList.contains('gone'))save(); },20000);
+}
+boot();
+</script>
+</body>
+</html>

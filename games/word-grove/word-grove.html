@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>Word Grove</title>
+<style>
+/* ============================================================
+   WORD GROVE — themed word-search puzzles
+   Single file. No dependencies. Offline.
+   ============================================================ */
+
+:root{
+  --bg:#0d1117; --card:#161d29; --card2:#1d2635; --line:#2a3444;
+  --text:#e9eef7; --dim:#8c9bb2; --ok:#3ddc97; --bad:#ff6b6b;
+  --accent:#5ac8fa; --accent2:#4fb8e8; --glow:rgba(90,200,250,.35);
+  --r:18px; --rs:12px;
+  --fd:"Avenir Next Condensed","Haettenschweiler","Arial Narrow",'Segoe UI',system-ui,sans-serif;
+  --fb:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --fm:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+}
+body[data-theme="ocean"]{--accent:#22d3ee;--accent2:#0ea5e9;--glow:rgba(34,211,238,.35)}
+body[data-theme="forest"]{--accent:#4ade80;--accent2:#84cc16;--glow:rgba(74,222,128,.35)}
+body[data-theme="space"]{--accent:#a78bfa;--accent2:#818cf8;--glow:rgba(167,139,250,.35)}
+body[data-theme="desert"]{--accent:#f5a623;--accent2:#fb923c;--glow:rgba(245,166,35,.35)}
+body[data-theme="arctic"]{--accent:#7dd3fc;--accent2:#38bdf8;--glow:rgba(125,211,252,.35)}
+body[data-theme="candy"]{--accent:#f472b6;--accent2:#fb7185;--glow:rgba(244,114,182,.35)}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--fb);
+  overflow-x:hidden; transition:background .4s ease;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::selection{background:var(--accent);color:var(--bg)}
+
+#app{max-width:560px;margin:0 auto;padding:18px 16px 40px;min-height:100vh;display:flex;flex-direction:column}
+.screen{display:none}
+.screen.on{display:flex;flex-direction:column;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ---------- top bar ---------- */
+#topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;min-height:34px}
+#backBtn{display:none;align-items:center;gap:6px;color:var(--dim);font-size:14px;font-weight:600;padding:6px 4px}
+#backBtn.show{display:flex}
+#soundBtn{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:16px}
+
+/* ---------- home ---------- */
+.logo{font-size:44px;text-align:center;margin:6px 0 2px}
+h1{font-family:var(--fd);font-size:clamp(28px,7vw,38px);font-weight:800;text-align:center;margin:2px 0 4px;letter-spacing:.02em}
+.tagline{text-align:center;color:var(--dim);font-size:14px;margin:0 0 24px}
+
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.theme-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 14px;
+  text-align:left;transition:transform .12s ease,border-color .12s ease}
+.theme-card:active{transform:scale(.97)}
+.theme-card .t-icon{font-size:30px;display:block;margin-bottom:8px}
+.theme-card .t-name{font-family:var(--fd);font-weight:800;font-size:17px;letter-spacing:.02em}
+.theme-card .t-blurb{color:var(--dim);font-size:11.5px;margin-top:3px;line-height:1.4;min-height:30px}
+.theme-card .t-best{margin-top:8px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.theme-card .t-best b{color:var(--accent);font-family:var(--fm);letter-spacing:0}
+
+/* ---------- difficulty ---------- */
+.big-icon{font-size:52px;text-align:center;margin:10px 0 4px}
+h2{font-family:var(--fd);font-size:26px;font-weight:800;text-align:center;margin:0 0 4px}
+.sub{text-align:center;color:var(--dim);font-size:13px;margin:0 0 24px}
+.diffs{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.diff-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--rs);padding:14px 16px;transition:border-color .12s ease}
+.diff-row.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.diff-row .d-name{font-weight:700;font-size:15px}
+.diff-row .d-sub{color:var(--dim);font-size:11.5px;margin-top:2px}
+.diff-row .d-best{font-family:var(--fm);color:var(--accent);font-size:13px;font-weight:700}
+.playbtn{background:var(--accent);color:var(--bg);font-family:var(--fd);font-weight:800;font-size:17px;
+  letter-spacing:.03em;padding:15px;border-radius:var(--rs);text-align:center;text-transform:uppercase}
+.playbtn:active{transform:scale(.98)}
+
+/* ---------- game ---------- */
+#gameHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+#gameTheme{font-family:var(--fd);font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px}
+#gameStats{display:flex;gap:14px;font-family:var(--fm);font-size:13px;color:var(--dim)}
+#gameStats b{color:var(--text)}
+
+.board-wrap{display:flex;justify-content:center;margin-bottom:18px}
+#board{
+  display:grid;gap:2px;background:var(--line);border:1px solid var(--line);border-radius:var(--rs);
+  padding:2px;touch-action:none;user-select:none;-webkit-user-select:none;
+  width:min(94vw,440px);aspect-ratio:1/1;
+}
+.cell{
+  background:var(--card2);display:flex;align-items:center;justify-content:center;
+  font-family:var(--fm);font-weight:700;color:var(--text);border-radius:3px;
+  font-size:calc(min(94vw,440px) / var(--n,10) * 0.44);transition:background .1s ease,color .1s ease;
+}
+.cell.sel{background:var(--accent);color:var(--bg)}
+.cell.found{background:var(--accent2);color:var(--bg)}
+.cell.bad{background:var(--bad);color:var(--bg)}
+
+#wordbank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:6px}
+.wchip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 14px;
+  font-size:12.5px;font-weight:700;letter-spacing:.03em;color:var(--text);transition:opacity .2s ease}
+.wchip.found{opacity:.4;text-decoration:line-through;border-color:var(--accent2);color:var(--dim)}
+
+/* ---------- win overlay ---------- */
+#winOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;
+  z-index:50;padding:20px}
+#winOverlay.on{display:flex}
+.wincard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:30px 26px;
+  text-align:center;max-width:340px;width:100%;animation:fadeUp .3s ease}
+.wincard .w-emoji{font-size:48px;margin-bottom:6px}
+.wincard h2{margin-bottom:6px}
+.wincard .w-time{font-family:var(--fm);font-size:32px;font-weight:800;color:var(--accent);margin:10px 0 2px}
+.wincard .w-best{color:var(--ok);font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-height:16px;margin-bottom:18px}
+.wincard .wbtns{display:flex;flex-direction:column;gap:10px}
+.wbtn{padding:13px;border-radius:var(--rs);font-weight:800;font-size:14.5px}
+.wbtn.primary{background:var(--accent);color:var(--bg)}
+.wbtn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <button id="backBtn">&larr; <span id="backLabel">Themes</span></button>
+    <div style="flex:1"></div>
+    <button id="soundBtn">🔊</button>
+  </div>
+
+  <!-- ---------------- HOME ---------------- -->
+  <section class="screen on" id="screen-home">
+    <div class="logo">🌿</div>
+    <h1>Word Grove</h1>
+    <p class="tagline">Pick a grove, then hunt for hidden words.</p>
+    <div class="themes" id="themeGrid"></div>
+  </section>
+
+  <!-- ---------------- DIFFICULTY ---------------- -->
+  <section class="screen" id="screen-diff">
+    <div class="big-icon" id="diffIcon"></div>
+    <h2 id="diffTitle"></h2>
+    <p class="sub">Choose a size, then start hunting.</p>
+    <div class="diffs" id="diffList"></div>
+    <button class="playbtn" id="playBtn">Play</button>
+  </section>
+
+  <!-- ---------------- GAME ---------------- -->
+  <section class="screen" id="screen-game">
+    <div id="gameHead">
+      <div id="gameTheme"><span id="gameIcon"></span><span id="gameName"></span></div>
+      <div id="gameStats"><span>⏱ <b id="gameTimer">0:00</b></span><span>📝 <b id="gameFound">0/0</b></span></div>
+    </div>
+    <div class="board-wrap"><div id="board"></div></div>
+    <div id="wordbank"></div>
+  </section>
+
+</div>
+
+<div id="winOverlay">
+  <div class="wincard">
+    <div class="w-emoji">🎉</div>
+    <h2>Grove cleared!</h2>
+    <div class="w-time" id="winTime">0:00</div>
+    <div class="w-best" id="winBest"></div>
+    <div class="wbtns">
+      <button class="wbtn primary" id="winReplay">Play again</button>
+      <button class="wbtn ghost" id="winHome">Change grove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------------- data ---------------- */
+var THEMES = [
+  { id:'ocean', icon:'🌊', name:'Ocean', blurb:'Reef life & tides', words:
+    ['CORAL','WHALE','SHARK','OCTOPUS','DOLPHIN','TURTLE','STARFISH','CRAB','SEAHORSE','JELLYFISH','ANCHOR','LAGOON','REEF','TIDE'] },
+  { id:'forest', icon:'🌲', name:'Forest', blurb:'Woodland & wildlife', words:
+    ['OAK','PINE','MOSS','FERN','ACORN','BADGER','RABBIT','SQUIRREL','ANTLER','MEADOW','BRANCH','THICKET','CANOPY','HOLLOW'] },
+  { id:'space', icon:'🚀', name:'Space', blurb:'Stars & starships', words:
+    ['COMET','ORBIT','ROCKET','GALAXY','METEOR','NEBULA','PLANET','SATURN','VENUS','MARS','PULSAR','COSMOS','ASTEROID','SHUTTLE'] },
+  { id:'desert', icon:'🏜️', name:'Desert', blurb:'Dunes & dry heat', words:
+    ['CACTUS','DUNE','OASIS','MIRAGE','CAMEL','SCORPION','CANYON','MESA','SANDSTORM','VULTURE','COYOTE','ADOBE','HORIZON','DROUGHT'] },
+  { id:'arctic', icon:'❄️', name:'Arctic', blurb:'Ice & frozen tundra', words:
+    ['SNOW','ICE','GLACIER','PENGUIN','WALRUS','BLIZZARD','IGLOO','FROST','TUNDRA','NARWHAL','AURORA','ICEBERG','HUSKY','FREEZE'] },
+  { id:'candy', icon:'🍬', name:'Candy', blurb:'Sweets & treats', words:
+    ['CANDY','TOFFEE','TRUFFLE','CARAMEL','LOLLIPOP','GUMDROP','LICORICE','PRALINE','NOUGAT','FUDGE','BONBON','SPRINKLE','FROSTING','MALLOW'] }
+];
+var DIFFS = [
+  { id:'easy',   name:'Easy',   sub:'10×10 · 6 words',  size:10, count:6  },
+  { id:'medium', name:'Medium', sub:'12×12 · 8 words',  size:12, count:8  },
+  { id:'hard',   name:'Hard',   sub:'14×14 · 10 words', size:14, count:10 }
+];
+var DIRS = [[0,1],[1,0],[1,1],[1,-1],[0,-1],[-1,0],[-1,-1],[-1,1]];
+
+/* ---------------- storage ---------------- */
+var KEY = 'wordgrove.v1';
+var S = { best:{}, sound:true };
+(function load(){
+  try{ var raw=localStorage.getItem(KEY); if(raw) S=Object.assign(S,JSON.parse(raw)); }catch(e){}
+})();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ---------------- tiny audio ---------------- */
+var actx=null;
+function beep(freq,dur,type,gain){
+  if(!S.sound) return;
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.value=gain||0.06;
+    o.connect(g); g.connect(actx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+(dur||0.15));
+    o.stop(actx.currentTime+(dur||0.15));
+  }catch(e){}
+}
+function sfxFound(){ beep(660,.12,'sine',.07); setTimeout(function(){beep(880,.14,'sine',.07)},70); }
+function sfxBad(){ beep(160,.14,'square',.05); }
+function sfxWin(){ [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){beep(f,.18,'sine',.07)}, i*90); }); }
+
+/* ---------------- generator ---------------- */
+function shuffle(arr){
+  for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=arr[i]; arr[i]=arr[j]; arr[j]=t; }
+  return arr;
+}
+function tryPlace(grid,size,word){
+  for(var a=0;a<250;a++){
+    var dir=DIRS[Math.floor(Math.random()*DIRS.length)];
+    var row=Math.floor(Math.random()*size), col=Math.floor(Math.random()*size);
+    var endR=row+dir[0]*(word.length-1), endC=col+dir[1]*(word.length-1);
+    if(endR<0||endR>=size||endC<0||endC>=size) continue;
+    var ok=true;
+    for(var i=0;i<word.length;i++){
+      var r=row+dir[0]*i, c=col+dir[1]*i, existing=grid[r][c];
+      if(existing && existing!==word[i]){ ok=false; break; }
+    }
+    if(!ok) continue;
+    var cells=[];
+    for(var i2=0;i2<word.length;i2++){
+      var r2=row+dir[0]*i2, c2=col+dir[1]*i2;
+      grid[r2][c2]=word[i2];
+      cells.push([r2,c2]);
+    }
+    return cells;
+  }
+  return null;
+}
+function generatePuzzle(words,size){
+  for(var attempt=0; attempt<50; attempt++){
+    var grid=[]; for(var r=0;r<size;r++){ grid.push(new Array(size).fill(null)); }
+    var sorted=words.slice().sort(function(a,b){return b.length-a.length});
+    var ok=true;
+    for(var i=0;i<sorted.length;i++){
+      var cells=tryPlace(grid,size,sorted[i]);
+      if(!cells){ ok=false; break; }
+    }
+    if(ok){
+      for(var rr=0;rr<size;rr++) for(var cc=0;cc<size;cc++){
+        if(!grid[rr][cc]) grid[rr][cc]=String.fromCharCode(65+Math.floor(Math.random()*26));
+      }
+      return grid;
+    }
+  }
+  return null; // astronomically unlikely with these word lists/sizes
+}
+
+/* ---------------- state ---------------- */
+var current = { theme:null, diff:null };
+var run = null; // active puzzle run state
+
+/* ---------------- screens ---------------- */
+var screens = {};
+document.querySelectorAll('.screen').forEach(function(s){ screens[s.id]=s; });
+function showScreen(id){
+  Object.keys(screens).forEach(function(k){ screens[k].classList.toggle('on', k===id); });
+  $('backBtn').classList.toggle('show', id!=='screen-home');
+  $('backLabel').textContent = id==='screen-game' ? 'Quit' : 'Themes';
+}
+function $(id){ return document.getElementById(id); }
+
+/* ---------------- home ---------------- */
+function bestKey(themeId,diffId){ return themeId+'.'+diffId; }
+function fmtTime(sec){
+  var m=Math.floor(sec/60), s=sec%60;
+  return m+':'+(s<10?'0':'')+s;
+}
+function renderHome(){
+  var html='';
+  THEMES.forEach(function(t){
+    var bestAny=null;
+    DIFFS.forEach(function(d){ var b=S.best[bestKey(t.id,d.id)]; if(b!=null && (bestAny==null||b<bestAny)) bestAny=b; });
+    html += '<button class="theme-card" data-theme="'+t.id+'">'+
+      '<span class="t-icon">'+t.icon+'</span>'+
+      '<span class="t-name">'+t.name+'</span>'+
+      '<div class="t-blurb">'+t.blurb+'</div>'+
+      '<div class="t-best">'+(bestAny!=null?('Best <b>'+fmtTime(bestAny)+'</b>'):'Not played yet')+'</div>'+
+      '</button>';
+  });
+  $('themeGrid').innerHTML=html;
+  $('themeGrid').querySelectorAll('.theme-card').forEach(function(btn){
+    btn.addEventListener('click', function(){ openDiff(btn.dataset.theme); });
+  });
+}
+
+/* ---------------- difficulty ---------------- */
+function openDiff(themeId){
+  current.theme = THEMES.filter(function(t){return t.id===themeId})[0];
+  current.diff = DIFFS[0];
+  $('diffIcon').textContent = current.theme.icon;
+  $('diffTitle').textContent = current.theme.name;
+  renderDiffList();
+  showScreen('screen-diff');
+}
+function renderDiffList(){
+  var html='';
+  DIFFS.forEach(function(d){
+    var best=S.best[bestKey(current.theme.id,d.id)];
+    html += '<button class="diff-row'+(current.diff.id===d.id?' sel':'')+'" data-diff="'+d.id+'">'+
+      '<span><span class="d-name">'+d.name+'</span><div class="d-sub">'+d.sub+'</div></span>'+
+      '<span class="d-best">'+(best!=null?fmtTime(best):'')+'</span>'+
+      '</button>';
+  });
+  $('diffList').innerHTML=html;
+  $('diffList').querySelectorAll('.diff-row').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      current.diff = DIFFS.filter(function(d){return d.id===btn.dataset.diff})[0];
+      renderDiffList();
+    });
+  });
+}
+
+/* ---------------- game ---------------- */
+function startGame(){
+  var theme=current.theme, diff=current.diff;
+  var pool=shuffle(theme.words.slice());
+  var words=pool.slice(0,diff.count);
+  var grid=generatePuzzle(words, diff.size);
+  if(!grid){ words=words.slice(0,Math.max(4,diff.count-2)); grid=generatePuzzle(words, diff.size); }
+
+  run = {
+    theme:theme, diff:diff, grid:grid, words:words,
+    found:{}, foundCount:0, startTs:Date.now(), timerId:null,
+    sel:null // {startR,startC,cells:[[r,c]...]}
+  };
+
+  document.body.setAttribute('data-theme', theme.id);
+  $('gameIcon').textContent=theme.icon;
+  $('gameName').textContent=theme.name;
+  $('gameFound').textContent='0/'+words.length;
+  $('gameTimer').textContent='0:00';
+
+  renderBoard();
+  renderWordbank();
+  showScreen('screen-game');
+
+  if(run.timerId) clearInterval(run.timerId);
+  run.timerId = setInterval(tickTimer, 1000);
+}
+
+function tickTimer(){
+  if(!run) return;
+  var sec=Math.floor((Date.now()-run.startTs)/1000);
+  $('gameTimer').textContent=fmtTime(sec);
+}
+
+function renderBoard(){
+  var size=run.diff.size;
+  var board=$('board');
+  board.style.setProperty('--n', size);
+  board.style.gridTemplateColumns='repeat('+size+',1fr)';
+  var html='';
+  for(var r=0;r<size;r++){
+    for(var c=0;c<size;c++){
+      html += '<div class="cell" data-r="'+r+'" data-c="'+c+'">'+run.grid[r][c]+'</div>';
+    }
+  }
+  board.innerHTML=html;
+  wireBoard(board);
+}
+
+function renderWordbank(){
+  var html='';
+  run.words.forEach(function(w){
+    html += '<span class="wchip'+(run.found[w]?' found':'')+'" data-word="'+w+'">'+w+'</span>';
+  });
+  $('wordbank').innerHTML=html;
+}
+
+/* ---- drag-to-select, pointer events cover mouse + touch + pen ---- */
+function wireBoard(board){
+  var cells = board.querySelectorAll('.cell');
+  function cellAt(r,c){ return board.querySelector('.cell[data-r="'+r+'"][data-c="'+c+'"]'); }
+
+  function clearSel(){
+    board.querySelectorAll('.cell.sel').forEach(function(el){ el.classList.remove('sel'); });
+  }
+  function flashBad(cellsList){
+    cellsList.forEach(function(rc){ var el=cellAt(rc[0],rc[1]); if(el) el.classList.add('bad'); });
+    setTimeout(function(){
+      cellsList.forEach(function(rc){ var el=cellAt(rc[0],rc[1]); if(el) el.classList.remove('bad'); });
+    }, 220);
+  }
+
+  function pathBetween(r0,c0,r1,c1){
+    var dr=r1-r0, dc=c1-c0;
+    var straight = dr===0 || dc===0 || Math.abs(dr)===Math.abs(dc);
+    if(!straight) return null;
+    var steps = Math.max(Math.abs(dr),Math.abs(dc));
+    var stepR = dr===0?0:(dr>0?1:-1), stepC = dc===0?0:(dc>0?1:-1);
+    var path=[];
+    for(var i=0;i<=steps;i++) path.push([r0+stepR*i, c0+stepC*i]);
+    return path;
+  }
+
+  function updateSelVisual(path){
+    clearSel();
+    path.forEach(function(rc){ var el=cellAt(rc[0],rc[1]); if(el) el.classList.add('sel'); });
+  }
+
+  function wordFromPath(path){
+    return path.map(function(rc){ return run.grid[rc[0]][rc[1]]; }).join('');
+  }
+
+  function finishSelection(){
+    if(!run.sel){ return; }
+    var path = run.sel.path || [];
+    clearSel();
+    if(path.length>1){
+      var straightWord = wordFromPath(path);
+      var revWord = straightWord.split('').reverse().join('');
+      var matchWord = null;
+      for(var i=0;i<run.words.length;i++){
+        var w=run.words[i];
+        if(run.found[w]) continue;
+        if(w===straightWord || w===revWord){ matchWord=w; break; }
+      }
+      if(matchWord){
+        run.found[matchWord]=true;
+        run.foundCount++;
+        path.forEach(function(rc){ var el=cellAt(rc[0],rc[1]); if(el) el.classList.add('found'); });
+        var chip = document.querySelector('.wchip[data-word="'+matchWord+'"]');
+        if(chip) chip.classList.add('found');
+        $('gameFound').textContent = run.foundCount+'/'+run.words.length;
+        sfxFound();
+        if(run.foundCount>=run.words.length){ setTimeout(finishGame, 250); }
+      } else {
+        flashBad(path);
+        sfxBad();
+      }
+    }
+    run.sel=null;
+  }
+
+  function pointerRC(e){
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    if(!el || !el.classList || !el.classList.contains('cell')) return null;
+    if(!board.contains(el)) return null;
+    return [parseInt(el.dataset.r,10), parseInt(el.dataset.c,10)];
+  }
+
+  board.addEventListener('pointerdown', function(e){
+    var rc = pointerRC(e);
+    if(!rc) return;
+    e.preventDefault();
+    try{ board.setPointerCapture(e.pointerId); }catch(err){}
+    run.sel = { r0:rc[0], c0:rc[1], path:[rc] };
+    updateSelVisual(run.sel.path);
+  });
+  board.addEventListener('pointermove', function(e){
+    if(!run.sel) return;
+    e.preventDefault();
+    var rc = pointerRC(e);
+    if(!rc) return;
+    var path = pathBetween(run.sel.r0, run.sel.c0, rc[0], rc[1]);
+    if(!path) return;
+    run.sel.path = path;
+    updateSelVisual(path);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(evt){
+    board.addEventListener(evt, function(e){
+      if(!run.sel) return;
+      finishSelection();
+    });
+  });
+}
+
+function finishGame(){
+  if(run.timerId){ clearInterval(run.timerId); run.timerId=null; }
+  var sec = Math.floor((Date.now()-run.startTs)/1000);
+  var key = bestKey(run.theme.id, run.diff.id);
+  var prevBest = S.best[key];
+  var isBest = prevBest==null || sec<prevBest;
+  if(isBest){ S.best[key]=sec; save(); }
+  $('winTime').textContent = fmtTime(sec);
+  $('winBest').textContent = isBest ? 'New best time!' : '';
+  $('winOverlay').classList.add('on');
+  sfxWin();
+}
+
+function quitGame(){
+  if(run && run.timerId){ clearInterval(run.timerId); run.timerId=null; }
+  run=null;
+}
+
+/* ---------------- wiring ---------------- */
+$('backBtn').addEventListener('click', function(){
+  if(!screens['screen-game'].classList.contains('on')){
+    showScreen('screen-home'); renderHome(); return;
+  }
+  quitGame();
+  showScreen('screen-home'); renderHome();
+});
+$('playBtn').addEventListener('click', startGame);
+$('winReplay').addEventListener('click', function(){
+  $('winOverlay').classList.remove('on');
+  startGame();
+});
+$('winHome').addEventListener('click', function(){
+  $('winOverlay').classList.remove('on');
+  quitGame();
+  showScreen('screen-home'); renderHome();
+});
+$('soundBtn').addEventListener('click', function(){
+  S.sound=!S.sound; save();
+  $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
+});
+$('soundBtn').textContent = S.sound ? '🔊' : '🔇';
+
+renderHome();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Constellation Connect</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C1024; --surface:#161C38; --ink:#EDEFF8; --muted:#8E96BC;
+  --accent:#8FB8F0; --accent2:#F0C86B; --line:rgba(237,239,248,.14);
+  --radius:18px; --shadow:0 10px 34px -12px rgba(0,0,0,.7);
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-body);background:#05060F;color:var(--ink);display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+#app{position:relative;width:100%;height:100%;max-width:520px;display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(120% 80% at 50% 0%,#1B2350 0%,#0C1024 45%,#05060F 100%)}
+.screen{position:relative;z-index:1;flex:1;display:none;flex-direction:column;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.screen.on{display:flex;animation:fade .35s ease}
+.screen.flat{padding:0;overflow:hidden}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.topbar{position:relative;z-index:3;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;min-height:48px}
+.spacer{flex:1}
+.iconbtn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.05);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:17px;transition:transform .15s,background .15s,opacity .2s}
+.iconbtn:hover{transform:translateY(-2px);background:rgba(255,255,255,.1)}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn.off{opacity:.4}
+.iconbtn:focus-visible,button:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+h1.logo{font-family:var(--font-display);font-weight:900;font-size:clamp(38px,11vw,52px);letter-spacing:-.035em;line-height:.94;text-align:center}
+h1.logo .dot{color:var(--accent2)}
+.tag{text-align:center;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-top:12px;font-weight:600}
+h2.title{font-family:var(--font-display);font-weight:600;font-size:26px;letter-spacing:-.02em;margin-bottom:3px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 0 10px}
+.btn{width:100%;padding:16px 18px;border-radius:var(--radius);border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:13px;transition:transform .16s cubic-bezier(.34,1.56,.64,1),background .16s,border-color .16s}
+.btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.09);border-color:var(--accent)}
+.btn:active{transform:scale(.975)}
+.btn .ic{font-size:20px;width:26px;text-align:center;flex:none}
+.btn .arw{margin-left:auto;color:var(--muted);font-size:16px}
+.btn.primary{background:var(--accent);color:#0C1024;border-color:transparent}
+.btn.primary .arw{color:#0C1024;opacity:.7}
+.btn.ghost{background:transparent}
+.menu{display:flex;flex-direction:column;gap:11px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.stat b{display:block;font-family:var(--font-display);font-size:22px;font-weight:600}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rules li{margin:0 0 9px 18px;font-size:13.5px;line-height:1.55}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.card{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;transition:transform .16s,border-color .16s,background .16s}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card canvas{width:100%;height:96px;display:block;border-radius:10px;background:rgba(0,0,0,.28)}
+.card .nm{font-family:var(--font-display);font-size:15px;font-weight:600;margin-top:7px}
+.card .mt{font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.card.done{border-color:rgba(240,200,107,.5)}
+.card.done .mt{color:var(--accent2)}
+.hud{display:flex;align-items:center;gap:7px;padding:8px 14px 4px}
+.pill{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--muted)}
+.pill b{color:var(--ink);font-weight:700}
+#sky{flex:1;width:100%;display:block;touch-action:none}
+.tray{display:flex;gap:9px;padding:9px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(0,0,0,.3)}
+.tbtn{flex:1;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.tbtn.on{background:var(--accent);color:#0C1024;border-color:transparent}
+.overlay{position:absolute;inset:0;z-index:6;background:rgba(5,6,15,.72);display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px)}
+.overlay.on{display:flex;animation:fade .4s ease}
+.panel{background:linear-gradient(180deg,#1B2350,#121736);border:1px solid var(--line);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;text-align:center;box-shadow:var(--shadow)}
+.panel h3{font-family:var(--font-display);font-size:30px;font-weight:600;margin-bottom:2px;color:var(--accent2)}
+.panel .lat{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+#toast{position:absolute;left:50%;bottom:110px;transform:translate(-50%,14px);z-index:9;background:var(--accent2);color:#12162E;padding:11px 18px;border-radius:999px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="visibility:hidden" aria-label="Back">←</button>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="sfxBtn" aria-label="Toggle sound">🔔</button>
+  </div>
+
+  <section class="screen on" id="s-main">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <h1 class="logo">Constellation<span class="dot">·</span></h1>
+      <p class="tag">join the dots of the night</p>
+      <div class="stats">
+        <div class="stat"><b id="mFound">0</b><span>traced</span></div>
+        <div class="stat"><b id="mTotal">0</b><span>in the sky</span></div>
+        <div class="stat"><b id="mLines">0</b><span>lines drawn</span></div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="btn primary" id="nextBtn"><span class="ic">✦</span>Trace the next one<span class="arw">→</span></button>
+      <button class="btn" id="mapBtn"><span class="ic">🌌</span>Sky map<span class="arw">→</span></button>
+      <button class="btn ghost" id="helpBtn"><span class="ic">?</span>How to play<span class="arw">→</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-map">
+    <h2 class="title">Sky map</h2>
+    <p class="sub" id="mapSub">—</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="screen flat" id="s-game">
+    <div class="hud">
+      <span class="pill" id="pName">—</span>
+      <span class="pill"><b id="pDone">0</b>/<b id="pTot">0</b> lines</span>
+    </div>
+    <canvas id="sky"></canvas>
+    <div class="tray">
+      <button class="tbtn" id="guideBtn">◌ Guide lines</button>
+      <button class="tbtn" id="hintBtn">✨ Hint</button>
+      <button class="tbtn" id="labelBtn">Aa Star names</button>
+    </div>
+    <div class="overlay" id="endOv">
+      <div class="panel">
+        <h3 id="endName">—</h3>
+        <div class="lat" id="endLat">—</div>
+        <canvas id="endShot" style="width:100%;height:150px;border-radius:12px;background:rgba(0,0,0,.35)"></canvas>
+        <p class="sub" style="margin:14px 0 16px" id="endFact">—</p>
+        <button class="btn primary" id="nextConst" style="justify-content:center">Next constellation</button>
+        <button class="btn ghost" id="endHome" style="justify-content:center;margin-top:9px">Sky map</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-help">
+    <h2 class="title">How to play</h2>
+    <p class="sub">Every pattern here is a real constellation, drawn the way star charts draw it.</p>
+    <ul class="rules">
+      <li><b>Drag from one bright star to another</b> to draw a line between them.</li>
+      <li>If the line belongs to the figure it stays lit. If not, it fades away — no penalty.</li>
+      <li>The dim stars scattered around are background sky. Ignore them.</li>
+      <li><b>Guide lines</b> shows the whole figure faintly. <b>Hint</b> flashes one missing line.</li>
+      <li>Complete a figure and it joins your <b>sky map</b>.</li>
+    </ul>
+    <button class="btn ghost" id="helpBack" style="justify-content:center;margin-top:24px">Got it</button>
+  </section>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+/* =============== DATA: real constellation figures =============== */
+/* x,y are chart coordinates (0..1), b = brightness rank (3 brightest) */
+const SKY=[
+{id:'crux',name:'Crux',lat:'The Southern Cross',
+ fact:'The smallest constellation of all, and the signpost of southern skies.',
+ stars:[['Acrux',.50,.88,3],['Gacrux',.50,.14,3],['Mimosa',.78,.50,3],['Delta',.22,.44,2],['Epsilon',.60,.62,1]],
+ lines:[[0,1],[2,3]]},
+{id:'cass',name:'Cassiopeia',lat:'The Seated Queen',
+ fact:'A bright W on one side of Polaris, with the Plough on the other.',
+ stars:[['Caph',.10,.36,3],['Schedar',.31,.64,3],['Gamma',.50,.28,3],['Ruchbah',.70,.62,2],['Segin',.90,.38,2]],
+ lines:[[0,1],[1,2],[2,3],[3,4]]},
+{id:'lyra',name:'Lyra',lat:'The Harp',
+ fact:'Vega, the top star, is one of the brightest in the northern sky.',
+ stars:[['Vega',.34,.12,3],['Zeta',.30,.40,1],['Delta',.62,.46,1],['Sulafat',.68,.76,2],['Sheliak',.36,.72,2]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,1]]},
+{id:'delph',name:'Delphinus',lat:'The Dolphin',
+ fact:'A tiny leaping dolphin — easy to miss, and hard to forget once found.',
+ stars:[['Sualocin',.42,.32,2],['Gamma',.60,.36,2],['Delta',.56,.58,1],['Rotanev',.36,.54,2],['Epsilon',.28,.76,1]],
+ lines:[[0,1],[1,2],[2,3],[3,0],[3,4]]},
+{id:'coro',name:'Corona Borealis',lat:'The Northern Crown',
+ fact:'A neat arc of stars with Alphecca as its single jewel.',
+ stars:[['Theta',.12,.46,1],['Beta',.25,.32,2],['Alphecca',.42,.26,3],['Gamma',.58,.32,1],['Delta',.71,.42,1],['Epsilon',.81,.56,1],['Iota',.88,.72,1]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]]},
+{id:'cyg',name:'Cygnus',lat:'The Swan',
+ fact:'Also called the Northern Cross. Deneb marks the tail, Albireo the beak.',
+ stars:[['Deneb',.50,.10,3],['Sadr',.50,.44,2],['Albireo',.50,.88,2],['Gienah',.16,.54,2],['Delta',.84,.34,2]],
+ lines:[[0,1],[1,2],[3,1],[1,4]]},
+{id:'uma',name:'Ursa Major',lat:'The Plough',
+ fact:'The two stars at the end of the bowl point the way to Polaris.',
+ stars:[['Alkaid',.06,.62,3],['Mizar',.22,.50,3],['Alioth',.36,.42,3],['Megrez',.52,.42,2],['Phecda',.58,.62,3],['Merak',.82,.64,3],['Dubhe',.78,.34,3]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]]},
+{id:'umi',name:'Ursa Minor',lat:'The Little Bear',
+ fact:'Polaris sits at the end of the handle, almost exactly above the north pole.',
+ stars:[['Polaris',.12,.16,3],['Yildun',.26,.30,1],['Epsilon',.40,.42,1],['Zeta',.52,.52,2],['Eta',.62,.72,1],['Kochab',.82,.46,3],['Pherkad',.88,.68,2]],
+ lines:[[0,1],[1,2],[2,3],[3,5],[5,6],[6,4],[4,3]]},
+{id:'aql',name:'Aquila',lat:'The Eagle',
+ fact:'Altair, the eagle’s eye, is one corner of the Summer Triangle.',
+ stars:[['Altair',.44,.44,3],['Tarazed',.40,.28,2],['Alshain',.48,.60,2],['Delta',.62,.52,1],['Zeta',.78,.38,2],['Lambda',.54,.84,1],['Theta',.72,.78,2]],
+ lines:[[1,0],[0,2],[0,3],[3,4],[3,6],[6,5]]},
+{id:'boo',name:'Boötes',lat:'The Herdsman',
+ fact:'A kite, or an ice cream cone, with orange Arcturus at the point.',
+ stars:[['Arcturus',.42,.88,3],['Izar',.58,.52,2],['Delta',.62,.32,1],['Nekkar',.46,.20,2],['Seginus',.32,.34,2],['Rho',.26,.60,1]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]]},
+{id:'and',name:'Andromeda',lat:'The Chained Princess',
+ fact:'Chained to the sky beside Pegasus. Her galaxy is a faint smudge nearby.',
+ stars:[['Alpheratz',.16,.74,3],['Delta',.36,.60,2],['Mirach',.54,.48,3],['Almach',.80,.28,3],['Mu',.46,.30,1],['Nu',.42,.18,1]],
+ lines:[[0,1],[1,2],[2,3],[2,4],[4,5]]},
+{id:'ori',name:'Orion',lat:'The Hunter',
+ fact:'Betelgeuse burns red at the shoulder; Rigel blue-white at the foot.',
+ stars:[['Betelgeuse',.28,.28,3],['Bellatrix',.68,.26,3],['Meissa',.48,.10,1],['Alnitak',.36,.52,3],['Alnilam',.50,.54,3],['Mintaka',.64,.56,3],['Saiph',.32,.84,2],['Rigel',.72,.86,3]],
+ lines:[[0,2],[2,1],[0,3],[1,5],[3,4],[4,5],[3,6],[5,7],[6,7]]},
+{id:'cma',name:'Canis Major',lat:'The Great Dog',
+ fact:'Sirius is the brightest star in the whole night sky.',
+ stars:[['Sirius',.38,.26,3],['Mirzam',.20,.34,2],['Wezen',.54,.66,2],['Adhara',.36,.78,2],['Aludra',.68,.68,2],['Furud',.24,.88,1]],
+ lines:[[1,0],[0,2],[2,3],[3,5],[2,4]]},
+{id:'peg',name:'Pegasus',lat:'The Winged Horse',
+ fact:'The Great Square borrows one of its corners from Andromeda.',
+ stars:[['Markab',.36,.66,3],['Scheat',.36,.32,3],['Alpheratz',.70,.28,3],['Algenib',.70,.64,2],['Homam',.20,.78,1],['Enif',.07,.88,2],['Matar',.20,.18,1]],
+ lines:[[0,1],[1,2],[2,3],[3,0],[0,4],[4,5],[1,6]]},
+{id:'leo',name:'Leo',lat:'The Lion',
+ fact:'The curve of the Sickle is the mane, with Regulus at its base.',
+ stars:[['Regulus',.26,.74,3],['Eta',.26,.60,1],['Algieba',.29,.46,3],['Zeta',.34,.34,2],['Mu',.42,.24,1],['Epsilon',.53,.22,2],['Zosma',.68,.44,2],['Denebola',.88,.46,3],['Chertan',.66,.62,1]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[2,6],[6,7],[7,8],[8,0]]},
+{id:'tau',name:'Taurus',lat:'The Bull',
+ fact:'The V of the face is the Hyades cluster; Aldebaran glows orange at its tip.',
+ stars:[['Aldebaran',.46,.62,3],['Theta',.36,.68,1],['Gamma',.27,.60,1],['Delta',.31,.51,1],['Epsilon',.40,.47,2],['Elnath',.74,.20,3],['Zeta',.80,.64,2]],
+ lines:[[2,3],[3,4],[4,0],[2,1],[1,0],[4,5],[0,6]]},
+{id:'gem',name:'Gemini',lat:'The Twins',
+ fact:'Castor and Pollux are the two bright heads, side by side.',
+ stars:[['Castor',.26,.12,3],['Pollux',.56,.16,3],['Mebsuta',.34,.38,2],['Tejat',.26,.58,2],['Alzirr',.36,.84,1],['Wasat',.54,.44,1],['Mekbuda',.58,.62,1],['Alhena',.68,.86,3]],
+ lines:[[0,1],[0,2],[2,3],[3,4],[1,5],[5,6],[6,7],[2,5]]},
+{id:'per',name:'Perseus',lat:'The Hero',
+ fact:'Algol dims noticeably every couple of days as a companion star crosses it.',
+ stars:[['Mirfak',.46,.40,3],['Algol',.34,.62,3],['Gamma',.52,.24,2],['Delta',.60,.52,2],['Epsilon',.64,.74,2],['Zeta',.54,.86,2],['Rho',.26,.74,1]],
+ lines:[[2,0],[0,1],[1,6],[0,3],[3,4],[4,5]]},
+{id:'sgr',name:'Sagittarius',lat:'The Teapot',
+ fact:'The bright stars make a teapot, with the Milky Way rising like steam.',
+ stars:[['Kaus Borealis',.40,.36,2],['Kaus Media',.32,.56,2],['Kaus Australis',.28,.76,3],['Ascella',.60,.64,2],['Tau',.74,.56,1],['Nunki',.68,.38,2],['Phi',.54,.44,1]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[6,3]]},
+{id:'sco',name:'Scorpius',lat:'The Scorpion',
+ fact:'Antares, the heart of the scorpion, is a red supergiant.',
+ stars:[['Graffias',.76,.08,2],['Dschubba',.68,.20,2],['Pi',.62,.30,1],['Antares',.60,.42,3],['Tau',.58,.54,1],['Epsilon',.50,.64,2],['Mu',.40,.72,1],['Zeta',.30,.78,1],['Eta',.22,.86,1],['Shaula',.13,.78,3],['Lesath',.08,.70,2]],
+ lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10]]},
+{id:'dra',name:'Draco',lat:'The Dragon',
+ fact:'Thuban, along its coils, was the pole star when the pyramids were built.',
+ stars:[['Nu',.72,.08,1],['Rastaban',.64,.18,2],['Eltanin',.78,.22,3],['Grumium',.84,.10,1],['Xi',.62,.34,1],['Delta',.50,.38,1],['Zeta',.40,.30,1],['Eta',.30,.46,2],['Thuban',.28,.62,2],['Edasich',.40,.74,2],['Kappa',.56,.84,1]],
+ lines:[[0,1],[1,2],[2,3],[3,0],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10]]}
+];
+
+/* =============== STATE =============== */
+const KEY='constellation.v1';
+let S={found:{},lines:0,sfx:true,guide:false,labels:true};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const $=id=>document.getElementById(id);
+let cur='s-main';
+function go(id){const f=$(cur);if(f)f.classList.remove('on');cur=id;$(id).classList.add('on');
+  $('backBtn').style.visibility=id==='s-main'?'hidden':'visible';
+  if(id==='s-main')refreshMenu(); if(id==='s-map')buildMap();}
+let tT=null;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),1600);}
+let AC=null;
+function beep(f,d,ty,v){
+  if(!S.sfx)return;
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  if(AC.state==='suspended')AC.resume();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=ty||'sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,AC.currentTime);g.gain.linearRampToValueAtTime(v||.1,AC.currentTime+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(d||.2));
+  o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.2)+.03);
+}
+const sndGood=n=>{beep(500+n*45,.22,'sine',.09);setTimeout(()=>beep(760+n*45,.26,'sine',.05),60);};
+const sndBad=()=>beep(150,.14,'sine',.06);
+const sndWin=()=>{[523,659,784,1046,1318,1568].forEach((f,i)=>setTimeout(()=>beep(f,.5,'sine',.075),i*130));};
+
+/* =============== GAME =============== */
+const G={c:null,pts:[],decoys:[],done:[],drag:null,hint:-1,hintT:0,flash:0,t0:0,idx:0};
+const cv=$('sky'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1,BOX={x:0,y:0,w:0,h:0};
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2.5);
+  W=cv.clientWidth;H=cv.clientHeight;
+  if(!W||!H){
+    // the canvas is still hidden — lay the stars out on a best guess so the
+    // constellation is never left without positions
+    W=W||document.getElementById('app').clientWidth||360;
+    H=H||Math.max(320,window.innerHeight-220);
+  }
+  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const m=Math.min(W,H)*.10;
+  const side=Math.min(W-m*2,H-m*2);
+  BOX={x:(W-side)/2,y:(H-side)/2,w:side,h:side};
+  layoutPts();
+}
+function layoutPts(){
+  if(!G.c)return;
+  G.pts=G.c.stars.map(s=>({name:s[0],x:BOX.x+s[1]*BOX.w,y:BOX.y+s[2]*BOX.h,b:s[3],lit:false}));
+  G.decoys.forEach(d=>{d.px=BOX.x+d.x*BOX.w*1.6-BOX.w*.3;d.py=BOX.y+d.y*BOX.h*1.6-BOX.h*.3;});
+}
+function loadConst(i){
+  G.idx=i;G.c=SKY[i];G.done=[];G.drag=null;G.hint=-1;G.flash=0;
+  G.decoys=[];
+  const n=34;
+  for(let k=0;k<n;k++){
+    let x,y,ok=false,tries=0;
+    while(!ok&&tries++<30){
+      x=Math.random();y=Math.random();ok=true;
+      for(const s of G.c.stars){
+        const sx=(s[1]+.3)/1.6, sy=(s[2]+.3)/1.6;
+        if(Math.hypot(x-sx,y-sy)<.055){ok=false;break;}
+      }
+    }
+    G.decoys.push({x,y,b:Math.random(),ph:Math.random()*6.283});
+  }
+  resize();
+  $('endOv').classList.remove('on');
+  $('guideBtn').classList.toggle('on',S.guide);
+  $('labelBtn').classList.toggle('on',S.labels);
+  G.t0=performance.now();
+  updateHUD();
+}
+function updateHUD(){
+  $('pName').textContent=G.c?G.c.name:'—';
+  $('pDone').textContent=G.done.length;
+  $('pTot').textContent=G.c?G.c.lines.length:0;
+}
+function lineKey(a,b){return a<b?a+'-'+b:b+'-'+a;}
+function tryLine(a,b){
+  if(a===b||!G.pts[a]||!G.pts[b])return;
+  const k=lineKey(a,b);
+  if(G.done.some(d=>lineKey(d[0],d[1])===k)){toast('Already drawn');return;}
+  const found=G.c.lines.find(l=>lineKey(l[0],l[1])===k);
+  if(found){
+    G.done.push([a,b]);
+    G.pts[a].lit=G.pts[b].lit=true;
+    S.lines++;save();
+    sndGood(G.done.length);
+    updateHUD();
+    if(G.done.length===G.c.lines.length)win();
+  }else{
+    sndBad();
+    G.flash=1;
+  }
+}
+function win(){
+  G.flash=0;
+  const first=!S.found[G.c.id];
+  S.found[G.c.id]=true;save();
+  sndWin();
+  setTimeout(()=>{
+    $('endName').textContent=G.c.name;
+    $('endLat').textContent=G.c.lat;
+    $('endFact').textContent=G.c.fact;
+    const sh=$('endShot');
+    const r=sh.getBoundingClientRect();
+    sh.width=Math.round(r.width*2);sh.height=Math.round(r.height*2);
+    drawMini(sh.getContext('2d'),sh.width,sh.height,G.c,true,2);
+    const left=SKY.filter(c=>!S.found[c.id]).length;
+    $('nextConst').textContent = left ? 'Next constellation' : 'The sky is complete';
+    $('endOv').classList.add('on');
+    if(first&&left===0)toast('Every constellation traced');
+  },1200);
+}
+
+/* --- drawing --- */
+function starGlow(c,x,y,r,col,a){
+  const g=c.createRadialGradient(x,y,0,x,y,r*5);
+  g.addColorStop(0,'rgba(255,255,255,'+a+')');
+  g.addColorStop(.25,col.replace('ALPHA',a*.55));
+  g.addColorStop(1,col.replace('ALPHA',0));
+  c.fillStyle=g;c.beginPath();c.arc(x,y,r*5,0,7);c.fill();
+}
+function draw(){
+  if(W&&G.c){
+    const t=performance.now()/1000;
+    ctx.clearRect(0,0,W,H);
+    // faint milky band
+    const mg=ctx.createLinearGradient(0,0,W,H);
+    mg.addColorStop(0,'rgba(150,170,255,0)');
+    mg.addColorStop(.5,'rgba(150,170,255,.05)');
+    mg.addColorStop(1,'rgba(150,170,255,0)');
+    ctx.fillStyle=mg;ctx.fillRect(0,0,W,H);
+    // decoys
+    G.decoys.forEach(d=>{
+      const tw=.35+.3*Math.sin(t*1.6+d.ph);
+      const r=.7+d.b*1.5;
+      ctx.fillStyle='rgba(220,230,255,'+(tw*(.3+d.b*.5))+')';
+      ctx.beginPath();ctx.arc(d.px,d.py,r,0,7);ctx.fill();
+    });
+    // guide lines
+    if(S.guide){
+      ctx.save();ctx.setLineDash([3,7]);ctx.strokeStyle='rgba(143,184,240,.28)';ctx.lineWidth=1.2;
+      G.c.lines.forEach(l=>{
+        if(G.done.some(d=>lineKey(d[0],d[1])===lineKey(l[0],l[1])))return;
+        ctx.beginPath();ctx.moveTo(G.pts[l[0]].x,G.pts[l[0]].y);ctx.lineTo(G.pts[l[1]].x,G.pts[l[1]].y);ctx.stroke();
+      });
+      ctx.restore();
+    }
+    // hint flash
+    if(G.hint>=0&&performance.now()<G.hintT){
+      const l=G.c.lines[G.hint];
+      const a=.35+.35*Math.sin(performance.now()/110);
+      ctx.strokeStyle='rgba(240,200,107,'+a+')';ctx.lineWidth=2.4;
+      ctx.beginPath();ctx.moveTo(G.pts[l[0]].x,G.pts[l[0]].y);ctx.lineTo(G.pts[l[1]].x,G.pts[l[1]].y);ctx.stroke();
+    }
+    // completed lines
+    const full=G.done.length===G.c.lines.length;
+    G.done.forEach((l,i)=>{
+      const p=G.pts[l[0]],q=G.pts[l[1]];
+      const pulse=full?(.55+.45*Math.sin(t*2.2-i*.4)):1;
+      ctx.strokeStyle='rgba(143,184,240,'+(.30*pulse)+')';ctx.lineWidth=7;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
+      ctx.strokeStyle='rgba(226,238,255,'+(.85*pulse)+')';ctx.lineWidth=1.7;
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
+    });
+    // rubber band
+    if(G.drag){
+      const p=G.pts[G.drag.a];
+      ctx.strokeStyle='rgba(240,200,107,.75)';ctx.lineWidth=1.6;ctx.setLineDash([5,5]);
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(G.drag.x,G.drag.y);ctx.stroke();
+      ctx.setLineDash([]);
+      if(G.drag.over>=0){
+        const q=G.pts[G.drag.over];
+        ctx.strokeStyle='rgba(240,200,107,.9)';ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(q.x,q.y,16,0,7);ctx.stroke();
+      }
+    }
+    // stars
+    G.pts.forEach((p,i)=>{
+      const tw=.85+.15*Math.sin(t*2+i);
+      const r=(2.1+p.b*1.25)*tw;
+      const col = p.lit ? 'rgba(240,200,107,ALPHA)' : 'rgba(160,190,255,ALPHA)';
+      starGlow(ctx,p.x,p.y,r,col,p.lit?.6:.35);
+      ctx.fillStyle='#FFFFFF';
+      ctx.beginPath();ctx.arc(p.x,p.y,r,0,7);ctx.fill();
+      if(p.b>=3){
+        ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(p.x-r*2.6,p.y);ctx.lineTo(p.x+r*2.6,p.y);
+        ctx.moveTo(p.x,p.y-r*2.6);ctx.lineTo(p.x,p.y+r*2.6);ctx.stroke();
+      }
+      if(S.labels){
+        ctx.fillStyle='rgba(237,239,248,'+(p.lit?.68:.34)+')';
+        ctx.font='500 10px Outfit,sans-serif';ctx.textAlign='center';
+        ctx.fillText(p.name,p.x,p.y-r-8);
+      }
+    });
+    if(G.flash>0){
+      ctx.fillStyle='rgba(255,120,120,'+(G.flash*.10)+')';
+      ctx.fillRect(0,0,W,H);G.flash-=.05;
+    }
+    if(full){
+      ctx.fillStyle='rgba(240,200,107,.9)';
+      ctx.font='600 22px Fraunces,serif';ctx.textAlign='center';
+      ctx.fillText(G.c.name,W/2,BOX.y+BOX.h+34);
+    }
+  }
+  requestAnimationFrame(draw);
+}
+
+function drawMini(c,w,h,cst,lit,scale){
+  c.clearRect(0,0,w,h);
+  const m=Math.min(w,h)*.12;
+  const side=Math.min(w-m*2,h-m*2);
+  const ox=(w-side)/2, oy=(h-side)/2;
+  const P=cst.stars.map(s=>({x:ox+s[1]*side,y:oy+s[2]*side,b:s[3]}));
+  if(lit){
+    c.strokeStyle='rgba(143,184,240,.85)';c.lineWidth=1.2*(scale||1);c.lineCap='round';
+    cst.lines.forEach(l=>{c.beginPath();c.moveTo(P[l[0]].x,P[l[0]].y);c.lineTo(P[l[1]].x,P[l[1]].y);c.stroke();});
+  }
+  P.forEach(p=>{
+    const r=(.9+p.b*.7)*(scale||1);
+    c.fillStyle=lit?'#FFF6DC':'rgba(200,214,255,.55)';
+    c.beginPath();c.arc(p.x,p.y,r,0,7);c.fill();
+    if(lit){
+      const g=c.createRadialGradient(p.x,p.y,0,p.x,p.y,r*4);
+      g.addColorStop(0,'rgba(240,200,107,.45)');g.addColorStop(1,'rgba(240,200,107,0)');
+      c.fillStyle=g;c.beginPath();c.arc(p.x,p.y,r*4,0,7);c.fill();
+    }
+  });
+}
+
+/* --- input --- */
+function nearest(x,y){
+  let bi=-1,bd=26;
+  G.pts.forEach((p,i)=>{const d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;bi=i;}});
+  return bi;
+}
+cv.addEventListener('pointerdown',e=>{
+  if(!G.c)return;
+  const r=cv.getBoundingClientRect();
+  const x=e.clientX-r.left,y=e.clientY-r.top;
+  const i=nearest(x,y);
+  if(i<0)return;
+  cv.setPointerCapture(e.pointerId);
+  G.drag={a:i,x,y,over:-1,id:e.pointerId};
+  beep(360,.05,'sine',.05);
+});
+cv.addEventListener('pointermove',e=>{
+  if(!G.drag||e.pointerId!==G.drag.id)return;
+  const r=cv.getBoundingClientRect();
+  G.drag.x=e.clientX-r.left;G.drag.y=e.clientY-r.top;
+  const i=nearest(G.drag.x,G.drag.y);
+  G.drag.over=(i>=0&&i!==G.drag.a)?i:-1;
+});
+function up(e){
+  if(!G.drag||e.pointerId!==G.drag.id)return;
+  const b=G.drag.over;const a=G.drag.a;
+  G.drag=null;
+  if(b>=0)tryLine(a,b);
+}
+cv.addEventListener('pointerup',up);
+cv.addEventListener('pointercancel',()=>{G.drag=null;});
+
+/* =============== MAP =============== */
+function buildMap(){
+  const wrap=$('cards');wrap.innerHTML='';
+  const found=SKY.filter(c=>S.found[c.id]).length;
+  $('mapSub').textContent=found+' of '+SKY.length+' traced. Tap any to trace it again.';
+  SKY.forEach((c,i)=>{
+    const done=!!S.found[c.id];
+    const el=document.createElement('div');
+    el.className='card'+(done?' done':'');
+    el.innerHTML='<canvas></canvas><div class="nm">'+(done?c.name:'? ? ?')+'</div>'+
+      '<div class="mt">'+(done?'✦ traced':(c.lines.length+' lines'))+'</div>';
+    wrap.appendChild(el);
+    const cn=el.querySelector('canvas');
+    const r=cn.getBoundingClientRect();
+    cn.width=Math.round((r.width||150)*2);cn.height=Math.round(96*2);
+    drawMini(cn.getContext('2d'),cn.width,cn.height,c,done,1.6);
+    el.onclick=()=>{go('s-game');loadConst(i);setTimeout(resize,40);};
+  });
+}
+function nextIndex(){
+  for(let i=0;i<SKY.length;i++)if(!S.found[SKY[i].id])return i;
+  return Math.floor(Math.random()*SKY.length);
+}
+
+/* =============== WIRING =============== */
+function refreshMenu(){
+  $('mFound').textContent=SKY.filter(c=>S.found[c.id]).length;
+  $('mTotal').textContent=SKY.length;
+  $('mLines').textContent=S.lines;
+}
+$('nextBtn').onclick=()=>{go('s-game');loadConst(nextIndex());setTimeout(resize,40);};
+$('mapBtn').onclick=()=>go('s-map');
+$('helpBtn').onclick=()=>go('s-help');
+$('helpBack').onclick=()=>go('s-main');
+$('backBtn').onclick=()=>go(cur==='s-game'?'s-map':'s-main');
+$('nextConst').onclick=()=>{$('endOv').classList.remove('on');loadConst(nextIndex());setTimeout(resize,30);};
+$('endHome').onclick=()=>{$('endOv').classList.remove('on');go('s-map');};
+$('guideBtn').onclick=()=>{S.guide=!S.guide;save();$('guideBtn').classList.toggle('on',S.guide);};
+$('labelBtn').onclick=()=>{S.labels=!S.labels;save();$('labelBtn').classList.toggle('on',S.labels);};
+$('hintBtn').onclick=()=>{
+  if(!G.c)return;
+  const rem=G.c.lines.map((l,i)=>i).filter(i=>!G.done.some(d=>lineKey(d[0],d[1])===lineKey(G.c.lines[i][0],G.c.lines[i][1])));
+  if(!rem.length)return;
+  G.hint=rem[Math.floor(Math.random()*rem.length)];
+  G.hintT=performance.now()+2200;
+  beep(880,.12,'sine',.07);
+};
+$('sfxBtn').onclick=()=>{S.sfx=!S.sfx;save();$('sfxBtn').classList.toggle('off',!S.sfx);beep(600,.08,'sine',.1);};
+$('sfxBtn').classList.toggle('off',!S.sfx);
+refreshMenu();
+window.addEventListener('resize',resize);
+new ResizeObserver(resize).observe(cv);
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

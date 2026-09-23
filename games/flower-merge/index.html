@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Flower Merge</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F0E4; --surface:#FFFDF6; --ink:#2E2A22; --muted:#8B8474;
+  --accent:#7FA05B; --accent2:#D97F8F; --line:rgba(46,42,34,.12);
+  --soil:#E6DFCC; --radius:18px; --shadow:0 10px 30px -12px rgba(0,0,0,.25);
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-body);background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none}
+#app{position:relative;width:100%;height:100%;max-width:520px;display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(120% 70% at 50% 0%,#FBF8EE 0%,#F3F0E4 60%)}
+.screen{position:relative;z-index:1;flex:1;display:none;flex-direction:column;padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+.screen.on{display:flex;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.topbar{position:relative;z-index:3;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 6px;min-height:48px}
+.spacer{flex:1}
+.iconbtn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:17px;transition:transform .15s,box-shadow .15s,opacity .2s}
+.iconbtn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn.off{opacity:.42}
+.iconbtn:focus-visible,button:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+h1.logo{font-family:var(--font-display);font-weight:900;font-size:clamp(40px,12vw,56px);letter-spacing:-.035em;line-height:.92;text-align:center}
+h1.logo .dot{color:var(--accent2)}
+.tag{text-align:center;font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-top:12px;font-weight:600}
+h2.title{font-family:var(--font-display);font-weight:600;font-size:26px;letter-spacing:-.02em;margin-bottom:3px}
+.sub{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.eyebrow{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 0 10px}
+.btn{width:100%;padding:16px 18px;border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:13px;transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s,border-color .16s}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--accent)}
+.btn:active{transform:scale(.975)}
+.btn .ic{font-size:20px;width:26px;text-align:center;flex:none}
+.btn .arw{margin-left:auto;color:var(--muted);font-size:16px}
+.btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+.btn.primary .arw{color:#fff;opacity:.8}
+.btn.ghost{background:transparent}
+.menu{display:flex;flex-direction:column;gap:11px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.stat b{display:block;font-family:var(--font-display);font-size:22px;font-weight:600}
+.stat span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rules li{margin:0 0 9px 18px;font-size:13.5px;line-height:1.55}
+
+/* ===== GAME ===== */
+#s-game{justify-content:center}
+.scorerow{display:flex;gap:10px;margin-bottom:12px}
+.sc{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 12px;text-align:center;position:relative;overflow:hidden}
+.sc span{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.sc b{display:block;font-family:var(--font-display);font-size:23px;font-weight:600;line-height:1.15}
+.gain{position:absolute;left:0;right:0;top:8px;font-weight:700;color:var(--accent);animation:rise .9s ease-out forwards;pointer-events:none}
+@keyframes rise{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-26px)}}
+#boardWrap{position:relative;width:100%;aspect-ratio:1;background:var(--soil);border-radius:22px;touch-action:none;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.07)}
+.cellbg{position:absolute;background:rgba(255,255,255,.5);border-radius:14px}
+.tile{position:absolute;border-radius:14px;display:grid;place-items:center;background:var(--surface);
+  box-shadow:0 3px 10px -4px rgba(0,0,0,.28);transition:transform .13s ease-out;will-change:transform}
+.tile svg{width:82%;height:82%;display:block;overflow:visible}
+.tile .nm{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:8.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);font-weight:700;pointer-events:none}
+.tile.new{animation:sprout .22s ease-out}
+@keyframes sprout{from{transform:var(--tf) scale(.2);opacity:0}to{transform:var(--tf) scale(1);opacity:1}}
+.tile.pop{animation:pop .26s cubic-bezier(.34,1.7,.64,1)}
+@keyframes pop{0%{transform:var(--tf) scale(1)}45%{transform:var(--tf) scale(1.22)}100%{transform:var(--tf) scale(1)}}
+.ring{position:absolute;border-radius:50%;border:2px solid var(--accent2);pointer-events:none;animation:ring .55s ease-out forwards}
+@keyframes ring{from{opacity:.7;transform:scale(.35)}to{opacity:0;transform:scale(1.9)}}
+.tools{display:flex;gap:9px;margin-top:14px}
+.tbtn{flex:1;padding:13px;border-radius:15px;border:1px solid var(--line);background:var(--surface);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;transition:transform .15s}
+.tbtn:active{transform:scale(.96)}
+.tbtn:disabled{opacity:.4;cursor:default}
+.hint{text-align:center;font-size:12px;color:var(--muted);margin-top:12px}
+.overlay{position:absolute;inset:0;z-index:6;background:rgba(46,42,34,.5);display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
+.overlay.on{display:flex;animation:fade .3s ease}
+.panel{background:var(--surface);border-radius:24px;padding:26px 22px;width:100%;max-width:340px;text-align:center;box-shadow:0 24px 60px -20px rgba(0,0,0,.5)}
+.panel h3{font-family:var(--font-display);font-size:26px;font-weight:600;margin-bottom:4px}
+.panel .big{font-family:var(--font-display);font-size:48px;font-weight:900;color:var(--accent);line-height:1;margin:10px 0 2px}
+.panel svg{width:96px;height:96px;margin:6px auto}
+/* album */
+.album{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fl{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 4px;text-align:center}
+.fl svg{width:100%;height:44px;display:block;overflow:visible}
+.fl b{display:block;font-size:9.5px;font-weight:700;margin-top:5px;letter-spacing:.03em}
+.fl.locked{opacity:.28;filter:grayscale(1)}
+#toast{position:absolute;left:50%;bottom:36px;transform:translate(-50%,14px);z-index:9;background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <button class="iconbtn" id="backBtn" style="visibility:hidden" aria-label="Back">←</button>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="sfxBtn" aria-label="Toggle sound">🔔</button>
+  </div>
+
+  <section class="screen on" id="s-main">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <h1 class="logo">Flower<span class="dot">.</span>Merge</h1>
+      <p class="tag">two of a kind, one bloom</p>
+      <div class="stats">
+        <div class="stat"><b id="mBest">0</b><span>best score</span></div>
+        <div class="stat"><b id="mBloom">—</b><span>finest bloom</span></div>
+        <div class="stat"><b id="mGrown">0</b><span>species</span></div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="btn primary" id="playBtn"><span class="ic">🌱</span>New garden<span class="arw">→</span></button>
+      <button class="btn" id="contBtn" style="display:none"><span class="ic">↩</span>Continue<span class="arw">→</span></button>
+      <button class="btn" id="albumBtn"><span class="ic">📖</span>Herbarium<span class="arw">→</span></button>
+      <button class="btn ghost" id="helpBtn"><span class="ic">?</span>How to play<span class="arw">→</span></button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-game">
+    <div class="scorerow">
+      <div class="sc"><span>Score</span><b id="pScore">0</b></div>
+      <div class="sc"><span>Best</span><b id="pBest">0</b></div>
+      <div class="sc"><span>Bloom</span><b id="pBloom" style="font-size:15px;padding-top:5px">Seed</b></div>
+    </div>
+    <div id="boardWrap"></div>
+    <div class="tools">
+      <button class="tbtn" id="undoBtn" disabled>↩ Undo</button>
+      <button class="tbtn" id="sizeBtn">▦ 4×4</button>
+      <button class="tbtn" id="restartBtn">✿ Replant</button>
+    </div>
+    <p class="hint">Swipe — or use the arrow keys — to slide every flower.</p>
+    <div class="overlay" id="ov">
+      <div class="panel">
+        <h3 id="ovTitle">The garden is full</h3>
+        <div id="ovFlower"></div>
+        <p class="sub" style="margin:2px 0 0" id="ovSub">—</p>
+        <div class="big" id="ovScore">0</div>
+        <p class="sub" id="ovBest">—</p>
+        <button class="btn primary" id="ovAgain" style="justify-content:center">Replant</button>
+        <button class="btn ghost" id="ovKeep" style="justify-content:center;margin-top:9px;display:none">Keep going</button>
+        <button class="btn ghost" id="ovHome" style="justify-content:center;margin-top:9px">Back to menu</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="s-album">
+    <h2 class="title">Herbarium</h2>
+    <p class="sub" id="albumSub">—</p>
+    <div class="album" id="albumGrid"></div>
+  </section>
+
+  <section class="screen" id="s-help">
+    <h2 class="title">How to play</h2>
+    <p class="sub">Every flower has a partner. Put them together and something better grows.</p>
+    <ul class="rules">
+      <li><b>Swipe</b> in any direction and every flower slides as far as it can.</li>
+      <li>Two of the same flower touching will <b>merge into the next species</b>.</li>
+      <li>A new seed appears after every move.</li>
+      <li>Reach the <b>Sunflower</b> to win — then keep going if you like.</li>
+      <li>The garden is over when nothing can slide or merge.</li>
+    </ul>
+    <button class="btn ghost" id="helpBack" style="justify-content:center;margin-top:24px">Got it</button>
+  </section>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+/* ================= FLOWER SPECIES ================= */
+/* index 1..16 → value 2^index */
+const SPECIES=[null,
+ {n:'Seed',   type:'seed',  p:'#8B6A45', c:'#6B4F32', bg:'#F1E9DA'},
+ {n:'Sprout', type:'sprout',p:'#79A85C', c:'#5C8544', bg:'#EDF3E2'},
+ {n:'Buttercup',petals:5, pw:16,ph:24,py:22, p:'#F5D24E',p2:'#FBE79A', c:'#C9922E', bg:'#FDF6DE'},
+ {n:'Daisy',   petals:8, pw:11,ph:25,py:23, p:'#FFFFFF',p2:'#F3F0E4', c:'#F2C230', bg:'#FBFAF3'},
+ {n:'Cornflower',petals:6,pw:13,ph:24,py:22, p:'#6E8FD8',p2:'#A8BEEC', c:'#33488C', bg:'#EBF0FC'},
+ {n:'Tulip',   petals:3, pw:19,ph:29,py:19, p:'#E8607A',p2:'#F4909F', c:'#B93E58', bg:'#FCEBEE'},
+ {n:'Poppy',   petals:4, pw:22,ph:24,py:20, p:'#E4553C',p2:'#F2836C', c:'#2F2723', bg:'#FBEBE6'},
+ {n:'Rose',    petals:9, pw:14,ph:22,py:20, p:'#D4497C',p2:'#EA79A2', c:'#8E2A55', bg:'#FBE9F0', layers:3},
+ {n:'Peony',   petals:11,pw:14,ph:23,py:20, p:'#F1A7C0',p2:'#FBD3E0', c:'#E5D06A', bg:'#FCEFF4', layers:3},
+ {n:'Lotus',   petals:8, pw:12,ph:29,py:22, p:'#F6C6D8',p2:'#FFF0F5', c:'#F0CE5F', bg:'#FBF0F5', layers:2, pointed:true},
+ {n:'Sunflower',petals:16,pw:8, ph:27,py:23, p:'#F5B627',p2:'#FBD673', c:'#5E3A20', bg:'#FEF3DC', core:16},
+ {n:'Orchid',  petals:5, pw:17,ph:25,py:21, p:'#9B6FD1',p2:'#C6A7EC', c:'#F0D45E', bg:'#F3ECFC'},
+ {n:'Dahlia',  petals:14,pw:9, ph:26,py:22, p:'#D6407F',p2:'#F07BAA', c:'#F5D24E', bg:'#FBE8F1', layers:3},
+ {n:'Camellia',petals:12,pw:13,ph:23,py:20, p:'#C6332F',p2:'#E4685F', c:'#F7E3A0', bg:'#FBE7E5', layers:3},
+ {n:'Wisteria',petals:10,pw:11,ph:27,py:22, p:'#7E6BC4',p2:'#B2A4E4', c:'#EDE3F8', bg:'#EFEBFA', layers:2},
+ {n:'Moonflower',petals:12,pw:12,ph:28,py:22,p:'#FBFBFF',p2:'#DCE6FA', c:'#EAD98F', bg:'#EEF2FC', layers:2, glow:true}
+];
+const WIN_STAGE=11; // Sunflower
+
+function flowerSVG(v,size){
+  const s=SPECIES[v];
+  if(!s)return '';
+  const o=[];
+  o.push('<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">');
+  if(s.glow){
+    o.push('<defs><radialGradient id="gl'+v+'"><stop offset="0%" stop-color="#fff" stop-opacity=".9"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>');
+    o.push('<circle cx="50" cy="50" r="46" fill="url(#gl'+v+')"/>');
+  }
+  if(s.type==='seed'){
+    o.push('<ellipse cx="50" cy="56" rx="17" ry="23" fill="'+s.p+'"/>');
+    o.push('<ellipse cx="45" cy="50" rx="6" ry="10" fill="rgba(255,255,255,.28)"/>');
+    o.push('<path d="M50 34 q4 -12 12 -16 q-2 12 -12 16z" fill="'+s.c+'"/>');
+  }else if(s.type==='sprout'){
+    o.push('<path d="M50 84 L50 46" stroke="'+s.c+'" stroke-width="6" stroke-linecap="round" fill="none"/>');
+    o.push('<path d="M50 60 q-24 -6 -28 -24 q22 0 28 24z" fill="'+s.p+'"/>');
+    o.push('<path d="M50 54 q24 -8 28 -26 q-22 2 -28 26z" fill="'+s.c+'"/>');
+  }else{
+    const layers=s.layers||1;
+    for(let L=layers-1;L>=0;L--){
+      const k=1-L*0.22;
+      const col=L===0?s.p:s.p2;
+      const off=(L*180/(s.petals*layers));
+      for(let i=0;i<s.petals;i++){
+        const a=off+i*360/s.petals;
+        if(s.pointed){
+          o.push('<path transform="rotate('+a.toFixed(1)+' 50 50)" d="M50 '+(50-s.py*k-s.ph*k)+
+            ' q'+(s.pw*k)+' '+(s.ph*k*.9)+' 0 '+(s.ph*k*1.05)+
+            ' q'+(-s.pw*k)+' '+(-s.ph*k*.15)+' 0 '+(-s.ph*k*1.05)+'z" fill="'+col+'"/>');
+        }else{
+          o.push('<ellipse transform="rotate('+a.toFixed(1)+' 50 50)" cx="50" cy="'+(50-s.py*k).toFixed(1)+
+            '" rx="'+(s.pw*k).toFixed(1)+'" ry="'+(s.ph*k).toFixed(1)+'" fill="'+col+'"/>');
+        }
+      }
+    }
+    const cr=s.core?15:12;
+    o.push('<circle cx="50" cy="50" r="'+cr+'" fill="'+s.c+'"/>');
+    if(s.core){
+      for(let i=0;i<9;i++){
+        const a=i*40*Math.PI/180;
+        o.push('<circle cx="'+(50+Math.cos(a)*7).toFixed(1)+'" cy="'+(50+Math.sin(a)*7).toFixed(1)+'" r="2.1" fill="rgba(255,255,255,.22)"/>');
+      }
+    }else{
+      o.push('<circle cx="46" cy="46" r="'+(cr*.38)+'" fill="rgba(255,255,255,.35)"/>');
+    }
+  }
+  o.push('</svg>');
+  return o.join('');
+}
+
+/* ================= STATE ================= */
+const KEY='flowermerge.v1';
+let S={best:0,grown:{},bestStage:1,sfx:true,size:4};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const $=id=>document.getElementById(id);
+let cur='s-main';
+function go(id){const f=$(cur);if(f)f.classList.remove('on');cur=id;$(id).classList.add('on');
+  $('backBtn').style.visibility=id==='s-main'?'hidden':'visible';
+  if(id==='s-main')refreshMenu(); if(id==='s-album')buildAlbum(); if(id==='s-game')setTimeout(relayout,30);}
+let tT=null;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),1600);}
+let AC=null;
+function beep(f,d,ty,v){
+  if(!S.sfx)return;
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}}
+  if(AC.state==='suspended')AC.resume();
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.type=ty||'sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,AC.currentTime);g.gain.linearRampToValueAtTime(v||.1,AC.currentTime+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(d||.14));
+  o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.14)+.02);
+}
+const sndSlide=()=>beep(200,.07,'sine',.05);
+const sndMerge=v=>{beep(330+v*42,.16,'triangle',.09);setTimeout(()=>beep(500+v*52,.2,'sine',.06),60);};
+const sndWin=()=>{[523,659,784,1046,1318].forEach((f,i)=>setTimeout(()=>beep(f,.35,'triangle',.09),i*120));};
+const sndOver=()=>{[392,330,262].forEach((f,i)=>setTimeout(()=>beep(f,.3,'sine',.08),i*160));};
+
+/* ================= BOARD ================= */
+const wrap=$('boardWrap');
+let N=S.size||4;
+const DIR={up:[-1,0],down:[1,0],left:[0,-1],right:[0,1]};
+const G={grid:[],tiles:[],score:0,over:false,won:false,undo:null,nextId:1,running:false};
+let cellSize=0, gap=0;
+
+function newGame(){
+  N=S.size;
+  G.grid=Array.from({length:N},()=>new Array(N).fill(null));
+  G.tiles=[];G.score=0;G.over=false;G.won=false;G.undo=null;G.running=true;
+  wrap.innerHTML='';
+  buildCells();
+  spawn();spawn();
+  relayout();updateHUD();
+  $('ov').classList.remove('on');
+  $('undoBtn').disabled=true;
+  $('sizeBtn').textContent='▦ '+N+'×'+N;
+}
+function buildCells(){
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div');
+    d.className='cellbg';d.dataset.r=r;d.dataset.c=c;
+    wrap.appendChild(d);
+  }
+}
+function relayout(){
+  const w=wrap.clientWidth;
+  if(!w)return;
+  gap=Math.max(7,w*0.028);
+  cellSize=(w-gap*(N+1))/N;
+  wrap.style.setProperty('--gap',gap+'px');
+  wrap.querySelectorAll('.cellbg').forEach(d=>{
+    const r=+d.dataset.r,c=+d.dataset.c;
+    d.style.width=d.style.height=cellSize+'px';
+    d.style.left=(gap+c*(cellSize+gap))+'px';
+    d.style.top=(gap+r*(cellSize+gap))+'px';
+    d.style.borderRadius=(cellSize*.19)+'px';
+  });
+  G.tiles.forEach(t=>{
+    t.el.style.width=t.el.style.height=cellSize+'px';
+    t.el.style.borderRadius=(cellSize*.19)+'px';
+    setPos(t);
+  });
+}
+function setPos(t){
+  const x=gap+t.c*(cellSize+gap), y=gap+t.r*(cellSize+gap);
+  const tf='translate('+x+'px,'+y+'px)';
+  t.el.style.setProperty('--tf',tf);
+  t.el.style.transform=tf;
+}
+function makeTile(r,c,v){
+  const t={id:G.nextId++,r,c,v,el:document.createElement('div')};
+  t.el.className='tile new';
+  paint(t);
+  wrap.appendChild(t.el);
+  t.el.style.width=t.el.style.height=cellSize+'px';
+  t.el.style.borderRadius=(cellSize*.19)+'px';
+  setPos(t);
+  setTimeout(()=>t.el.classList.remove('new'),240);
+  G.tiles.push(t);G.grid[r][c]=t;
+  if(!S.grown[v]){S.grown[v]=true;save();}
+  if(v>(S.bestStage||1)){S.bestStage=v;save();}
+  return t;
+}
+function paint(t){
+  const s=SPECIES[t.v];
+  t.el.style.background=s.bg;
+  t.el.innerHTML=flowerSVG(t.v)+'<div class="nm">'+s.n+'</div>';
+}
+function emptyCells(){
+  const out=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!G.grid[r][c])out.push([r,c]);
+  return out;
+}
+function spawn(){
+  const e=emptyCells();
+  if(!e.length)return null;
+  const [r,c]=e[Math.floor(Math.random()*e.length)];
+  return makeTile(r,c,Math.random()<0.88?1:2);
+}
+function snapshot(){
+  return {
+    cells:G.grid.map(row=>row.map(t=>t?t.v:0)),
+    score:G.score
+  };
+}
+function restore(sn){
+  G.tiles.forEach(t=>t.el.remove());
+  G.tiles=[];
+  G.grid=Array.from({length:N},()=>new Array(N).fill(null));
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(sn.cells[r][c])makeTile(r,c,sn.cells[r][c]);
+  G.score=sn.score;G.over=false;
+  $('ov').classList.remove('on');
+  updateHUD();
+}
+
+function slide(dir){
+  if(G.over||!G.running)return;
+  const [dr,dc]=DIR[dir];
+  const before=snapshot();
+  const order=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)order.push([r,c]);
+  if(dr>0)order.sort((a,b)=>b[0]-a[0]);
+  if(dc>0)order.sort((a,b)=>b[1]-a[1]);
+  let moved=false,gained=0,topMerge=0;
+  G.tiles.forEach(t=>{t.merged=false;t.gone=false;});
+  const dead=[];
+  for(const [r,c] of order){
+    const t=G.grid[r][c];
+    if(!t)continue;
+    let nr=r,nc=c,ate=false;
+    for(;;){
+      const tr=nr+dr,tc=nc+dc;
+      if(tr<0||tr>=N||tc<0||tc>=N)break;
+      const o=G.grid[tr][tc];
+      if(!o){nr=tr;nc=tc;continue;}
+      if(o.v===t.v&&!o.merged&&o.v<SPECIES.length-1){
+        G.grid[r][c]=null;
+        o.v++;o.merged=true;
+        paint(o);
+        o.el.classList.remove('pop');void o.el.offsetWidth;o.el.classList.add('pop');
+        if(!S.grown[o.v]){S.grown[o.v]=true;save();}
+        if(o.v>(S.bestStage||1)){S.bestStage=o.v;save();}
+        t.r=tr;t.c=tc;setPos(t);
+        t.gone=true;dead.push(t);
+        gained+=Math.pow(2,o.v);
+        topMerge=Math.max(topMerge,o.v);
+        ate=true;moved=true;
+        bloomRing(o);
+        if(o.v===WIN_STAGE&&!G.won){G.won=true;setTimeout(()=>winPanel(),420);}
+      }
+      break;
+    }
+    if(!ate&&(nr!==r||nc!==c)){
+      G.grid[r][c]=null;G.grid[nr][nc]=t;t.r=nr;t.c=nc;setPos(t);moved=true;
+    }
+  }
+  if(!moved)return;
+  G.undo=before;$('undoBtn').disabled=false;
+  setTimeout(()=>{dead.forEach(t=>{t.el.remove();G.tiles=G.tiles.filter(x=>x!==t);});},140);
+  if(gained){G.score+=gained;showGain(gained);sndMerge(topMerge);}else sndSlide();
+  // spawn straight away so a fast second swipe never sees a stale board
+  spawn();
+  updateHUD();
+  if(!canMove()){G.over=true;overPanel();}
+}
+function bloomRing(t){
+  const d=document.createElement('div');
+  d.className='ring';
+  const x=gap+t.c*(cellSize+gap), y=gap+t.r*(cellSize+gap);
+  d.style.left=x+'px';d.style.top=y+'px';
+  d.style.width=d.style.height=cellSize+'px';
+  d.style.borderColor=SPECIES[t.v].c;
+  wrap.appendChild(d);
+  setTimeout(()=>d.remove(),600);
+}
+function showGain(n){
+  const host=$('pScore').parentElement;
+  const d=document.createElement('div');
+  d.className='gain';d.textContent='+'+n;
+  host.appendChild(d);setTimeout(()=>d.remove(),950);
+}
+function canMove(){
+  if(emptyCells().length)return true;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const v=G.grid[r][c].v;
+    if(r+1<N&&G.grid[r+1][c].v===v)return true;
+    if(c+1<N&&G.grid[r][c+1].v===v)return true;
+  }
+  return false;
+}
+function best(){
+  let m=1;G.tiles.forEach(t=>{if(t.v>m)m=t.v;});return m;
+}
+function updateHUD(){
+  $('pScore').textContent=G.score;
+  if(G.score>S.best){S.best=G.score;save();}
+  $('pBest').textContent=S.best;
+  $('pBloom').textContent=SPECIES[best()].n;
+}
+function winPanel(){
+  sndWin();
+  $('ovTitle').textContent='A sunflower!';
+  $('ovSub').textContent='The garden’s crowning bloom. Keep going for rarer species.';
+  $('ovFlower').innerHTML=flowerSVG(WIN_STAGE);
+  $('ovScore').textContent=G.score;
+  $('ovBest').textContent='Best · '+S.best;
+  $('ovKeep').style.display='';
+  $('ov').classList.add('on');
+}
+function overPanel(){
+  sndOver();
+  $('ovTitle').textContent='The garden is full';
+  $('ovSub').textContent='Nothing left to move. Your finest bloom was the '+SPECIES[best()].n+'.';
+  $('ovFlower').innerHTML=flowerSVG(best());
+  $('ovScore').textContent=G.score;
+  $('ovBest').textContent=(G.score>=S.best?'A new best.':'Best · '+S.best);
+  $('ovKeep').style.display='none';
+  $('ov').classList.add('on');
+}
+
+/* ================= INPUT ================= */
+let sw=null;
+wrap.addEventListener('pointerdown',e=>{sw={x:e.clientX,y:e.clientY};});
+wrap.addEventListener('pointerup',e=>{
+  if(!sw)return;
+  const dx=e.clientX-sw.x, dy=e.clientY-sw.y;
+  sw=null;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
+  slide(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));
+});
+wrap.addEventListener('pointercancel',()=>{sw=null;});
+window.addEventListener('keydown',e=>{
+  if(cur!=='s-game')return;
+  const m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
+  const k=m[e.key];
+  if(k){e.preventDefault();slide(k);}
+});
+
+/* ================= ALBUM ================= */
+function buildAlbum(){
+  const g=$('albumGrid');g.innerHTML='';
+  let n=0;
+  for(let v=1;v<SPECIES.length;v++){
+    const got=!!S.grown[v];
+    if(got)n++;
+    const d=document.createElement('div');
+    d.className='fl'+(got?'':' locked');
+    d.innerHTML=flowerSVG(v)+'<b>'+(got?SPECIES[v].n:'???')+'</b>';
+    g.appendChild(d);
+  }
+  $('albumSub').textContent=n+' of '+(SPECIES.length-1)+' species pressed. Merge to find the rest.';
+}
+
+/* ================= WIRING ================= */
+function refreshMenu(){
+  $('mBest').textContent=S.best;
+  $('mBloom').textContent=SPECIES[S.bestStage||1].n;
+  $('mGrown').textContent=Object.keys(S.grown).length;
+  $('contBtn').style.display=(G.running&&!G.over)?'':'none';
+}
+$('playBtn').onclick=()=>{go('s-game');setTimeout(newGame,40);};
+$('contBtn').onclick=()=>go('s-game');
+$('albumBtn').onclick=()=>go('s-album');
+$('helpBtn').onclick=()=>go('s-help');
+$('helpBack').onclick=()=>go('s-main');
+$('backBtn').onclick=()=>go('s-main');
+$('restartBtn').onclick=()=>newGame();
+$('undoBtn').onclick=()=>{
+  if(!G.undo)return;
+  restore(G.undo);G.undo=null;$('undoBtn').disabled=true;beep(300,.1,'sine',.07);
+};
+$('sizeBtn').onclick=()=>{
+  S.size=S.size===4?5:(S.size===5?6:4);save();
+  toast('Garden set to '+S.size+'×'+S.size);
+  newGame();
+};
+$('ovAgain').onclick=()=>newGame();
+$('ovKeep').onclick=()=>$('ov').classList.remove('on');
+$('ovHome').onclick=()=>{$('ov').classList.remove('on');go('s-main');};
+$('sfxBtn').onclick=()=>{S.sfx=!S.sfx;save();$('sfxBtn').classList.toggle('off',!S.sfx);beep(600,.08,'sine',.1);};
+$('sfxBtn').classList.toggle('off',!S.sfx);
+window.addEventListener('resize',relayout);
+new ResizeObserver(relayout).observe(wrap);
+refreshMenu();
+</script>
+</body>
+</html>
