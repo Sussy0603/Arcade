@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// ==========================================================
+// Firestore security rules — who can read/write what.
+// These are the REAL protection (the web config is public).
+// ==========================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Owner emails allowed to see anonymous stats + reports.
+    // Keep in sync with ADMIN_EMAILS in public/js/config.js.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['REMPLACER_PAR_TON_EMAIL@gmail.com'];
+    }
+
+    // Each person's progress: only THEM, nobody else (not even the admin).
+    match /users/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['v', 'onboarded', 'nickname', 'avatar', 'accent', 'accessory', 'fur',
+             'textSize', 'sounds', 'reduceMotion', 'examDates', 'progress', 'weak', 'stats', 'last', 'defi'])
+        && request.resource.data.nickname is string && request.resource.data.nickname.size() <= 20
+        && request.resource.data.weak is list && request.resource.data.weak.size() <= 400;
+    }
+
+    // Anonymous "wrong answers" counter per notion: can only go up by exactly 1.
+    match /stats/{notionId} {
+      allow read: if isAdmin();
+      allow create: if request.auth != null && notionId.size() <= 40
+        && request.resource.data.keys().hasOnly(['wrong']) && request.resource.data.wrong == 1;
+      allow update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['wrong']) && request.resource.data.wrong == resource.data.wrong + 1;
+    }
+
+    // "Signaler une erreur": anyone signed in can send, only the admin can read. No name stored.
+    match /reports/{reportId} {
+      allow read, delete: if isAdmin();
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['item', 'text', 'at'])
+        && request.resource.data.item is string && request.resource.data.item.size() <= 100
+        && request.resource.data.text is string && request.resource.data.text.size() <= 500
+        && request.resource.data.at == request.time;
+    }
+  }
+}

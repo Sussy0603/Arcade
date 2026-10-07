@@ -282,9 +282,24 @@ header,footer,#content{position:relative;z-index:1;}
 .card:focus-visible,.feat-card:focus-visible{
   outline:var(--bw) solid var(--hot);outline-offset:3px;
 }
+/* Pressed. The push-in is the same for all three; the fill is not.
+
+   The sort pills and the category chips fill with the hot pink, which is
+   also what they take under the cursor — hovering one shows you exactly
+   what choosing it looks like, and depth is left to tell the two apart: a
+   chosen chip is pink AND pushed in, one merely under the cursor is pink
+   AND lifted. The tabs keep the ink fill, because Games/Apps is a bigger
+   switch than a sort order and should not read as another chip.
+
+   The border goes pink with the fill rather than staying ink: pressed is
+   meant to read as one solid block, which is how the ink fill has always
+   worked — its border is --line, the same colour as the fill. */
 .sort-btn[aria-pressed="true"],.cat-btn[aria-pressed="true"],.tab-btn[aria-pressed="true"]{
-  background:var(--ink);color:var(--wall);
   transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow);
+}
+.tab-btn[aria-pressed="true"]{background:var(--ink);color:var(--wall);}
+.sort-btn[aria-pressed="true"],.cat-btn[aria-pressed="true"]{
+  background:var(--hot);color:var(--hot-ink);border-color:var(--hot);
 }
 
 .theme-btn{
@@ -324,10 +339,15 @@ header,footer,#content{position:relative;z-index:1;}
 .sort-btn{font-size:12.5px;padding:8px 15px;}
 .sort-group{display:contents;}
 /* Surprise me is an action, not a state, so it never takes the pressed
-   treatment. It is the one control that wears the sun colour at REST,
-   which is what makes it findable in a row of outlines — every control
-   now takes that same yellow under the cursor, so the distinction is
-   "the one that is already yellow", not "the only yellow one". */
+   treatment, and it is the only yellow left in the row now that the pills
+   beside it have gone pink. That is the whole point of it: the three pills
+   are a choice you are making and it is a thing you are setting off, and
+   the colour says so before the label does.
+
+   The :not(.lucky-btn) in the hover rule at the foot of this sheet is what
+   keeps it out of the pink. It is written there rather than fought off
+   with a louder rule here, because an exception is easier to find when it
+   is stated where the rule is. */
 .lucky-btn{background:var(--sun);color:#1A1420;border-color:#1A1420;}
 .lucky-btn:hover{background:var(--sun);}
 .lucky-btn:disabled{opacity:.4;cursor:default;}
@@ -358,29 +378,45 @@ header,footer,#content{position:relative;z-index:1;}
 }
 .cat-btn{font-size:11.5px;font-weight:700;padding:6px 13px;box-shadow:2px 2px 0 var(--shadow);}
 .cat-btn:hover{box-shadow:4px 4px 0 var(--shadow);}
+/* All wears the pink at rest too, as an outline. Every chip goes pink when
+   you reach for it or choose it, so this no longer marks All out on colour
+   — it marks it out on being the only one already wearing it, which is the
+   same trick Surprise me plays with the sun.
+
+   The second rule is not the fill: that comes from the pressed rule above.
+   It is only here to beat this one's own colour, which sits later in the
+   sheet and at equal weight, and would otherwise write pink on pink. */
 .cat-btn.cat-all{border-color:var(--hot);color:var(--hot);}
-.cat-btn.cat-all[aria-pressed="true"]{background:var(--hot);color:#FFF;border-color:var(--hot);}
+.cat-btn.cat-all[aria-pressed="true"]{color:var(--hot-ink);}
 
 /* ---------------- Hovering a control ----------------
-   Every button on the wall fills with the sun under the cursor, the same
-   yellow the Play button takes when you reach for a note.
+   Two fills, split by what the control is for.
 
-   Deliberately the last word on the subject. It sits after the pressed
+   The sort pills and the category chips fill with the hot pink, because
+   they are the two rows you choose from and pink is what being chosen
+   looks like — under the cursor a chip is already wearing its answer. The
+   tabs and the theme toggle keep the sun: they are not part of either row,
+   and a fourth pink row would flatten the difference between the switch at
+   the top of the page and the filters underneath it.
+
+   Deliberately the last word on the subject. This sits after the pressed
    rule and after the All chip's pink so it beats both, because hover is
    feedback about what is under the cursor and it has no business asking
-   what state the thing happens to be in first.
+   what state the thing happens to be in first. The pressed state survives
+   it anyway: a hovered pressed pill is pink AND pushed in, a hovered idle
+   one is pink AND lifted. That is also why neither rule sets a transform
+   — the two rules further up own that.
 
-   The pressed state is not lost while you are over it, because pressed is
-   carried by depth as well as colour: a hovered pressed pill is yellow AND
-   pushed in, a hovered idle one is yellow AND lifted. That is also why
-   this rule sets no transform — the two rules above own that.
-
-   --sun, not the note's fixed --lift-play, because these sit ON THE WALL
-   and things on the wall are theme-aware. Dark ink on it is 11.1:1 in
-   daylight and 12.4:1 at night. */
-.theme-btn:hover,.sort-btn:hover,.tab-btn:hover,
-.cat-btn:hover,.cat-btn.cat-all:hover{
+   Tokens, not the note's fixed --lift-* colours, because these sit ON THE
+   WALL and things on the wall are theme-aware. Dark ink on the sun is
+   11.1:1 in daylight and 12.4:1 at night; --hot-ink on the pink is 4.4:1
+   and 5.2:1, which is the number the bold weight on these labels and the
+   push-in underneath them are both there to carry. */
+.theme-btn:hover,.tab-btn:hover{
   background:var(--sun);color:#1A1420;border-color:#1A1420;
+}
+.sort-btn:not(.lucky-btn):hover,.cat-btn:hover{
+  background:var(--hot);color:var(--hot-ink);border-color:var(--hot);
 }
 
 /* One class, one property. ~80 cards are already in the document and
