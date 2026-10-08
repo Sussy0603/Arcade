@@ -16,14 +16,6 @@
     "addedAt": 1787084250000
   },
   {
-    "id": "bakery",
-    "name": "Bakery",
-    "description": "",
-    "url": "games/bakery/bakery.html",
-    "category": "Chill",
-    "addedAt": 1786466907456.1672
-  },
-  {
     "id": "bakeyclicker",
     "name": "BakeyClicker",
     "description": "",
@@ -368,14 +360,6 @@
     "addedAt": 1785759686380.7173
   },
   {
-    "id": "numberland-farm",
-    "name": "Numberland Farm",
-    "description": "",
-    "url": "games/numberland-farm/index.html",
-    "category": "Kids",
-    "addedAt": 1784925661432.1035
-  },
-  {
     "id": "numbrush",
     "name": "Numbrush",
     "description": "",
@@ -480,28 +464,12 @@
     "addedAt": 1786464310902.8174
   },
   {
-    "id": "reading-rally",
-    "name": "Reading Rally",
-    "description": "",
-    "url": "games/reading-rally/index.html",
-    "category": "Kids",
-    "addedAt": 1784664032083.789
-  },
-  {
     "id": "reflex-grid",
     "name": "Reflex Grid",
     "description": "",
     "url": "games/reflex-grid/index.html",
     "category": "Action",
     "addedAt": 1786537015151.2275
-  },
-  {
-    "id": "rookery",
-    "name": "Rookery",
-    "description": "",
-    "url": "games/rookery/Rookery_1.html",
-    "category": "Puzzle",
-    "addedAt": 1784569497648.91
   },
   {
     "id": "sequence",

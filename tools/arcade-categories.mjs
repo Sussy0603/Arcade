@@ -83,7 +83,6 @@ const BY_SLUG = {
   oddone: 'Puzzle',               // Odd One Out
   pipes: 'Puzzle',
   'procedural-jigsaw': 'Puzzle',
-  rookery: 'Puzzle',              // the Chessey folder
   sequence: 'Puzzle',
   slide15: 'Puzzle',
   solitaire: 'Puzzle',
@@ -107,7 +106,6 @@ const BY_SLUG = {
 
   // --- Chill: no fail state, no clock --------------------------------
   antics: 'Chill',                // ant-colony idle, earns while away
-  bakery: 'Chill',                // Butterfold
   bakeyclicker: 'Chill',          // Petite Pâtisserie
   beachcomber: 'Chill',
   'bird-feeder': 'Chill',
@@ -148,9 +146,7 @@ const BY_SLUG = {
   'clock-school': 'Kids',
   'colors-shapes': 'Kids',
   'marble-run': 'Kids',
-  'memory-match': 'Kids',
-  'numberland-farm': 'Kids',
-  'reading-rally': 'Kids'         // the ReadingRally folder
+  'memory-match': 'Kids'
 };
 
 /* The slug out of a listing entry's URL — the same read arcadeKey() makes
