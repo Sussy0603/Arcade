@@ -241,8 +241,8 @@
   },
   {
     "id": "higherlower",
-    "name": "Higherlower",
-    "description": "",
+    "name": "Higher or Lower",
+    "description": "Bet coins, guess the next card, cash out before you bust.",
     "url": "games/higherlower/higherlower.html",
     "category": "Arcade",
     "addedAt": 1786628687418.5186
